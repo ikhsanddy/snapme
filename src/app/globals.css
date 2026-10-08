@@ -1,0 +1,137 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Tema terang saja pada v1: `dark:` hanya aktif di dalam `.dark`, yang tidak pernah dipasang. */
+@custom-variant dark (&:is(.dark *));
+
+/* DESIGN-SYSTEM §2, §3, §4: satu-satunya tempat nilai mentah ditulis. */
+@theme {
+  --color-ink: #141414;
+  --color-paper: #fffdf7;
+  --color-cream: #f4f1e6;
+  --color-lime: #c3f53c;
+  --color-tangerine: #f0562b;
+  --color-violet: #5038d6;
+  --color-violet-soft: #a9a4f4;
+  --color-pink: #f2479b;
+  --color-pink-700: #cf1874;
+  --color-muted: #5e5e57;
+  --color-danger: #b42318;
+
+  --font-display: var(--font-unbounded), sans-serif;
+  --font-sans: var(--font-space-grotesk), sans-serif;
+  --font-mono: var(--font-space-mono), monospace;
+
+  --radius-panel: 20px;
+  --radius-stage: 16px;
+  --radius-card: 14px;
+  --radius-thumb: 10px;
+  --radius-pill: 999px;
+
+  --shadow-hard-sm: 3px 3px 0 var(--color-ink);
+  --shadow-hard: 4px 4px 0 var(--color-ink);
+  --shadow-hard-hover: 5px 5px 0 var(--color-ink);
+  --shadow-hard-lg: 6px 6px 0 var(--color-ink);
+  --shadow-hard-violet: 6px 6px 0 var(--color-violet);
+
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* DESIGN-SYSTEM §13: pemetaan semantik shadcn/ui.
+   Catatan: `--color-muted` tetap #5E5E57 (teks sekunder §2), jadi permukaan
+   netral memakai `bg-cream`, bukan `bg-muted`. */
+:root {
+  --background: var(--color-lime);
+  --foreground: var(--color-ink);
+  --card: var(--color-paper);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-paper);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-tangerine);
+  --primary-foreground: var(--color-ink);
+  --secondary: var(--color-violet);
+  --secondary-foreground: var(--color-paper);
+  --muted: var(--color-cream);
+  --muted-foreground: var(--color-muted);
+  --accent: var(--color-lime);
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-danger);
+  --border: var(--color-ink);
+  --input: var(--color-ink);
+  --ring: var(--color-violet);
+  --radius: 14px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-heading: var(--font-display);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background font-sans font-medium text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* DESIGN-SYSTEM §6: kisi panggung, hanya untuk latar halaman. */
+@utility stage-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-ink) 8%, transparent) 1.5px,
+      transparent 1.5px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-ink) 8%, transparent) 1.5px,
+      transparent 1.5px
+    );
+  background-size: 56px 56px;
+}
+
+/* DESIGN-SYSTEM §7: semua gerak menjadi perubahan langsung. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snapme - Ambil Foto</title>
+<!--
+  Halaman acuan UI snapme: Ambil Foto.
+  Sumber kebenaran tampilan bersama DESIGN-SYSTEM.md (token §2 sampai §7, anatomi §10).
+  Berkas ini acuan visual, bukan kode produk: gaya ditulis inline dengan nilai mentah
+  supaya terbaca jelas. Di kode produk pakai token dan komponen (DESIGN-SYSTEM §9, §13).
+  Foto dan pratinjau kamera adalah blok warna berlabel (placeholder).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=Space+Mono:wght@400;700&amp;family=Unbounded:wght@700;800;900&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#141414}a:hover{color:#141414}
+button{font-family:inherit;cursor:pointer}
+svg{flex-shrink:0}
+.btn{box-shadow:4px 4px 0 #141414;transition:transform .12s ease,box-shadow .12s ease}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #141414}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 #141414}
+a:focus-visible,button:focus-visible{outline:3px solid #5038D6;outline-offset:3px}
+.on-ink:focus-visible{outline-color:#C3F53C}
+@keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes hold{from{width:0}to{width:100%}}
+.pop{animation:pop .5s cubic-bezier(.16,1,.3,1)}
+.hold{animation:hold .9s linear forwards}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}.pop{animation:none}.hold{animation:none;width:100%}}
+@media (max-width:760px){.stage{order:-1}.ph-note,.key-hint{display:none !important}.hud{top:14px !important;padding:0 12px !important}.cam{aspect-ratio:1 / 1 !important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<template id="tpl">
+<div style="background-color: #C3F53C; background-image: linear-gradient(rgba(20,20,20,0.08) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(20,20,20,0.08) 1.5px, transparent 1.5px); background-size: 56px 56px; padding: 24px clamp(16px, 3vw, 40px) 40px; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; color: #141414; min-height: 100vh">
+<div style="max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<a href="welcome.html" style="font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; text-decoration: none; color: #141414; padding: 8px 0">snapme</a>
+<ol style="display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">
+<li style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #FFFDF7; border: 2px solid #141414; border-radius: 999px">
+<svg viewBox="0 0 256 256" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"></path></svg>
+Layout
+</li>
+<li aria-current="step" style="display: inline-flex; align-items: center; padding: 7px 12px; background: #141414; color: #FFFDF7; border: 2px solid #141414; border-radius: 999px">Foto</li>
+<li style="display: inline-flex; align-items: center; padding: 7px 12px; border: 2px solid #141414; border-radius: 999px">Hias</li>
+<li style="display: inline-flex; align-items: center; padding: 7px 12px; border: 2px solid #141414; border-radius: 999px">Hasil</li>
+</ol>
+</header>
+
+<main style="background: #FFFDF7; border: 3px solid #141414; border-radius: 20px; box-shadow: 6px 6px 0 #141414; overflow: hidden">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 3px solid #141414">
+<a href="welcome.html" aria-label="Kembali" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 2px solid #141414; border-radius: 999px; color: #141414">
+<svg viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M228,128a12,12,0,0,1-12,12H69l51.52,51.51a12,12,0,0,1-17,17l-72-72a12,12,0,0,1,0-17l72-72a12,12,0,0,1,17,17L69,116H216A12,12,0,0,1,228,128Z"></path></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(22px, 3vw, 34px); line-height: 1; text-transform: uppercase; color: #F2479B; -webkit-text-stroke: 1px #141414; text-shadow: 3px 3px 0 #141414">Ambil Foto</h1>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: #F4F1E6; border: 2px solid #141414; border-radius: 999px; padding: 6px 12px">
+<svg viewBox="0 0 256 256" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M216,36H40A20,20,0,0,0,20,56V200a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A20,20,0,0,0,216,36ZM44,100h72v56H44Zm96-24V60h24V76Zm-24,0H92V60h24Zm0,104v16H92V180Zm24,0h24v16H140Zm0-24V100h72v56Zm72-80H188V60h24ZM68,60V76H44V60ZM44,180H68v16H44Zm144,16V180h24v16Z"></path></svg>
+Strip 4 foto
+</span>
+<div style="flex: 1 1 0"></div>
+<button onClick="{{toggleGesture}}" aria-pressed="{{gestureOn}}" style="display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px 0 16px; background: #FFFDF7; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">
+Gesture Snap
+<span style="font-family: 'Space Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: {{gestureChipBg}}; border: 2px solid #141414; border-radius: 999px; padding: 3px 10px">{{gestureLabel}}</span>
+</button>
+<span aria-live="polite" style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 18px; background: #F2479B; border: 2px solid #141414; border-radius: 999px; padding: 6px 16px">{{progressText}}</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px">
+
+<aside style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">Fotomu</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{slots}}" as="slot" hint-placeholder-count="4">
+<div>
+<sc-if value="{{slot.filled}}" hint-placeholder-val="{{true}}">
+<div style="position: relative; aspect-ratio: 44 / 31; box-sizing: border-box; background: {{slot.bg}}; border: 2px solid #141414; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px">
+Foto {{slot.n}}
+<span style="position: absolute; top: -8px; right: -8px; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #5038D6; color: #FFFDF7; border: 2px solid #141414; border-radius: 999px">
+<svg viewBox="0 0 256 256" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"></path></svg>
+</span>
+</div>
+</sc-if>
+<sc-if value="{{slot.empty}}" hint-placeholder-val="{{false}}">
+<div style="aspect-ratio: 44 / 31; box-sizing: border-box; border: 2px dashed #5E5E57; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 18px; color: #5E5E57">{{slot.n}}</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+<button onClick="{{retake}}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; background: #FFFDF7; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 14px">
+<svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M228,128a100,100,0,0,1-98.66,100H128a99.39,99.39,0,0,1-68.62-27.29,12,12,0,0,1,16.48-17.45,76,76,0,1,0-1.57-109c-.13.13-.25.25-.39.37L54.89,92H72a12,12,0,0,1,0,24H24a12,12,0,0,1-12-12V56a12,12,0,0,1,24,0V76.72L57.48,57.06A100,100,0,0,1,228,128Z"></path></svg>
+Ulang foto terakhir
+</button>
+</aside>
+
+<section class="stage" style="flex: 3 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div class="cam" style="position: relative; aspect-ratio: 44 / 31; background: #141414; border: 3px solid #141414; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; color: #FFFDF7; text-align: center; padding: 0 24px">
+<svg viewBox="0 0 256 256" width="40" height="40" fill="currentColor" aria-hidden="true"><path d="M208,52H182.42L170,33.34A12,12,0,0,0,160,28H96a12,12,0,0,0-10,5.34L73.57,52H48A28,28,0,0,0,20,80V192a28,28,0,0,0,28,28H208a28,28,0,0,0,28-28V80A28,28,0,0,0,208,52Zm4,140a4,4,0,0,1-4,4H48a4,4,0,0,1-4-4V80a4,4,0,0,1,4-4H80a12,12,0,0,0,10-5.34L102.42,52h51.15L166,70.66A12,12,0,0,0,176,76h32a4,4,0,0,1,4,4ZM128,84a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,84Zm0,72a24,24,0,1,1,24-24A24,24,0,0,1,128,156Z"></path></svg>
+<span style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em">Pratinjau kamera</span>
+<span class="ph-note" style="font-size: 14px">Di aplikasi asli, area ini menampilkan feed kamera yang dicerminkan.</span>
+</div>
+<div style="position: absolute; top: 16px; left: 16px; width: 36px; height: 36px; border-top: 4px solid #C3F53C; border-left: 4px solid #C3F53C; border-radius: 6px 0 0 0"></div>
+<div style="position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border-top: 4px solid #C3F53C; border-right: 4px solid #C3F53C; border-radius: 0 6px 0 0"></div>
+<div style="position: absolute; bottom: 16px; left: 16px; width: 36px; height: 36px; border-bottom: 4px solid #C3F53C; border-left: 4px solid #C3F53C; border-radius: 0 0 0 6px"></div>
+<div style="position: absolute; bottom: 16px; right: 16px; width: 36px; height: 36px; border-bottom: 4px solid #C3F53C; border-right: 4px solid #C3F53C; border-radius: 0 0 6px 0"></div>
+
+<div class="hud" style="position: absolute; top: 28px; left: 0; right: 0; display: flex; justify-content: center; padding: 0 64px">
+<sc-if value="{{hudGesture}}" hint-placeholder-val="{{true}}">
+<button class="on-ink" onClick="{{demoGesture}}" style="display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; background: #FFFDF7; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M215.7,28a32,32,0,0,0-58.62,7.72L148,69.64l-9.09-33.91A32,32,0,0,0,77.1,52.3l7.72,28.82-2.49-.48a32,32,0,0,0-33,49c.63.95,1.31,1.86,2,2.73a31.69,31.69,0,0,0-6.67,14,32.08,32.08,0,0,0-.65,6.59V160a84,84,0,0,0,84,84h.64c46-.34,83.36-38.43,83.36-84.9v-3.34a59.83,59.83,0,0,0-11.41-35.1L218.9,52.3A31.84,31.84,0,0,0,215.7,28ZM180.26,41.94a8,8,0,0,1,15.46,4.14L180.47,103a59.64,59.64,0,0,0-15-5.67ZM101.08,40a8,8,0,0,1,14.65,1.93l13.61,50.78a32.24,32.24,0,0,0-7.92,2.83,31.86,31.86,0,0,0-10-8l-11.1-41.43A8,8,0,0,1,101.08,40ZM69.33,157.14a8,8,0,0,1,8.18-12.26l10.09,2a8,8,0,0,1,6.24,9.43,8,8,0,0,1-9.49,6.23l-10-2A8,8,0,0,1,69.33,157.14Zm-1.16-46.73a8,8,0,0,1,9.44-6.24l.13,0,20.73,4a8,8,0,0,1-3.26,15.67l-.13,0-20.72-4a8,8,0,0,1-6.19-9.43ZM188,159.1c0,33.34-26.7,60.66-59.53,60.9a60.09,60.09,0,0,1-55.1-35.17l6.24,1.25a32,32,0,0,0,38.1-35.82,32,32,0,0,0,12,5.11l2.56.51A40.6,40.6,0,0,0,132,160a39.79,39.79,0,0,0,11.43,28,12,12,0,0,0,17.14-16.8,16,16,0,0,1-2.66-18.8,12,12,0,0,0-8.19-17.49l-15.32-3.06a8,8,0,1,1,3.25-15.67l21.4,4.28A36.09,36.09,0,0,1,188,155.76Z"></path></svg>
+Angkat dua jari, tahan sebentar
+</button>
+</sc-if>
+<sc-if value="{{hudHolding}}" hint-placeholder-val="{{false}}">
+<div role="status" style="display: flex; flex-direction: column; gap: 6px; min-width: 240px; padding: 10px 16px; background: #C3F53C; color: #141414; border: 2px solid #141414; border-radius: 16px; font-weight: 700; font-size: 15px">
+Terdeteksi. Tahan...
+<div style="height: 8px; background: #FFFDF7; border: 2px solid #141414; border-radius: 999px; overflow: hidden">
+<div class="hold" style="height: 100%; background: #5038D6"></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{hudOff}}" hint-placeholder-val="{{false}}">
+<div style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; background: #FFFDF7; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">Gesture mati. Pakai tombol kamera.</div>
+</sc-if>
+<sc-if value="{{hudDone}}" hint-placeholder-val="{{false}}">
+<div role="status" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: #C3F53C; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">
+<svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"></path></svg>
+4 foto siap dihias
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{is3}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="status" style="position: absolute; display: flex; align-items: center; justify-content: center; width: 168px; height: 168px; background: #C3F53C; border: 4px solid #141414; border-radius: 999px; box-shadow: 6px 6px 0 #5038D6; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 96px; color: #141414">3</div>
+</sc-if>
+<sc-if value="{{is2}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="status" style="position: absolute; display: flex; align-items: center; justify-content: center; width: 168px; height: 168px; background: #C3F53C; border: 4px solid #141414; border-radius: 999px; box-shadow: 6px 6px 0 #5038D6; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 96px; color: #141414">2</div>
+</sc-if>
+<sc-if value="{{is1}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="status" style="position: absolute; display: flex; align-items: center; justify-content: center; width: 168px; height: 168px; background: #F2479B; border: 4px solid #141414; border-radius: 999px; box-shadow: 6px 6px 0 #5038D6; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 96px; color: #141414">1</div>
+</sc-if>
+<sc-if value="{{flash}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: #FFFDF7; opacity: 0.9"></div>
+</sc-if>
+
+<div style="position: absolute; bottom: 20px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 14px">
+<button class="btn on-ink" onClick="{{shoot}}" aria-label="Ambil foto" style="display: flex; align-items: center; justify-content: center; width: 76px; height: 76px; background: #F0562B; color: #141414; border: 3px solid #FFFDF7; border-radius: 999px">
+<svg viewBox="0 0 256 256" width="34" height="34" fill="currentColor" aria-hidden="true"><path d="M208,52H182.42L170,33.34A12,12,0,0,0,160,28H96a12,12,0,0,0-10,5.34L73.57,52H48A28,28,0,0,0,20,80V192a28,28,0,0,0,28,28H208a28,28,0,0,0,28-28V80A28,28,0,0,0,208,52Zm4,140a4,4,0,0,1-4,4H48a4,4,0,0,1-4-4V80a4,4,0,0,1,4-4H80a12,12,0,0,0,10-5.34L102.42,52h51.15L166,70.66A12,12,0,0,0,176,76h32a4,4,0,0,1,4,4ZM128,84a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,84Zm0,72a24,24,0,1,1,24-24A24,24,0,0,1,128,156Z"></path></svg>
+</button>
+<span class="key-hint" style="display: inline-flex; align-items: center; gap: 6px; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: #FFFDF7; color: #141414; border: 2px solid #141414; border-radius: 8px; padding: 5px 10px">
+<svg viewBox="0 0 256 256" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M224,44H32A20,20,0,0,0,12,64V192a20,20,0,0,0,20,20H224a20,20,0,0,0,20-20V64A20,20,0,0,0,224,44Zm-4,144H36V68H220ZM52,128a12,12,0,0,1,12-12H192a12,12,0,0,1,0,24H64A12,12,0,0,1,52,128Zm0-36A12,12,0,0,1,64,80H192a12,12,0,0,1,0,24H64A12,12,0,0,1,52,92Zm0,72a12,12,0,0,1,12-12h8a12,12,0,0,1,0,24H64A12,12,0,0,1,52,164Zm108,0a12,12,0,0,1-12,12H108a12,12,0,0,1,0-24h40A12,12,0,0,1,160,164Zm44,0a12,12,0,0,1-12,12h-8a12,12,0,0,1,0-24h8A12,12,0,0,1,204,164Z"></path></svg>
+Spasi
+</span>
+</div>
+</div>
+<p style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #5E5E57">
+<svg viewBox="0 0 256 256" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M208,76H180V56A52,52,0,0,0,76,56V76H48A20,20,0,0,0,28,96V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V96A20,20,0,0,0,208,76ZM100,56a28,28,0,0,1,56,0V76H100ZM204,204H52V100H204Z"></path></svg>
+Kamera dan deteksi gesture berjalan di perangkat ini. Tidak ada yang diunggah.
+</p>
+</section>
+
+<aside style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 16px">
+<div style="background: #C3F53C; border: 2px solid #141414; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 16px; line-height: 1.2">Senyum, kamera siap!</h2>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.35">
+<li style="display: flex; align-items: center; gap: 10px">
+<svg viewBox="0 0 256 256" width="24" height="24" fill="currentColor" aria-hidden="true" style="flex-shrink: 0"><path d="M215.7,28a32,32,0,0,0-58.62,7.72L148,69.64l-9.09-33.91A32,32,0,0,0,77.1,52.3l7.72,28.82-2.49-.48a32,32,0,0,0-33,49c.63.95,1.31,1.86,2,2.73a31.69,31.69,0,0,0-6.67,14,32.08,32.08,0,0,0-.65,6.59V160a84,84,0,0,0,84,84h.64c46-.34,83.36-38.43,83.36-84.9v-3.34a59.83,59.83,0,0,0-11.41-35.1L218.9,52.3A31.84,31.84,0,0,0,215.7,28ZM180.26,41.94a8,8,0,0,1,15.46,4.14L180.47,103a59.64,59.64,0,0,0-15-5.67ZM101.08,40a8,8,0,0,1,14.65,1.93l13.61,50.78a32.24,32.24,0,0,0-7.92,2.83,31.86,31.86,0,0,0-10-8l-11.1-41.43A8,8,0,0,1,101.08,40ZM69.33,157.14a8,8,0,0,1,8.18-12.26l10.09,2a8,8,0,0,1,6.24,9.43,8,8,0,0,1-9.49,6.23l-10-2A8,8,0,0,1,69.33,157.14Zm-1.16-46.73a8,8,0,0,1,9.44-6.24l.13,0,20.73,4a8,8,0,0,1-3.26,15.67l-.13,0-20.72-4a8,8,0,0,1-6.19-9.43ZM188,159.1c0,33.34-26.7,60.66-59.53,60.9a60.09,60.09,0,0,1-55.1-35.17l6.24,1.25a32,32,0,0,0,38.1-35.82,32,32,0,0,0,12,5.11l2.56.51A40.6,40.6,0,0,0,132,160a39.79,39.79,0,0,0,11.43,28,12,12,0,0,0,17.14-16.8,16,16,0,0,1-2.66-18.8,12,12,0,0,0-8.19-17.49l-15.32-3.06a8,8,0,1,1,3.25-15.67l21.4,4.28A36.09,36.09,0,0,1,188,155.76Z"></path></svg>
+Dua jari: mulai hitung mundur
+</li>
+<li style="display: flex; align-items: center; gap: 10px">
+<svg viewBox="0 0 256 256" width="24" height="24" fill="currentColor" aria-hidden="true" style="flex-shrink: 0"><path d="M188,84a32,32,0,0,0-8,1V60a32,32,0,0,0-43.21-30A32,32,0,0,0,76,44v1A32,32,0,0,0,36,76v76a92,92,0,0,0,184,0V116A32,32,0,0,0,188,84Zm8,68a68,68,0,0,1-136,0V76a8,8,0,0,1,16,0v40a12,12,0,0,0,24,0V44a8,8,0,0,1,16,0v64a12,12,0,0,0,24,0V60a8,8,0,0,1,16,0v65.4A52.09,52.09,0,0,0,116,176a12,12,0,0,0,24,0,28,28,0,0,1,28-28,12,12,0,0,0,12-12V116a8,8,0,0,1,16,0Z"></path></svg>
+Telapak: ulang foto terakhir
+</li>
+<li style="display: flex; align-items: center; gap: 10px">
+<svg viewBox="0 0 256 256" width="24" height="24" fill="currentColor" aria-hidden="true" style="flex-shrink: 0"><path d="M237,77.47A28,28,0,0,0,216,68H164V56a44.05,44.05,0,0,0-44-44,12,12,0,0,0-10.73,6.63L72.58,92H32a20,20,0,0,0-20,20v88a20,20,0,0,0,20,20H204a28,28,0,0,0,27.78-24.53l12-96A28,28,0,0,0,237,77.47ZM36,116H68v80H36ZM220,96.5l-12,96a4,4,0,0,1-4,3.5H92V106.83L126.82,37.2A20,20,0,0,1,140,56V80a12,12,0,0,0,12,12h64a4,4,0,0,1,4,4.5Z"></path></svg>
+Jempol: lanjut ke hias
+</li>
+</ul>
+</div>
+
+<div style="background: #A9A4F4; border: 2px solid #141414; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; display: flex; align-items: center; gap: 8px; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 16px">
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M125.18,156.94a64,64,0,1,0-82.36,0,100.23,100.23,0,0,0-39.49,32,12,12,0,0,0,19.35,14.2,76,76,0,0,1,122.64,0,12,12,0,0,0,19.36-14.2A100.33,100.33,0,0,0,125.18,156.94ZM44,108a40,40,0,1,1,40,40A40,40,0,0,1,44,108Zm206.1,97.67a12,12,0,0,1-16.78-2.57A76.31,76.31,0,0,0,172,172a12,12,0,0,1,0-24,40,40,0,1,0-10.3-78.67,12,12,0,1,1-6.16-23.19,64,64,0,0,1,57.64,110.8,100.23,100.23,0,0,1,39.49,32A12,12,0,0,1,250.1,205.67Z"></path></svg>
+Strip Estafet
+</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.4">Cukup ambil 2 foto. Sisanya diisi temanmu lewat link.</p>
+<button class="btn" style="display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; background: #5038D6; color: #FFFDF7; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">Estafet ke Teman</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; margin-top: auto">
+<sc-if value="{{done}}" hint-placeholder-val="{{false}}">
+<a class="btn" href="customize.html" style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 24px; background: #F0562B; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 18px; text-decoration: none">
+Lanjut Hias
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg>
+</a>
+</sc-if>
+<sc-if value="{{notDone}}" hint-placeholder-val="{{true}}">
+<button disabled="{{yes}}" style="display: flex; align-items: center; justify-content: center; min-height: 56px; padding: 0 24px; background: #F4F1E6; color: #5E5E57; border: 2px dashed #5E5E57; border-radius: 999px; font-weight: 700; font-size: 18px; cursor: not-allowed">Lanjut Hias</button>
+</sc-if>
+<p aria-live="polite" style="margin: 0; text-align: center; font-size: 14px; color: #5E5E57">{{remainingText}}</p>
+</div>
+</aside>
+
+</div>
+</main>
+
+</div>
+</div>
+</template>
+
+<script>
+/* Halaman acuan: state dan data contoh. Bukan kode produk. */
+class DCLogic {
+  setState(patch) { this.state = Object.assign({}, this.state, patch); render(); }
+}
+class Component extends DCLogic {
+get s() {
+return Object.assign({ shots: 2, count: null, holding: false, flash: false, gesture: true }, this.state || {});
+}
+componentWillUnmount() {
+clearInterval(this._t);
+clearTimeout(this._h);
+clearTimeout(this._f);
+}
+shoot() {
+const s = this.s;
+if (s.count !== null || s.shots >= 4) return;
+clearTimeout(this._h);
+this.setState({ holding: false, count: 3 });
+this._t = setInterval(() => {
+const c = this.s.count - 1;
+if (c > 0) { this.setState({ count: c }); return; }
+clearInterval(this._t);
+this.setState({ count: null, flash: true, shots: Math.min(4, this.s.shots + 1) });
+this._f = setTimeout(() => this.setState({ flash: false }), 160);
+}, 800);
+}
+demoGesture() {
+const s = this.s;
+if (s.count !== null || s.holding || s.shots >= 4 || !s.gesture) return;
+this.setState({ holding: true });
+this._h = setTimeout(() => this.shoot(), 900);
+}
+retake() {
+const s = this.s;
+if (s.count !== null || s.holding || s.shots <= 0) return;
+this.setState({ shots: s.shots - 1 });
+}
+renderVals() {
+const s = this.s;
+const colors = ['#F2479B', '#C3F53C', '#F0562B', '#A9A4F4'];
+const counting = s.count !== null;
+const done = s.shots >= 4;
+const idle = !counting && !s.holding;
+const left = 4 - s.shots;
+return {
+yes: true,
+slots: [0, 1, 2, 3].map((i) => ({ n: i + 1, filled: i < s.shots, empty: i >= s.shots, bg: colors[i] })),
+progressText: s.shots + '/4',
+remainingText: done ? 'Semua foto sudah ada.' : 'Butuh ' + left + ' foto lagi.',
+done: done,
+notDone: !done,
+is3: s.count === 3,
+is2: s.count === 2,
+is1: s.count === 1,
+flash: s.flash,
+hudGesture: s.gesture && idle && !done,
+hudHolding: s.holding,
+hudOff: !s.gesture && idle && !done,
+hudDone: done && idle,
+gestureOn: s.gesture,
+gestureLabel: s.gesture ? 'Nyala' : 'Mati',
+gestureChipBg: s.gesture ? '#C3F53C' : '#F4F1E6',
+toggleGesture: () => this.setState({ gesture: !this.s.gesture }),
+shoot: () => this.shoot(),
+demoGesture: () => this.demoGesture(),
+retake: () => this.retake()
+};
+}
+}
+
+/* Mesin templat kecil untuk halaman acuan ini saja (bukan kode produk).
+   {{nama}} diisi dari renderVals(); <sc-if> menampilkan isinya bila nilainya benar;
+   <sc-for> mengulang isinya untuk tiap butir daftar. */
+function lookup(path, scope) {
+  path = path.trim();
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  return path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), scope);
+}
+const WHOLE = /^\s*\{\{([^}]+)\}\}\s*$/;
+function fill(text, scope) {
+  return text.replace(/\{\{([^}]+)\}\}/g, (_, p) => { const v = lookup(p, scope); return v == null ? '' : String(v); });
+}
+function build(node, scope, out) {
+  if (node.nodeType === 3) { out.appendChild(document.createTextNode(fill(node.nodeValue, scope))); return; }
+  if (node.nodeType !== 1) return;
+  const tag = node.tagName.toLowerCase();
+  if (tag === 'sc-if') {
+    if (lookup(node.getAttribute('value').match(WHOLE)[1], scope)) node.childNodes.forEach((c) => build(c, scope, out));
+    return;
+  }
+  if (tag === 'sc-for') {
+    const list = lookup(node.getAttribute('list').match(WHOLE)[1], scope) || [];
+    const as = node.getAttribute('as');
+    list.forEach((item, i) => {
+      const inner = Object.assign({}, scope, { [as]: item, $index: i });
+      node.childNodes.forEach((c) => build(c, inner, out));
+    });
+    return;
+  }
+  const el = node.cloneNode(false);
+  for (const attr of Array.from(node.attributes)) {
+    const whole = attr.value.match(WHOLE);
+    if (/^on[a-z]+$/i.test(attr.name) && whole) {
+      el.removeAttribute(attr.name);
+      el.addEventListener(attr.name.slice(2).toLowerCase(), lookup(whole[1], scope));
+    } else if (whole) {
+      const v = lookup(whole[1], scope);
+      if (attr.name === 'disabled') { if (v) el.setAttribute('disabled', ''); else el.removeAttribute('disabled'); }
+      else el.setAttribute(attr.name, v == null ? '' : String(v));
+    } else if (attr.value.includes('{{')) {
+      el.setAttribute(attr.name, fill(attr.value, scope));
+    }
+  }
+  node.childNodes.forEach((c) => build(c, scope, el));
+  out.appendChild(el);
+}
+function pathOf(el, root) {
+  if (!el || el === root || !root.contains(el)) return null;
+  const path = [];
+  while (el !== root) { path.unshift(Array.prototype.indexOf.call(el.parentNode.children, el)); el = el.parentNode; }
+  return path;
+}
+const app = document.getElementById('app');
+const tpl = document.getElementById('tpl');
+const component = new Component();
+function render() {
+  const focus = pathOf(document.activeElement, app);
+  const frag = document.createDocumentFragment();
+  const vals = component.renderVals();
+  tpl.content.childNodes.forEach((c) => build(c, vals, frag));
+  app.replaceChildren(frag);
+  if (focus) { let el = app; for (const i of focus) el = el && el.children[i]; if (el && el.focus) el.focus(); }
+}
+render();
+</script>
+</body>
+</html>
