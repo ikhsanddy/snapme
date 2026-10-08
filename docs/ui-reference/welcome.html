@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snapme - Welcome</title>
+<!--
+  Halaman acuan UI snapme: Welcome.
+  Sumber kebenaran tampilan bersama DESIGN-SYSTEM.md (token §2 sampai §7, anatomi §10).
+  Berkas ini acuan visual, bukan kode produk: gaya ditulis inline dengan nilai mentah
+  supaya terbaca jelas. Di kode produk pakai token dan komponen (DESIGN-SYSTEM §9, §13).
+  Foto dan pratinjau kamera adalah blok warna berlabel (placeholder).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=Space+Mono:wght@400;700&amp;family=Unbounded:wght@700;800;900&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#141414}a:hover{color:#141414}
+svg{flex-shrink:0}
+.btn{box-shadow:4px 4px 0 #141414;transition:transform .12s ease,box-shadow .12s ease}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #141414}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 #141414}
+a:focus-visible,button:focus-visible{outline:3px solid #5038D6;outline-offset:3px}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}}
+</style>
+</head>
+<body>
+<div style="background-color: #C3F53C; background-image: linear-gradient(rgba(20,20,20,0.08) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(20,20,20,0.08) 1.5px, transparent 1.5px); background-size: 56px 56px; padding: 24px clamp(16px, 3vw, 40px) 40px; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; color: #141414; min-height: 100vh">
+<div style="max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<a href="welcome.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #141414">
+<span style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #5038D6; color: #FFFDF7; border: 2px solid #141414; border-radius: 12px">
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M199,125.31l-49.88-18.39L130.69,57a19.92,19.92,0,0,0-37.38,0L74.92,106.92,25,125.31a19.92,19.92,0,0,0,0,37.38l49.88,18.39L93.31,231a19.92,19.92,0,0,0,37.38,0l18.39-49.88L199,162.69a19.92,19.92,0,0,0,0-37.38Zm-63.38,35.16a12,12,0,0,0-7.11,7.11L112,212.28l-16.47-44.7a12,12,0,0,0-7.11-7.11L43.72,144l44.7-16.47a12,12,0,0,0,7.11-7.11L112,75.72l16.47,44.7a12,12,0,0,0,7.11,7.11L180.28,144ZM140,40a12,12,0,0,1,12-12h12V16a12,12,0,0,1,24,0V28h12a12,12,0,0,1,0,24H188V64a12,12,0,0,1-24,0V52H152A12,12,0,0,1,140,40ZM252,88a12,12,0,0,1-12,12h-4v4a12,12,0,0,1-24,0v-4h-4a12,12,0,0,1,0-24h4V72a12,12,0,0,1,24,0v4h4A12,12,0,0,1,252,88Z"></path></svg>
+</span>
+<span style="font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 24px; letter-spacing: -0.02em">snapme</span>
+</a>
+<nav style="display: flex; align-items: center; gap: 16px">
+<a href="#privasi" style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #141414; padding: 12px 4px">Privasi</a>
+<a class="btn" href="capture.html" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; background: #F0562B; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px; text-decoration: none">Mulai Foto</a>
+</nav>
+</header>
+
+<section style="background: #FFFDF7; border: 3px solid #141414; border-radius: 20px; box-shadow: 6px 6px 0 #141414; overflow: hidden; display: flex; flex-wrap: wrap">
+<div style="flex: 1 1 100%; height: 20px; background: repeating-conic-gradient(#5038D6 0% 25%, #FFFDF7 0% 50%) 0 0 / 20px 20px; border-bottom: 3px solid #141414"></div>
+<div style="flex: 1 1 440px; box-sizing: border-box; padding: clamp(24px, 4vw, 56px); display: flex; flex-direction: column; justify-content: center; gap: 20px">
+<span style="align-self: flex-start; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: #C3F53C; border: 2px solid #141414; border-radius: 999px; padding: 6px 12px">Photobooth di browser</span>
+<h1 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(36px, 5.2vw, 68px); line-height: 1; letter-spacing: -0.01em; text-transform: uppercase; color: #F2479B; -webkit-text-stroke: 1.5px #141414; text-shadow: 4px 4px 0 #141414">Foto strip tanpa antre.</h1>
+<p style="margin: 0; font-size: 18px; line-height: 1.5; max-width: 44ch">Buka kamera, pose, hias strip, lalu unduh atau cetak. Tanpa akun, dan fotomu tetap di perangkatmu.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 14px; padding-top: 4px">
+<a class="btn" href="capture.html" style="display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 28px; background: #F0562B; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 18px; text-decoration: none">
+Mulai Foto
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg>
+</a>
+<a class="btn" href="customize.html" style="display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 24px; background: #5038D6; color: #FFFDF7; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 18px; text-decoration: none">
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M160,88a16,16,0,1,1,16,16A16,16,0,0,1,160,88Zm76-32V160a20,20,0,0,1-20,20H204v20a20,20,0,0,1-20,20H40a20,20,0,0,1-20-20V88A20,20,0,0,1,40,68H60V56A20,20,0,0,1,80,36H216A20,20,0,0,1,236,56ZM180,180H80a20,20,0,0,1-20-20V92H44V196H180Zm-21.66-24L124,121.66,89.66,156ZM212,60H84v67.72l25.86-25.86a20,20,0,0,1,28.28,0L192.28,156H212Z"></path></svg>
+Pakai Foto Galeri
+</a>
+</div>
+</div>
+<div style="flex: 1 1 380px; box-sizing: border-box; padding: 24px; display: flex">
+<div style="flex: 1; position: relative; min-height: 440px; box-sizing: border-box; background: #A9A4F4; border: 3px solid #141414; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: clamp(12px, 3vw, 28px); padding: 36px clamp(14px, 3vw, 24px)">
+<span style="position: absolute; top: 18px; right: 18px; transform: rotate(6deg); font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: #C3F53C; border: 2px solid #141414; border-radius: 999px; padding: 6px 12px">Tanpa akun</span>
+<div style="flex: 0 1 148px; min-width: 0; transform: rotate(-5deg); background: #141414; border: 3px solid #141414; border-radius: 12px; box-shadow: 6px 6px 0 #5038D6; padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; background: #F2479B; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; background: #C3F53C; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; background: #F0562B; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; background: #FFFDF7; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding-top: 2px">
+<span style="font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 12px; color: #FFFDF7">snapme</span>
+<span style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: #FFFDF7; border-radius: 4px; color: #141414">
+<svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M100,36H56A20,20,0,0,0,36,56v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V56A20,20,0,0,0,100,36ZM96,96H60V60H96Zm4,40H56a20,20,0,0,0-20,20v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V156A20,20,0,0,0,100,136Zm-4,60H60V160H96ZM200,36H156a20,20,0,0,0-20,20v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V56A20,20,0,0,0,200,36Zm-4,60H160V60h36Zm-60,76V148a12,12,0,0,1,24,0v24a12,12,0,0,1-24,0Zm84-8a12,12,0,0,1-12,12H196v32a12,12,0,0,1-12,12H148a12,12,0,0,1,0-24h24V148a12,12,0,0,1,24,0v4h12A12,12,0,0,1,220,164Z"></path></svg>
+</span>
+</div>
+</div>
+<div style="flex: 0 1 148px; min-width: 0; transform: rotate(4deg) translateY(18px); background: #FFFDF7; border: 3px solid #141414; border-radius: 12px; box-shadow: 6px 6px 0 #141414; padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; border: 2px solid #141414; background: #C3F53C; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; border: 2px solid #141414; background: #A9A4F4; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; border: 2px solid #141414; background: #F2479B; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<div style="aspect-ratio: 44 / 31; border-radius: 6px; border: 2px solid #141414; background: #F0562B; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700">Foto contoh</div>
+<span style="font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 12px; padding-top: 2px">snapme</span>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 16px; padding-top: 8px">
+<h2 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: clamp(22px, 2.6vw, 32px); line-height: 1.1">Tiga cara baru buat foto bareng</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 20px">
+<article style="flex: 2 1 460px; box-sizing: border-box; background: #141414; color: #FFFDF7; border: 3px solid #141414; border-radius: 20px; box-shadow: 6px 6px 0 #5038D6; padding: 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 28px">
+<div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 12px">
+<span style="align-self: flex-start; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: #C3F53C; color: #141414; border-radius: 999px; padding: 5px 12px">Interaktif</span>
+<h3 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 28px; color: #C3F53C">Gesture Snap</h3>
+<p style="margin: 0; font-size: 16px; line-height: 1.5; max-width: 40ch">Angkat dua jari dan tahan sebentar. Hitung mundur jalan sendiri, jadi tidak ada yang perlu lari ke tombol.</p>
+</div>
+<div style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 12px; background: #C3F53C; color: #141414; border-radius: 14px; padding: 10px 14px; font-weight: 700">
+<svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M215.7,28a32,32,0,0,0-58.62,7.72L148,69.64l-9.09-33.91A32,32,0,0,0,77.1,52.3l7.72,28.82-2.49-.48a32,32,0,0,0-33,49c.63.95,1.31,1.86,2,2.73a31.69,31.69,0,0,0-6.67,14,32.08,32.08,0,0,0-.65,6.59V160a84,84,0,0,0,84,84h.64c46-.34,83.36-38.43,83.36-84.9v-3.34a59.83,59.83,0,0,0-11.41-35.1L218.9,52.3A31.84,31.84,0,0,0,215.7,28ZM180.26,41.94a8,8,0,0,1,15.46,4.14L180.47,103a59.64,59.64,0,0,0-15-5.67ZM101.08,40a8,8,0,0,1,14.65,1.93l13.61,50.78a32.24,32.24,0,0,0-7.92,2.83,31.86,31.86,0,0,0-10-8l-11.1-41.43A8,8,0,0,1,101.08,40ZM69.33,157.14a8,8,0,0,1,8.18-12.26l10.09,2a8,8,0,0,1,6.24,9.43,8,8,0,0,1-9.49,6.23l-10-2A8,8,0,0,1,69.33,157.14Zm-1.16-46.73a8,8,0,0,1,9.44-6.24l.13,0,20.73,4a8,8,0,0,1-3.26,15.67l-.13,0-20.72-4a8,8,0,0,1-6.19-9.43ZM188,159.1c0,33.34-26.7,60.66-59.53,60.9a60.09,60.09,0,0,1-55.1-35.17l6.24,1.25a32,32,0,0,0,38.1-35.82,32,32,0,0,0,12,5.11l2.56.51A40.6,40.6,0,0,0,132,160a39.79,39.79,0,0,0,11.43,28,12,12,0,0,0,17.14-16.8,16,16,0,0,1-2.66-18.8,12,12,0,0,0-8.19-17.49l-15.32-3.06a8,8,0,1,1,3.25-15.67l21.4,4.28A36.09,36.09,0,0,1,188,155.76Z"></path></svg>
+Dua jari: foto
+</div>
+<div style="display: flex; align-items: center; gap: 12px; border: 2px solid #FFFDF7; border-radius: 14px; padding: 10px 14px; font-weight: 700">
+<svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M188,84a32,32,0,0,0-8,1V60a32,32,0,0,0-43.21-30A32,32,0,0,0,76,44v1A32,32,0,0,0,36,76v76a92,92,0,0,0,184,0V116A32,32,0,0,0,188,84Zm8,68a68,68,0,0,1-136,0V76a8,8,0,0,1,16,0v40a12,12,0,0,0,24,0V44a8,8,0,0,1,16,0v64a12,12,0,0,0,24,0V60a8,8,0,0,1,16,0v65.4A52.09,52.09,0,0,0,116,176a12,12,0,0,0,24,0,28,28,0,0,1,28-28,12,12,0,0,0,12-12V116a8,8,0,0,1,16,0Z"></path></svg>
+Telapak: ulang
+</div>
+<div style="display: flex; align-items: center; gap: 12px; border: 2px solid #FFFDF7; border-radius: 14px; padding: 10px 14px; font-weight: 700">
+<svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M237,77.47A28,28,0,0,0,216,68H164V56a44.05,44.05,0,0,0-44-44,12,12,0,0,0-10.73,6.63L72.58,92H32a20,20,0,0,0-20,20v88a20,20,0,0,0,20,20H204a28,28,0,0,0,27.78-24.53l12-96A28,28,0,0,0,237,77.47ZM36,116H68v80H36ZM220,96.5l-12,96a4,4,0,0,1-4,3.5H92V106.83L126.82,37.2A20,20,0,0,1,140,56V80a12,12,0,0,0,12,12h64a4,4,0,0,1,4,4.5Z"></path></svg>
+Jempol: lanjut
+</div>
+</div>
+</article>
+<article style="flex: 1 1 260px; box-sizing: border-box; background: #A9A4F4; border: 3px solid #141414; border-radius: 20px; box-shadow: 6px 6px 0 #141414; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<svg viewBox="0 0 256 256" width="36" height="36" fill="currentColor" aria-hidden="true"><path d="M125.18,156.94a64,64,0,1,0-82.36,0,100.23,100.23,0,0,0-39.49,32,12,12,0,0,0,19.35,14.2,76,76,0,0,1,122.64,0,12,12,0,0,0,19.36-14.2A100.33,100.33,0,0,0,125.18,156.94ZM44,108a40,40,0,1,1,40,40A40,40,0,0,1,44,108Zm206.1,97.67a12,12,0,0,1-16.78-2.57A76.31,76.31,0,0,0,172,172a12,12,0,0,1,0-24,40,40,0,1,0-10.3-78.67,12,12,0,1,1-6.16-23.19,64,64,0,0,1,57.64,110.8,100.23,100.23,0,0,1,39.49,32A12,12,0,0,1,250.1,205.67Z"></path></svg>
+<h3 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 22px">Strip Estafet</h3>
+<p style="margin: 0; font-size: 16px; line-height: 1.5">Isi setengah strip, kirim link, lalu temanmu melengkapi dari HP-nya kapan saja dalam 48 jam.</p>
+<div style="display: flex; gap: 6px; padding-top: 4px">
+<div style="flex: 1; height: 36px; background: #F2479B; border: 2px solid #141414; border-radius: 6px"></div>
+<div style="flex: 1; height: 36px; background: #F2479B; border: 2px solid #141414; border-radius: 6px"></div>
+<div style="flex: 1; height: 36px; border: 2px dashed #141414; border-radius: 6px"></div>
+<div style="flex: 1; height: 36px; border: 2px dashed #141414; border-radius: 6px"></div>
+</div>
+</article>
+<article style="flex: 1 1 260px; box-sizing: border-box; background: #FFFDF7; border: 3px solid #141414; border-radius: 20px; box-shadow: 6px 6px 0 #141414; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<svg viewBox="0 0 256 256" width="36" height="36" fill="currentColor" aria-hidden="true"><path d="M216,36H40A20,20,0,0,0,20,56V200a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A20,20,0,0,0,216,36ZM44,100h72v56H44Zm96-24V60h24V76Zm-24,0H92V60h24Zm0,104v16H92V180Zm24,0h24v16H140Zm0-24V100h72v56Zm72-80H188V60h24ZM68,60V76H44V60ZM44,180H68v16H44Zm144,16V180h24v16Z"></path></svg>
+<h3 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 22px">Strip Hidup</h3>
+<p style="margin: 0; font-size: 16px; line-height: 1.5">Tiap pose ikut terekam sebentar. Pindai QR di strip cetak untuk melihat versi bergeraknya.</p>
+</article>
+</div>
+</section>
+
+<section style="background: #FFFDF7; border: 3px solid #141414; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: clamp(18px, 2vw, 24px)">Dari kamera sampai cetak</h2>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<span style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: #F4F1E6; border: 2px solid #141414; border-radius: 999px; font-weight: 700">Pilih layout</span>
+<svg viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg>
+<span style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: #F4F1E6; border: 2px solid #141414; border-radius: 999px; font-weight: 700">Pose di kamera</span>
+<svg viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg>
+<span style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: #F4F1E6; border: 2px solid #141414; border-radius: 999px; font-weight: 700">Hias strip</span>
+<svg viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg>
+<span style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: #C3F53C; border: 2px solid #141414; border-radius: 999px; font-weight: 700">Unduh atau cetak</span>
+</div>
+</section>
+
+<footer id="privasi" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 4px 4px 0">
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M208,76H180V56A52,52,0,0,0,76,56V76H48A20,20,0,0,0,28,96V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V96A20,20,0,0,0,208,76ZM100,56a28,28,0,0,1,56,0V76H100ZM204,204H52V100H204Z"></path></svg>
+<p style="margin: 0; flex: 1 1 320px; font-size: 15px; line-height: 1.5">Foto diproses di perangkatmu. Baru diunggah kalau kamu sendiri membuat link, lalu terhapus otomatis setelah 7 hari.</p>
+</footer>
+
+</div>
+</div>
+</body>
+</html>

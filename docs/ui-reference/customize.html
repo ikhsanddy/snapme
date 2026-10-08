@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snapme - Hias Strip</title>
+<!--
+  Halaman acuan UI snapme: Hias Strip.
+  Sumber kebenaran tampilan bersama DESIGN-SYSTEM.md (token §2 sampai §7, anatomi §10).
+  Berkas ini acuan visual, bukan kode produk: gaya ditulis inline dengan nilai mentah
+  supaya terbaca jelas. Di kode produk pakai token dan komponen (DESIGN-SYSTEM §9, §13).
+  Foto dan pratinjau kamera adalah blok warna berlabel (placeholder).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=Space+Mono:wght@400;700&amp;family=Unbounded:wght@700;800;900&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#141414}a:hover{color:#141414}
+button{font-family:inherit;cursor:pointer}
+svg{flex-shrink:0}
+.btn{box-shadow:4px 4px 0 #141414;transition:transform .12s ease,box-shadow .12s ease}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #141414}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 #141414}
+a:focus-visible,button:focus-visible{outline:3px solid #5038D6;outline-offset:3px}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}}
+@media (max-width:760px){.stage{order:-1}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<template id="tpl">
+<div style="background-color: #C3F53C; background-image: linear-gradient(rgba(20,20,20,0.08) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(20,20,20,0.08) 1.5px, transparent 1.5px); background-size: 56px 56px; padding: 24px clamp(16px, 3vw, 40px) 40px; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; color: #141414; min-height: 100vh">
+<div style="max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<a href="welcome.html" style="font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; text-decoration: none; color: #141414; padding: 8px 0">snapme</a>
+<ol style="display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">
+<li style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #FFFDF7; border: 2px solid #141414; border-radius: 999px">
+<svg viewBox="0 0 256 256" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"></path></svg>
+Layout
+</li>
+<li style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #FFFDF7; border: 2px solid #141414; border-radius: 999px">
+<svg viewBox="0 0 256 256" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"></path></svg>
+Foto
+</li>
+<li aria-current="step" style="display: inline-flex; align-items: center; padding: 7px 12px; background: #141414; color: #FFFDF7; border: 2px solid #141414; border-radius: 999px">Hias</li>
+<li style="display: inline-flex; align-items: center; padding: 7px 12px; border: 2px solid #141414; border-radius: 999px">Hasil</li>
+</ol>
+</header>
+
+<main style="background: #FFFDF7; border: 3px solid #141414; border-radius: 20px; box-shadow: 6px 6px 0 #141414; overflow: hidden">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 3px solid #141414">
+<a href="capture.html" aria-label="Kembali ke foto" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 2px solid #141414; border-radius: 999px; color: #141414">
+<svg viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M228,128a12,12,0,0,1-12,12H69l51.52,51.51a12,12,0,0,1-17,17l-72-72a12,12,0,0,1,0-17l72-72a12,12,0,0,1,17,17L69,116H216A12,12,0,0,1,228,128Z"></path></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(22px, 3vw, 34px); line-height: 1; text-transform: uppercase; color: #F2479B; -webkit-text-stroke: 1px #141414; text-shadow: 3px 3px 0 #141414">Hias Strip</h1>
+<div style="flex: 1 1 0"></div>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: #C3F53C; border: 2px solid #141414; border-radius: 999px; padding: 6px 12px">
+<svg viewBox="0 0 256 256" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"></path></svg>
+4 foto siap
+</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px">
+
+<aside style="flex: 1 1 250px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{tabFrame}}" aria-pressed="{{isFrame}}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: {{tabFrameBg}}; color: {{tabFrameFg}}; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">
+<svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M140,88a12,12,0,0,1,12-12h32a12,12,0,0,1,12,12v32a12,12,0,0,1-24,0V100H152A12,12,0,0,1,140,88ZM72,180h32a12,12,0,0,0,0-24H84V136a12,12,0,0,0-24,0v32A12,12,0,0,0,72,180ZM236,56V200a20,20,0,0,1-20,20H40a20,20,0,0,1-20-20V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V196H212Z"></path></svg>
+Frame
+</button>
+<button onClick="{{tabEfek}}" aria-pressed="{{isEfek}}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: {{tabEfekBg}}; color: {{tabEfekFg}}; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">
+<svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M252,152a12,12,0,0,1-12,12H228v12a12,12,0,0,1-24,0V164H192a12,12,0,0,1,0-24h12V128a12,12,0,0,1,24,0v12h12A12,12,0,0,1,252,152ZM56,76H68V88a12,12,0,0,0,24,0V76h12a12,12,0,1,0,0-24H92V40a12,12,0,0,0-24,0V52H56a12,12,0,0,0,0,24ZM184,188h-4v-4a12,12,0,0,0-24,0v4h-4a12,12,0,0,0,0,24h4v4a12,12,0,0,0,24,0v-4h4a12,12,0,0,0,0-24ZM222.14,82.83,82.82,222.14a20,20,0,0,1-28.28,0L33.85,201.46a20,20,0,0,1,0-28.29L173.17,33.86a20,20,0,0,1,28.28,0l20.69,20.68A20,20,0,0,1,222.14,82.83ZM159,112,144,97,53.65,187.31l15,15Zm43.31-43.31-15-15L161,80l15,15Z"></path></svg>
+Efek
+</button>
+<button onClick="{{tabStiker}}" aria-pressed="{{isStiker}}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: {{tabStikerBg}}; color: {{tabStikerFg}}; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 15px">
+<svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M168,28H88A60.07,60.07,0,0,0,28,88v80a60.07,60.07,0,0,0,60,60h48a11.9,11.9,0,0,0,3.79-.62c27.63-9.21,78.38-60,87.59-87.59A11.9,11.9,0,0,0,228,136V88A60.07,60.07,0,0,0,168,28ZM52,168V88A36,36,0,0,1,88,52h80a36,36,0,0,1,36,36v36H184a60.07,60.07,0,0,0-60,60v20H88A36,36,0,0,1,52,168Zm96,27.63V184a36,36,0,0,1,36-36h11.63C184,164.11,164.11,184,148,195.63Z"></path></svg>
+Stiker
+</button>
+</div>
+
+<sc-if value="{{isFrame}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">Pilih frame</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px">
+<sc-for list="{{frames}}" as="f" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<button onClick="{{f.pick}}" aria-pressed="{{f.on}}" aria-label="{{f.label}}" style="position: relative; width: 100%; aspect-ratio: 2 / 3; box-sizing: border-box; padding: 8px 8px 14px; background: {{f.bg}}; border: 2px solid #141414; border-radius: 10px; box-shadow: {{f.ring}}; display: flex; flex-direction: column; gap: 4px">
+<span style="flex: 1; background: #F4F1E6; border-radius: 3px"></span>
+<span style="flex: 1; background: #F4F1E6; border-radius: 3px"></span>
+<span style="flex: 1; background: #F4F1E6; border-radius: 3px"></span>
+<span style="flex: 1; background: #F4F1E6; border-radius: 3px"></span>
+<sc-if value="{{f.on}}" hint-placeholder-val="{{false}}">
+<span style="position: absolute; top: -10px; right: -10px; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #5038D6; color: #FFFDF7; border: 2px solid #141414; border-radius: 999px">
+<svg viewBox="0 0 256 256" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"></path></svg>
+</span>
+</sc-if>
+</button>
+<span style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px">{{f.name}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isEfek}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">Efek foto</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px">
+<sc-for list="{{effects}}" as="e" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<button onClick="{{e.pick}}" aria-pressed="{{e.on}}" aria-label="{{e.label}}" style="width: 100%; aspect-ratio: 1 / 1; box-sizing: border-box; padding: 0; background: #FFFDF7; border: 2px solid #141414; border-radius: 10px; box-shadow: {{e.ring}}; overflow: hidden; display: flex">
+<span style="flex: 1; background: linear-gradient(135deg, #F2479B 0%, #F2479B 50%, #C3F53C 50%, #C3F53C 100%); filter: {{e.fx}}"></span>
+</button>
+<span style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px">{{e.name}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isStiker}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">Stiker</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px">
+<sc-for list="{{stickers}}" as="s" hint-placeholder-count="6">
+<button onClick="{{s.toggle}}" aria-pressed="{{s.on}}" aria-label="{{s.label}}" style="aspect-ratio: 1 / 1; box-sizing: border-box; padding: 0; background: {{s.bg}}; color: #141414; border: 2px solid #141414; border-radius: 14px; box-shadow: {{s.ring}}; display: flex; align-items: center; justify-content: center">
+<svg viewBox="0 0 256 256" width="34" height="34" fill="currentColor" aria-hidden="true"><path d="{{s.d}}"></path></svg>
+</button>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.4; color: #5E5E57">Ketuk untuk menempel atau melepas. Di aplikasi asli, stiker bisa digeser, diputar, dan diubah ukurannya.</p>
+</div>
+</sc-if>
+</aside>
+
+<section class="stage" style="flex: 3 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="background: #F4F1E6; border: 3px solid #141414; border-radius: 16px; padding: 36px 24px; display: flex; align-items: center; justify-content: center">
+<div style="position: relative; width: 210px; box-sizing: border-box; background: {{frameBg}}; border: 3px solid #141414; border-radius: 12px; box-shadow: 8px 8px 0 #141414; padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{photos}}" as="p" hint-placeholder-count="4">
+<div style="position: relative; aspect-ratio: 44 / 31; box-sizing: border-box; background: {{p.bg}}; filter: {{p.fx}}; border: 2px solid #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; color: #141414">
+Foto {{p.n}}
+<sc-if value="{{p.live}}" hint-placeholder-val="{{false}}">
+<span style="position: absolute; left: 6px; bottom: 6px; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; background: #141414; color: #FFFDF7; border-radius: 999px; padding: 2px 8px">Klip</span>
+</sc-if>
+</div>
+</sc-for>
+<div style="display: flex; align-items: center; justify-content: space-between; min-height: 60px">
+<span style="font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 15px; color: {{frameInk}}">snapme</span>
+<sc-if value="{{qr}}" hint-placeholder-val="{{false}}">
+<span style="display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; box-sizing: border-box; background: #FFFDF7; color: #141414; border: 2px solid #141414; border-radius: 6px">
+<svg viewBox="0 0 256 256" width="42" height="42" fill="currentColor" aria-hidden="true"><path d="M100,36H56A20,20,0,0,0,36,56v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V56A20,20,0,0,0,100,36ZM96,96H60V60H96Zm4,40H56a20,20,0,0,0-20,20v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V156A20,20,0,0,0,100,136Zm-4,60H60V160H96ZM200,36H156a20,20,0,0,0-20,20v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V56A20,20,0,0,0,200,36Zm-4,60H160V60h36Zm-60,76V148a12,12,0,0,1,24,0v24a12,12,0,0,1-24,0Zm84-8a12,12,0,0,1-12,12H196v32a12,12,0,0,1-12,12H148a12,12,0,0,1,0-24h24V148a12,12,0,0,1,24,0v4h12A12,12,0,0,1,220,164Z"></path></svg>
+</span>
+</sc-if>
+</div>
+<sc-for list="{{placed}}" as="s" hint-placeholder-count="2">
+<span style="position: absolute; left: {{s.x}}; top: {{s.y}}; transform: rotate({{s.r}}); display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: {{s.bg}}; color: #141414; border: 2px solid #141414; border-radius: 999px; box-shadow: 3px 3px 0 #141414">
+<svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="{{s.d}}"></path></svg>
+</span>
+</sc-for>
+</div>
+</div>
+<p style="margin: 0; font-family: 'Space Mono', monospace; font-size: 12px; color: #5E5E57; text-align: center">Ekspor 600 x 1800 px (2 x 6 inci, 300 dpi)</p>
+</section>
+
+<aside style="flex: 1 1 250px; display: flex; flex-direction: column; gap: 16px">
+<div style="background: #FFFDF7; border: 2px solid #141414; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 16px">Strip Hidup</h2>
+<button onClick="{{toggleLive}}" aria-pressed="{{live}}" aria-label="Strip Hidup" style="flex-shrink: 0; width: 56px; height: 32px; box-sizing: border-box; padding: 2px; background: {{liveBg}}; border: 2px solid #141414; border-radius: 999px; display: flex; justify-content: {{liveJustify}}">
+<span style="width: 24px; height: 24px; box-sizing: border-box; background: #FFFDF7; border: 2px solid #141414; border-radius: 999px"></span>
+</button>
+</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.4">Tiap foto diputar sebagai klip pendek di halaman strip.</p>
+</div>
+
+<div style="background: #FFFDF7; border: 2px solid #141414; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 16px">QR di strip</h2>
+<button onClick="{{toggleQr}}" aria-pressed="{{qr}}" aria-label="QR di strip" style="flex-shrink: 0; width: 56px; height: 32px; box-sizing: border-box; padding: 2px; background: {{qrBg}}; border: 2px solid #141414; border-radius: 999px; display: flex; justify-content: {{qrJustify}}">
+<span style="width: 24px; height: 24px; box-sizing: border-box; background: #FFFDF7; border: 2px solid #141414; border-radius: 999px"></span>
+</button>
+</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.4">QR membuka halaman strip. Fotomu diunggah ke link pribadi dan terhapus otomatis setelah 7 hari.</p>
+<sc-if value="{{qr}}" hint-placeholder-val="{{false}}">
+<p role="status" style="margin: 0; font-size: 14px; line-height: 1.4; background: #C3F53C; border: 2px solid #141414; border-radius: 10px; padding: 8px 10px">Kamu akan dimintai izin unggah saat mengunduh.</p>
+</sc-if>
+</div>
+
+<dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 15px">
+<dt style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #5E5E57; align-self: center">Frame</dt>
+<dd style="margin: 0; font-weight: 700">{{frameName}}</dd>
+<dt style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #5E5E57; align-self: center">Efek</dt>
+<dd style="margin: 0; font-weight: 700">{{fxName}}</dd>
+<dt style="font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #5E5E57; align-self: center">Stiker</dt>
+<dd style="margin: 0; font-weight: 700">{{stickerCount}}</dd>
+</dl>
+
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: auto">
+<button class="btn" style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 20px; background: #F0562B; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 18px">
+<svg viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M228,144v64a12,12,0,0,1-12,12H40a12,12,0,0,1-12-12V144a12,12,0,0,1,24,0v52H204V144a12,12,0,0,1,24,0Zm-108.49,8.49a12,12,0,0,0,17,0l40-40a12,12,0,0,0-17-17L140,115V32a12,12,0,0,0-24,0v83L96.49,95.51a12,12,0,0,0-17,17Z"></path></svg>
+Selesai &amp; Unduh
+</button>
+<button class="btn" style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 20px; background: #FFFDF7; color: #141414; border: 2px solid #141414; border-radius: 999px; font-weight: 700; font-size: 16px">
+<svg viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M214.67,68H204V40a12,12,0,0,0-12-12H64A12,12,0,0,0,52,40V68H41.33C25.16,68,12,80.56,12,96v80a12,12,0,0,0,12,12H52v28a12,12,0,0,0,12,12H192a12,12,0,0,0,12-12V188h28a12,12,0,0,0,12-12V96C244,80.56,230.84,68,214.67,68ZM76,52H180V68H76ZM180,204H76V172H180Zm40-40H204v-4a12,12,0,0,0-12-12H64a12,12,0,0,0-12,12v4H36V96c0-2.17,2.44-4,5.33-4H214.67c2.89,0,5.33,1.83,5.33,4Zm-16-44a16,16,0,1,1-16-16A16,16,0,0,1,204,120Z"></path></svg>
+Cetak 4R
+</button>
+</div>
+</aside>
+
+</div>
+</main>
+
+</div>
+</div>
+</template>
+
+<script>
+/* Halaman acuan: state dan data contoh. Bukan kode produk. */
+class DCLogic {
+  setState(patch) { this.state = Object.assign({}, this.state, patch); render(); }
+}
+class Component extends DCLogic {
+get s() {
+return Object.assign({ tab: 'frame', frame: 0, fx: 0, on: { kilau: true, duajari: true }, live: false, qr: false }, this.state || {});
+}
+toggleSticker(id) {
+const on = Object.assign({}, this.s.on);
+on[id] = !on[id];
+this.setState({ on: on });
+}
+renderVals() {
+const s = this.s;
+const RING = '0 0 0 3px #FFFDF7, 0 0 0 6px #5038D6';
+const frameList = [
+{ name: 'Hitam', bg: '#141414', ink: '#FFFDF7' },
+{ name: 'Krem', bg: '#FFFDF7', ink: '#141414' },
+{ name: 'Pink', bg: '#F2479B', ink: '#141414' },
+{ name: 'Lime', bg: '#C3F53C', ink: '#141414' },
+{ name: 'Ungu', bg: '#5038D6', ink: '#FFFDF7' },
+{ name: 'Jingga', bg: '#F0562B', ink: '#141414' }
+];
+const fxList = [
+{ name: 'Asli', fx: 'none' },
+{ name: 'Mono', fx: 'grayscale(1) contrast(1.1)' },
+{ name: 'Hangat', fx: 'sepia(0.45) saturate(1.3)' },
+{ name: 'Sejuk', fx: 'saturate(0.85) hue-rotate(18deg)' },
+{ name: 'Film', fx: 'contrast(1.15) saturate(0.75) sepia(0.2)' },
+{ name: 'Pop', fx: 'saturate(1.6) contrast(1.1)' }
+];
+const stickerList = [
+{ id: 'kilau', label: 'Stiker kilau', bg: '#C3F53C', x: '-20px', y: '-20px', r: '-12deg', d: 'M199,125.31l-49.88-18.39L130.69,57a19.92,19.92,0,0,0-37.38,0L74.92,106.92,25,125.31a19.92,19.92,0,0,0,0,37.38l49.88,18.39L93.31,231a19.92,19.92,0,0,0,37.38,0l18.39-49.88L199,162.69a19.92,19.92,0,0,0,0-37.38Zm-63.38,35.16a12,12,0,0,0-7.11,7.11L112,212.28l-16.47-44.7a12,12,0,0,0-7.11-7.11L43.72,144l44.7-16.47a12,12,0,0,0,7.11-7.11L112,75.72l16.47,44.7a12,12,0,0,0,7.11,7.11L180.28,144ZM140,40a12,12,0,0,1,12-12h12V16a12,12,0,0,1,24,0V28h12a12,12,0,0,1,0,24H188V64a12,12,0,0,1-24,0V52H152A12,12,0,0,1,140,40ZM252,88a12,12,0,0,1-12,12h-4v4a12,12,0,0,1-24,0v-4h-4a12,12,0,0,1,0-24h4V72a12,12,0,0,1,24,0v4h4A12,12,0,0,1,252,88Z' },
+{ id: 'duajari', label: 'Stiker dua jari', bg: '#F2479B', x: 'calc(100% - 28px)', y: '36%', r: '10deg', d: 'M215.7,28a32,32,0,0,0-58.62,7.72L148,69.64l-9.09-33.91A32,32,0,0,0,77.1,52.3l7.72,28.82-2.49-.48a32,32,0,0,0-33,49c.63.95,1.31,1.86,2,2.73a31.69,31.69,0,0,0-6.67,14,32.08,32.08,0,0,0-.65,6.59V160a84,84,0,0,0,84,84h.64c46-.34,83.36-38.43,83.36-84.9v-3.34a59.83,59.83,0,0,0-11.41-35.1L218.9,52.3A31.84,31.84,0,0,0,215.7,28ZM180.26,41.94a8,8,0,0,1,15.46,4.14L180.47,103a59.64,59.64,0,0,0-15-5.67ZM101.08,40a8,8,0,0,1,14.65,1.93l13.61,50.78a32.24,32.24,0,0,0-7.92,2.83,31.86,31.86,0,0,0-10-8l-11.1-41.43A8,8,0,0,1,101.08,40ZM69.33,157.14a8,8,0,0,1,8.18-12.26l10.09,2a8,8,0,0,1,6.24,9.43,8,8,0,0,1-9.49,6.23l-10-2A8,8,0,0,1,69.33,157.14Zm-1.16-46.73a8,8,0,0,1,9.44-6.24l.13,0,20.73,4a8,8,0,0,1-3.26,15.67l-.13,0-20.72-4a8,8,0,0,1-6.19-9.43ZM188,159.1c0,33.34-26.7,60.66-59.53,60.9a60.09,60.09,0,0,1-55.1-35.17l6.24,1.25a32,32,0,0,0,38.1-35.82,32,32,0,0,0,12,5.11l2.56.51A40.6,40.6,0,0,0,132,160a39.79,39.79,0,0,0,11.43,28,12,12,0,0,0,17.14-16.8,16,16,0,0,1-2.66-18.8,12,12,0,0,0-8.19-17.49l-15.32-3.06a8,8,0,1,1,3.25-15.67l21.4,4.28A36.09,36.09,0,0,1,188,155.76Z' },
+{ id: 'senyum', label: 'Stiker senyum', bg: '#FFFDF7', x: '-22px', y: '60%', r: '-8deg', d: 'M178.39,158c-11,19.06-29.39,30-50.39,30s-39.36-10.93-50.39-30a12,12,0,0,1,20.78-12c3.89,6.73,12.91,18,29.61,18s25.72-11.28,29.61-18a12,12,0,1,1,20.78,12ZM236,128A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128ZM92,124a16,16,0,1,0-16-16A16,16,0,0,0,92,124Zm72-32a16,16,0,1,0,16,16A16,16,0,0,0,164,92Z' },
+{ id: 'petir', label: 'Stiker petir', bg: '#F0562B', x: 'calc(100% - 26px)', y: '-18px', r: '14deg', d: 'M219.71,117.38a12,12,0,0,0-7.25-8.52L161.28,88.39l10.59-70.61a12,12,0,0,0-20.64-10l-112,120a12,12,0,0,0,4.31,19.33l51.18,20.47L84.13,238.22a12,12,0,0,0,20.64,10l112-120A12,12,0,0,0,219.71,117.38ZM113.6,203.55l6.27-41.77a12,12,0,0,0-7.41-12.92L68.74,131.37,142.4,52.45l-6.27,41.77a12,12,0,0,0,7.41,12.92l43.72,17.49Z' },
+{ id: 'kamera', label: 'Stiker kamera', bg: '#A9A4F4', x: 'calc(100% - 30px)', y: '76%', r: '-6deg', d: 'M208,52H182.42L170,33.34A12,12,0,0,0,160,28H96a12,12,0,0,0-10,5.34L73.57,52H48A28,28,0,0,0,20,80V192a28,28,0,0,0,28,28H208a28,28,0,0,0,28-28V80A28,28,0,0,0,208,52Zm4,140a4,4,0,0,1-4,4H48a4,4,0,0,1-4-4V80a4,4,0,0,1,4-4H80a12,12,0,0,0,10-5.34L102.42,52h51.15L166,70.66A12,12,0,0,0,176,76h32a4,4,0,0,1,4,4ZM128,84a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,84Zm0,72a24,24,0,1,1,24-24A24,24,0,0,1,128,156Z' },
+{ id: 'film', label: 'Stiker film', bg: '#C3F53C', x: '-18px', y: '28%', r: '8deg', d: 'M216,36H40A20,20,0,0,0,20,56V200a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A20,20,0,0,0,216,36ZM44,100h72v56H44Zm96-24V60h24V76Zm-24,0H92V60h24Zm0,104v16H92V180Zm24,0h24v16H140Zm0-24V100h72v56Zm72-80H188V60h24ZM68,60V76H44V60ZM44,180H68v16H44Zm144,16V180h24v16Z' }
+];
+const photoColors = ['#F2479B', '#C3F53C', '#F0562B', '#A9A4F4'];
+const cur = frameList[s.frame];
+const curFx = fxList[s.fx];
+const stickers = stickerList.map((st) => Object.assign({}, st, {
+on: !!s.on[st.id],
+ring: s.on[st.id] ? RING : 'none',
+toggle: () => this.toggleSticker(st.id)
+}));
+const tabStyle = (name) => (s.tab === name ? ['#141414', '#FFFDF7'] : ['#FFFDF7', '#141414']);
+return {
+isFrame: s.tab === 'frame',
+isEfek: s.tab === 'efek',
+isStiker: s.tab === 'stiker',
+tabFrame: () => this.setState({ tab: 'frame' }),
+tabEfek: () => this.setState({ tab: 'efek' }),
+tabStiker: () => this.setState({ tab: 'stiker' }),
+tabFrameBg: tabStyle('frame')[0],
+tabFrameFg: tabStyle('frame')[1],
+tabEfekBg: tabStyle('efek')[0],
+tabEfekFg: tabStyle('efek')[1],
+tabStikerBg: tabStyle('stiker')[0],
+tabStikerFg: tabStyle('stiker')[1],
+frames: frameList.map((f, i) => ({
+name: f.name,
+label: 'Frame ' + f.name,
+bg: f.bg,
+on: i === s.frame,
+ring: i === s.frame ? RING : 'none',
+pick: () => this.setState({ frame: i })
+})),
+effects: fxList.map((e, i) => ({
+name: e.name,
+label: 'Efek ' + e.name,
+fx: e.fx,
+on: i === s.fx,
+ring: i === s.fx ? RING : 'none',
+pick: () => this.setState({ fx: i })
+})),
+stickers: stickers,
+placed: stickers.filter((st) => st.on),
+photos: photoColors.map((c, i) => ({ n: i + 1, bg: c, fx: curFx.fx, live: s.live })),
+frameBg: cur.bg,
+frameInk: cur.ink,
+frameName: cur.name,
+fxName: curFx.name,
+stickerCount: stickers.filter((st) => st.on).length + ' ditempel',
+live: s.live,
+liveBg: s.live ? '#5038D6' : '#F4F1E6',
+liveJustify: s.live ? 'flex-end' : 'flex-start',
+toggleLive: () => this.setState({ live: !this.s.live }),
+qr: s.qr,
+qrBg: s.qr ? '#5038D6' : '#F4F1E6',
+qrJustify: s.qr ? 'flex-end' : 'flex-start',
+toggleQr: () => this.setState({ qr: !this.s.qr })
+};
+}
+}
+
+/* Mesin templat kecil untuk halaman acuan ini saja (bukan kode produk).
+   {{nama}} diisi dari renderVals(); <sc-if> menampilkan isinya bila nilainya benar;
+   <sc-for> mengulang isinya untuk tiap butir daftar. */
+function lookup(path, scope) {
+  path = path.trim();
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  return path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), scope);
+}
+const WHOLE = /^\s*\{\{([^}]+)\}\}\s*$/;
+function fill(text, scope) {
+  return text.replace(/\{\{([^}]+)\}\}/g, (_, p) => { const v = lookup(p, scope); return v == null ? '' : String(v); });
+}
+function build(node, scope, out) {
+  if (node.nodeType === 3) { out.appendChild(document.createTextNode(fill(node.nodeValue, scope))); return; }
+  if (node.nodeType !== 1) return;
+  const tag = node.tagName.toLowerCase();
+  if (tag === 'sc-if') {
+    if (lookup(node.getAttribute('value').match(WHOLE)[1], scope)) node.childNodes.forEach((c) => build(c, scope, out));
+    return;
+  }
+  if (tag === 'sc-for') {
+    const list = lookup(node.getAttribute('list').match(WHOLE)[1], scope) || [];
+    const as = node.getAttribute('as');
+    list.forEach((item, i) => {
+      const inner = Object.assign({}, scope, { [as]: item, $index: i });
+      node.childNodes.forEach((c) => build(c, inner, out));
+    });
+    return;
+  }
+  const el = node.cloneNode(false);
+  for (const attr of Array.from(node.attributes)) {
+    const whole = attr.value.match(WHOLE);
+    if (/^on[a-z]+$/i.test(attr.name) && whole) {
+      el.removeAttribute(attr.name);
+      el.addEventListener(attr.name.slice(2).toLowerCase(), lookup(whole[1], scope));
+    } else if (whole) {
+      const v = lookup(whole[1], scope);
+      if (attr.name === 'disabled') { if (v) el.setAttribute('disabled', ''); else el.removeAttribute('disabled'); }
+      else el.setAttribute(attr.name, v == null ? '' : String(v));
+    } else if (attr.value.includes('{{')) {
+      el.setAttribute(attr.name, fill(attr.value, scope));
+    }
+  }
+  node.childNodes.forEach((c) => build(c, scope, el));
+  out.appendChild(el);
+}
+function pathOf(el, root) {
+  if (!el || el === root || !root.contains(el)) return null;
+  const path = [];
+  while (el !== root) { path.unshift(Array.prototype.indexOf.call(el.parentNode.children, el)); el = el.parentNode; }
+  return path;
+}
+const app = document.getElementById('app');
+const tpl = document.getElementById('tpl');
+const component = new Component();
+function render() {
+  const focus = pathOf(document.activeElement, app);
+  const frag = document.createDocumentFragment();
+  const vals = component.renderVals();
+  tpl.content.childNodes.forEach((c) => build(c, vals, frag));
+  app.replaceChildren(frag);
+  if (focus) { let el = app; for (const i of focus) el = el && el.children[i]; if (el && el.focus) el.focus(); }
+}
+render();
+</script>
+</body>
+</html>
