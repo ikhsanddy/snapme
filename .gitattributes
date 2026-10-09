@@ -1,0 +1,5 @@
+# Berkas aset MediaPipe disalin apa adanya dari node_modules dan diunduh dari
+# dokumentasi resmi Google AI Edge. Dibiarkan biner supaya Git tidak mengubah
+# akhir barisnya saat checkout di Windows (ARCHITECTURE §4).
+public/mediapipe/wasm/** -text
+public/models/** -text
