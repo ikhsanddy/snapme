@@ -29,7 +29,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 - [x] M2 Kamera
 - [ ] M3 Gesture Snap
 - [x] M4 Hias strip
-- [ ] M5 Hasil dan cetak
+- [x] M5 Hasil dan cetak
 - [ ] M6 Link strip dan QR
 - [ ] M7 Strip Hidup
 - [ ] M8 Strip Estafet
@@ -206,10 +206,10 @@ Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai be
 
 **Pekerjaan**
 
-- [ ] `/booth/result`: pratinjau, "Selesai & Unduh", "Cetak 4R", "Mulai dari awal".
-- [ ] Nama berkas `snapme-YYYYMMDD-HHmm.png`.
-- [ ] Lembar 4R 1200 x 1800 px: dua strip berdampingan dengan garis potong, dan gaya cetak satu halaman 4 x 6 inci.
-- [ ] **(P1)** Layout Grid 2 x 2. **(P1)** Sesi bertahan saat dimuat ulang (IndexedDB).
+- [x] `/booth/result`: pratinjau, "Selesai & Unduh", "Cetak 4R", "Mulai dari awal".
+- [x] Nama berkas `snapme-YYYYMMDD-HHmm.png`.
+- [x] Lembar 4R 1200 x 1800 px: dua strip berdampingan dengan garis potong, dan gaya cetak satu halaman 4 x 6 inci.
+- [x] **(P1)** Layout Grid 2 x 2. **(P1)** Sesi bertahan saat dimuat ulang (IndexedDB).
 
 **Selesai bila**
 

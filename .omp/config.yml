@@ -21,7 +21,7 @@ modelRoles:
   smol: deepseek/deepseek-flash:high # subagent scout/sonic, pekerjaan ringan
   slow: google-antigravity/gemini-3.8-flash:high # subagent reviewer, /review
   vision: google-antigravity/gemini-3.8-flash:high # membaca gambar referensi dan tangkapan layar
-  plan: zai/glm-5.3:high # Plan mode (/plan)
+  plan: zai/glm-5.3:max # Plan mode (/plan)
   commit: google-antigravity/gemini-3.7-flash:auto # `omp commit`
   tiny: google-antigravity/gemini-3.7-flash:auto # judul sesi dan klasifikasi kecil
   memory: deepseek/deepseek-flash:high # hanya terpakai bila memory.backend diaktifkan

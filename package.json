@@ -17,6 +17,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "embla-carousel-react": "^8.6.0",
+    "idb": "^8.0.4",
     "konva": "^10.7.1",
     "motion": "^14.0.0",
     "nanoid": "^6.0.2",

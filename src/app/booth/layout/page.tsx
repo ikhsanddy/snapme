@@ -13,9 +13,10 @@ import { useBoothStore } from "@/stores/booth"
 const DESCRIPTIONS: Record<LayoutId, string> = {
   "strip-4": "Empat pose, strip klasik 2 x 6 inci.",
   "strip-3": "Tiga pose, slot lebih tinggi untuk badan penuh.",
+  "grid-2x2": "Empat pose, lembar 4R penuh.",
 }
 
-const CHOICES: LayoutId[] = ["strip-4", "strip-3"]
+const CHOICES: LayoutId[] = ["strip-4", "strip-3", "grid-2x2"]
 
 export default function LayoutStepPage() {
   const router = useRouter()
@@ -54,7 +55,12 @@ export default function LayoutStepPage() {
                     className="absolute inset-0 size-full cursor-pointer opacity-0"
                   />
 
-                  <div className="flex flex-col gap-1.5 self-start rounded-thumb border-2 border-ink bg-cream p-2">
+                  <div
+                    className={cn(
+                      "grid gap-1.5 self-start rounded-thumb border-2 border-ink bg-cream p-2",
+                      layout.columns === 2 ? "grid-cols-2" : "grid-cols-1"
+                    )}
+                  >
                     {layout.slotRects.map((rect, index) => (
                       <div
                         key={index}
@@ -74,7 +80,7 @@ export default function LayoutStepPage() {
                     {DESCRIPTIONS[id]}
                   </span>
                   <span className="font-mono text-xs font-bold tracking-[0.06em] text-muted uppercase">
-                    Ekspor 600 x 1800 px
+                    {`Ekspor ${layout.canvas.width} x ${layout.canvas.height} px`}
                   </span>
 
                   {selected ? (
@@ -99,7 +105,7 @@ export default function LayoutStepPage() {
             </span>
             {layoutId ? (
               <span className="text-[15px] leading-[1.4] text-muted">
-                {LAYOUTS[layoutId].shotCount} foto, ekspor 600 x 1800 px.
+                {`${LAYOUTS[layoutId].shotCount} foto, ekspor ${LAYOUTS[layoutId].canvas.width} x ${LAYOUTS[layoutId].canvas.height} px.`}
               </span>
             ) : (
               <span className="text-[15px] leading-[1.4] text-muted">

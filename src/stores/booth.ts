@@ -6,7 +6,7 @@ import { nanoid } from "nanoid"
 import { create } from "zustand"
 
 import { DEFAULT_EFFECT_ID, DEFAULT_FRAME_ID } from "@/features/editor/defaults"
-import { LAYOUTS, type LayoutId } from "@/lib/layouts"
+import { LAYOUTS, FOOTER_WORDMARK_ROW, type LayoutId } from "@/lib/layouts"
 
 /* ARCHITECTURE §5: state sesi booth. Layout terpilih, foto per slot, pengaturan
    perangkat, dan slice editor (M4). `live`, `share`, dan `relay` ditambahkan
@@ -27,8 +27,8 @@ export interface Shot {
 
 type Shots = (Shot | null)[]
 
-/** Stiker yang sudah ditempel. Koordinat ruang strip 600 x 1800; `x` dan `y`
- *  adalah sudut kiri atas, sama seperti node Konva. */
+/** Stiker yang sudah ditempel. Koordinat ruang kanvas layout (lib/layouts.ts);
+ *  `x` dan `y` adalah sudut kiri atas, sama seperti node Konva. */
 export interface StickerInstance {
   id: string
   assetId: string
@@ -63,10 +63,8 @@ export type TextPatch = Partial<
   Pick<StripText, "x" | "y" | "rotation" | "fontSize">
 >
 
-/* Kaki strip 4 dan 3 sama: y 1596 sampai 1800 (lib/layouts.ts). Baris wordmark
-   dan tanggal memakai 100 px teratas (StripStage), jadi teks pengguna mulai
-   tepat di bawahnya supaya keduanya tidak saling menimpa. */
-export const TEXT_DEFAULT_Y = 1696
+/* Posisi bawaan item baru mengikuti geometri layout aktif (lib/layouts.ts):
+   stiker di tengah kanvas, teks tepat di bawah baris wordmark kaki strip. */
 
 interface EditorState {
   frameId: string
@@ -80,6 +78,10 @@ interface BoothState extends EditorState {
   layoutId: LayoutId | null
   shots: Shots
   settings: BoothSettings
+  /** FR-14: `true` setelah SessionSync selesai membaca IndexedDB. Bukan milik
+   *  rekaman dan tidak direset, supaya gerbang langkah booth menunggu, bukan
+   *  memantul lebih dulu. */
+  sessionReady: boolean
   setLayout: (id: LayoutId) => void
   setShot: (index: number, shot: Shot) => void
   setCameraDevice: (deviceId: string) => void
@@ -136,6 +138,7 @@ function freshState() {
 
 export const useBoothStore = create<BoothState>((set) => ({
   ...freshState(),
+  sessionReady: false,
   /* Ganti layout mengosongkan foto, jadi hiasan lama tidak boleh nyangkut:
      jumlah slot berbeda dan posisinya tidak lagi cocok. */
   setLayout: (id) =>
@@ -159,20 +162,28 @@ export const useBoothStore = create<BoothState>((set) => ({
     }),
   setFrame: (id) => set({ frameId: id }),
   setEffect: (id) => set({ effectId: id }),
+  /* Stiker baru ditempel miring 6 derajat di tengah kanvas (DESIGN-SYSTEM §1:
+     stiker ditempel miring sebagai aksen). */
   addSticker: (assetId) =>
-    set((state) => ({
-      stickers: [
-        ...state.stickers,
-        {
-          id: nanoid(8),
-          assetId,
-          x: 300,
-          y: 900,
-          rotation: -6,
-          width: 120,
-        },
-      ],
-    })),
+    set((state) => {
+      const canvas =
+        state.layoutId === null
+          ? LAYOUTS["strip-4"].canvas
+          : LAYOUTS[state.layoutId].canvas
+      return {
+        stickers: [
+          ...state.stickers,
+          {
+            id: nanoid(8),
+            assetId,
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            rotation: -6,
+            width: 120,
+          },
+        ],
+      }
+    }),
   updateSticker: (id, patch) =>
     set((state) => ({
       stickers: state.stickers.map((sticker) =>
@@ -205,14 +216,16 @@ export const useBoothStore = create<BoothState>((set) => ({
         return { texts: [] }
       }
       const [first] = state.texts
+      const layout =
+        state.layoutId === null ? LAYOUTS["strip-4"] : LAYOUTS[state.layoutId]
       if (first === undefined) {
         return {
           texts: [
             {
               id: nanoid(8),
               value: trimmed,
-              x: 300,
-              y: TEXT_DEFAULT_Y,
+              x: layout.canvas.width / 2,
+              y: layout.footerRect.y + FOOTER_WORDMARK_ROW,
               rotation: 0,
               fontSize: 44,
             },
@@ -254,16 +267,19 @@ export function allFilled(shots: Shots): boolean {
   return shots.length > 0 && shots.every((shot) => shot !== null)
 }
 
-/** ARCHITECTURE §5: langkah booth tanpa prasyarat dialihkan ke langkah yang belum selesai. */
+/** ARCHITECTURE §5: langkah booth tanpa prasyarat dialihkan ke langkah yang belum selesai.
+ *  Selama `sessionReady` masih `false`, pengalihan ditunda: sesi tersimpan
+ *  (FR-14) belum terlihat, jadi muat ulang tidak boleh memantul ke pemilih. */
 export function useRequireLayout(): boolean {
   const router = useRouter()
   const layoutId = useBoothStore((state) => state.layoutId)
+  const sessionReady = useBoothStore((state) => state.sessionReady)
 
   useEffect(() => {
-    if (layoutId === null) {
+    if (sessionReady && layoutId === null) {
       router.replace("/booth/layout")
     }
-  }, [layoutId, router])
+  }, [sessionReady, layoutId, router])
 
   return layoutId !== null
 }
@@ -271,13 +287,14 @@ export function useRequireLayout(): boolean {
 /** Langkah setelah foto tanpa semua slot terisi dialihkan kembali ke Ambil Foto. */
 export function useRequireShots(): boolean {
   const router = useRouter()
-  const ready = useBoothStore((state) => allFilled(state.shots))
+  const sessionReady = useBoothStore((state) => state.sessionReady)
+  const filled = useBoothStore((state) => allFilled(state.shots))
 
   useEffect(() => {
-    if (!ready) {
+    if (sessionReady && !filled) {
       router.replace("/booth/capture")
     }
-  }, [ready, router])
+  }, [sessionReady, filled, router])
 
-  return ready
+  return sessionReady && filled
 }

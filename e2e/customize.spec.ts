@@ -110,6 +110,11 @@ test("hias lalu unduh PNG 600 x 1800 di bawah 2 MB", async ({ page }) => {
   await page.getByRole("button", { name: "Tempel Bintang" }).click()
   await expect(page.getByText("Stiker Bintang")).toBeVisible()
 
+  /* M5: aksi utama menavigasi ke langkah Hasil; unduhan dipicu di sana. */
+  await page.getByRole("link", { name: "Selesai & Unduh" }).click()
+  await page.waitForURL("**/booth/result")
+  await expect(page.getByAltText("Pratinjau strip")).toBeVisible()
+
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Selesai & Unduh" }).click(),
