@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
+import { FOOTER_WORDMARK_ROW, LAYOUTS } from "@/lib/layouts"
 import {
   STICKER_WIDTH_MAX,
   STICKER_WIDTH_MIN,
-  TEXT_DEFAULT_Y,
   TEXT_FONT_MAX,
   TEXT_FONT_MIN,
   TEXT_LENGTH_MAX,
@@ -51,6 +51,19 @@ describe("slice editor", () => {
       width: 120,
     })
     expect(sticker.id.length).toBeGreaterThan(0)
+  })
+
+  it("posisi bawaan item mengikuti kanvas layout aktif", () => {
+    const store = useBoothStore.getState()
+    store.setLayout("grid-2x2")
+    store.addSticker("star")
+    store.setStripText("halo")
+
+    expect(editorSlice().stickers[0]).toMatchObject({ x: 600, y: 900 })
+    expect(editorSlice().texts[0]).toMatchObject({
+      x: 600,
+      y: LAYOUTS["grid-2x2"].footerRect.y + FOOTER_WORDMARK_ROW,
+    })
   })
 
   it("menjepit lebar stiker dan ukuran fon teks", () => {
@@ -103,7 +116,7 @@ describe("slice editor", () => {
     expect(editorSlice().texts[0]).toMatchObject({
       value: "halo",
       x: 300,
-      y: TEXT_DEFAULT_Y,
+      y: LAYOUTS["strip-4"].footerRect.y + FOOTER_WORDMARK_ROW,
       rotation: 0,
       fontSize: 44,
     })

@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
-import { masukHias, matikanGesture } from "./helpers"
+import { masukHasil, masukHias, matikanGesture } from "./helpers"
 
 /* Audit aksesibilitas otomatis (WCAG 2.2 AA) untuk halaman M1 sampai M4.
    Alat otomatis hanya menangkap sebagian hambatan: uji keyboard dan
@@ -44,6 +44,7 @@ const HALAMAN: {
   },
   { nama: "ambil foto", siapkan: pilihLayoutLaluMasukFoto },
   { nama: "hias strip", siapkan: masukHias },
+  { nama: "hasil", siapkan: masukHasil },
 ]
 
 for (const viewport of [

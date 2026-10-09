@@ -15,11 +15,19 @@ export async function matikanGesture(page: Page): Promise<void> {
   })
 }
 
-export async function masukAmbilFoto(page: Page): Promise<void> {
+/** Pilih layout mana pun lalu masuk ke langkah Ambil Foto. */
+export async function masukAmbilFotoLayout(
+  page: Page,
+  label: string
+): Promise<void> {
   await page.goto("/booth/layout")
-  await page.getByRole("radio", { name: "Strip 4 foto" }).check()
+  await page.getByRole("radio", { name: label }).check()
   await page.getByRole("button", { name: "Mulai Foto" }).click()
   await page.waitForURL("**/booth/capture")
+}
+
+export async function masukAmbilFoto(page: Page): Promise<void> {
+  await masukAmbilFotoLayout(page, "Strip 4 foto")
 }
 
 export async function izinkanKamera(page: Page): Promise<void> {
@@ -67,4 +75,12 @@ export async function masukHias(page: Page): Promise<void> {
      potongan kodenya siap. Menunggunya di sini menjaga tiap uji hias tidak
      berlomba dengan pemuatan itu. */
   await expect(page.locator("canvas")).toBeVisible()
+}
+
+/** Hias lalu lanjut ke langkah Hasil, dengan pratinjau hasil sudah siap. */
+export async function masukHasil(page: Page): Promise<void> {
+  await masukHias(page)
+  await page.getByRole("link", { name: "Selesai & Unduh" }).click()
+  await page.waitForURL("**/booth/result")
+  await expect(page.getByAltText("Pratinjau strip")).toBeVisible()
 }

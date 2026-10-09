@@ -198,3 +198,38 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* FR-12: cetak 4R, tepat satu halaman 4 x 6 inci tanpa margin. Lembar cetak
+   dirender sebagai portal ke `body` (ResultView), jadi seluruh isi halaman bisa
+   disembunyikan dengan `display: none`: dokumen hanya setinggi lembar itu dan
+   tidak meluber ke halaman kedua. Aturan tak ber-layer ini menang atas utilitas
+   Tailwind ber-layer, jadi `hidden` di layar dan `display: flex` saat cetak
+   tidak bertentangan. */
+@media print {
+  @page {
+    size: 4in 6in;
+    margin: 0;
+  }
+
+  body {
+    background: none;
+  }
+
+  body > * {
+    display: none;
+  }
+
+  [data-print-sheet] {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  [data-print-sheet] img {
+    width: 4in;
+    height: 6in;
+  }
+}

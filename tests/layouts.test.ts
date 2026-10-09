@@ -71,3 +71,47 @@ describe("geometri ekspor strip", () => {
     expect(LAYOUTS["strip-3"].label).toBe("Strip 3 foto")
   })
 })
+
+/* FR-03: Grid 2 x 2 selebar lembar 4R (1200 x 1800). */
+describe("layout grid 2 x 2", () => {
+  it("kanvas 1200 x 1800 dengan empat slot portret dua kolom", () => {
+    const layout = getLayout("grid-2x2")
+
+    expect(layout.label).toBe("Grid 2 x 2")
+    expect(layout.shotCount).toBe(4)
+    expect(layout.canvas).toEqual({ width: 1200, height: 1800 })
+    expect(layout.slot).toEqual({ width: 540, height: 744 })
+    expect(layout.slotRects).toEqual([
+      { x: 48, y: 48, width: 540, height: 744 },
+      { x: 612, y: 48, width: 540, height: 744 },
+      { x: 48, y: 816, width: 540, height: 744 },
+      { x: 612, y: 816, width: 540, height: 744 },
+    ])
+    expect(layout.footerRect).toEqual({
+      x: 48,
+      y: 1560,
+      width: 1104,
+      height: 240,
+    })
+  })
+
+  it("margin, jarak, dan kaki pas sampai tepi kanvas", () => {
+    const layout = getLayout("grid-2x2")
+    const kolomKedua = layout.slotRects[1]
+    const barisKedua = layout.slotRects[2]
+
+    expect(kolomKedua.x + kolomKedua.width + layout.margin).toBe(
+      layout.canvas.width
+    )
+    expect(kolomKedua.x - (layout.slotRects[0].x + layout.slotRects[0].width)).toBe(
+      layout.gap
+    )
+    expect(barisKedua.y - (layout.slotRects[0].y + layout.slotRects[0].height)).toBe(
+      layout.gap
+    )
+    expect(barisKedua.y + barisKedua.height).toBe(layout.footerRect.y)
+    expect(layout.footerRect.y + layout.footerRect.height).toBe(
+      layout.canvas.height
+    )
+  })
+})

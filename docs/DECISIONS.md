@@ -408,3 +408,92 @@ Selama pengerjaan, alur berikut dijalankan langsung di Chromium (dengan empat fo
 |Ekspor saat stiker terpilih|PNG bersih tanpa kotak pilihan dan pegangan Transformer|
 |Ekspor dengan teks 24 karakter dan tanggal|Teks membungkus dua baris dan tetap di dalam strip; tanggal rata kanan di baris atas kaki strip|
 |Unduhan|Berkas `snapme-20261009-0936.png` dan seterusnya, 600 x 1800 px, 51 sampai 62 KB, tanpa penanda EXIF|
+
+## M5 Hasil dan cetak (9 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M5
+
+`npx skills find` dijalankan untuk dua kata kunci milestone (`print css`, `indexeddb`):
+
+|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
+|---|---|---|---|
+|`print css`|`sebastian-software/effective-print-design`|387|Tidak dipasang: domainnya desain poster dan PDF, bukan print CSS web|
+||`genericservice/claude-skills@print-css`|56|Tidak dipasang: di bawah ambang 100 pemasangan dan penulis tak dikenal|
+|`indexeddb`|tanpa hasil relevan| |Tidak dipasang|
+
+**Keputusan: tidak ada pemasangan skill baru di M5.** Tidak ada kandidat yang lolos ambang kelayakan (relevan dan pemasangan memadai). Kedua kandidat print diusulkan ke pengguna; pemasangannya menunggu persetujuan dan tidak memblokir milestone ini.
+
+### Pencetakan 4R: portal ke `body`, bukan pola `visibility`
+
+Rencana awal memakai pola `body * { visibility: hidden }` dengan lembar cetak diletakkan di dalam pohon halaman. Pola itu lolos pemeriksaan dimensi, tetapi **gagal pada jumlah halaman**: `visibility: hidden` tidak menghilangkan kotak tataletaknya, jadi dokumen tetap setinggi halaman produk dan `page.pdf({ preferCSSPageSize: true })` menghasilkan **3 halaman**, bukan 1. Terbukti di uji pertama `e2e/result.spec.ts` uji 2.
+
+Perbaikan: lembar cetak dirender lewat `createPortal` ke `document.body` (ResultView), dan `@media print` di `globals.css` menyembunyikan seluruh isi halaman dengan `body > * { display: none }`. Aturan `[data-print-sheet]` (spesifisitas atribut) menang atas `body > *`, jadi hanya lembar cetak yang tersisa; tingginya nol karena `position: fixed`, sehingga PDF tepat satu halaman. `@page { size: 4in 6in; margin: 0 }` menjaga halaman 4 x 6 inci tanpa margin tambahan.
+
+- `page.pdf({ preferCSSPageSize: true })` menghasilkan 1 halaman; kotak gambar 384 x 576 px (4 x 6 inci pada 96 dpi) diuji pada strip, jumlah halaman diuji juga pada grid.
+- Hitungan halaman di uji memakai pola `/\/Type\s*\/Page[^s]/g` atas PDF keluaran Chromium. `[^s]` menjaga `/Type /Pages` tidak ikut terhitung.
+- `@page` tidak bisa dibatalkan per halaman; satu-satunya cetakan v1 adalah lembar 4R, jadi ukuran itu berlaku global dan diterima.
+- Pemeriksaan visual dialog cetak sungguhan (Ctrl+P) tetap diserahkan ke pengguna.
+
+### Ekspor dikerjakan sekali saat mount
+
+`ResultView` mengekspor strip sekali saat dipasang, bukan saat tombol ditekan: tombol "Selesai & Unduh" dan "Cetak 4R" harus langsung menyerahkan berkas, dan aturan yang sama sudah dipakai jalur unduh M4. Komposisi lembar cetak (`src/features/editor/sheet.ts`) adalah Canvas2D murni: menyalin PNG strip dua kali berdampingan pada 1200 x 1800 px plus garis potong putus-putus 4 px di `x = 600`, warnanya dari token `--color-ink`.
+
+Dua hal yang lahir dari kenyataan runtime:
+
+1. **Gambar slot bisa belum terdekode saat ekspor mount.** `exportStrip` menyalin kanvas apa adanya, sedangkan `useHtmlImage` memuat gambar secara asinkron. `waitForSlotPhotos` menunggu setiap node `.slot-photo` punya gambar (batas 8 detik) sebelum ekspor; tanpa itu strip bisa keluar dengan slot kosong.
+2. **Efek React StrictMode.** Mode pengembangan memasang efek dua kali. Tanpa penjaga, ekspor kedua bisa menyetel ukuran panggung di tengah ekspor pertama. `startedRef` memastikan ekspor berjalan sekali; jalur gagal menampilkan pesan galat di rel kanan dan menonaktifkan kedua tombol.
+
+### Grid 2 x 2 dicetak sebagai lembar itu sendiri
+
+`lib/layouts.ts` di parameterkan: `buildLayout` menerima `canvas`, `margin`, `gap`, `footer`, `slotWidth`, dan `columns` dengan bawaan nilai strip lama, jadi geometri strip-4 dan strip-3 tidak berubah sedikit pun (diuji: `tests/layouts.test.ts` lama tetap lolos). Grid memakai kanvas 1200 x 1800 px, margin 48, slot 540 x 744, gap 24, kaki 240, dan dua kolom.
+
+`composePrintSheet` mengenali lembar yang sudah selebar 4R (`canvas.width >= 1200`) dan mengembalikan hasil ekspor apa adanya: menggambar strip 1200 px dua kali berdampingan hanya akan memotong gambar. FR-12 menyebut "dua strip berdampingan" untuk strip 2 x 6 inci; FR-03 menyebut ekspor 1200 x 1800 untuk grid.
+
+`FOOTER_WORDMARK_ROW = 100` pindah ke `lib/layouts.ts` sebagai satu sumber: `StripStage` memakainya untuk menggambar wordmark dan tanggal, store memakainya untuk menaruh teks pengguna (strip: y 1696, grid: y 1660). Posisi bawaan stiker dan teks sekarang dihitung dari kanvas layout aktif, bukan angka tetap 300/900.
+
+### "Mulai dari awal" mengarah ke pemilih layout
+
+Bukan ke Welcome: pengguna yang baru selesai langsung memulai sesi baru tanpa melewati halaman pemasaran, dan tombol Kembali di setiap langkah tetap menyediakan jalan ke atas. Handler memanggil `clearSession()` (hapus rekaman FR-14), `reset()` (kosongkan store), lalu `router.replace("/booth/layout")`.
+
+### `idb` sebagai klien penyimpanan (FR-14)
+
+Dipasang `idb@8.0.4` (MIT, terawat) alih-alih menulis pembungkus IndexedDB sendiri, sesuai ARCHITECTURE §2 ("klien penyimpanan" ada di daftar yang tidak boleh ditulis sendiri). Satu basis data `snapme-session`, satu object store `state`, satu kunci `"current"`.
+
+- Rekaman menyimpan `layoutId`, `shots`, dan slice editor; `settings` tidak ikut karena gesture sudah punya jalurnya sendiri (GS-06 di localStorage) dan pemilihan kamera memang hanya sesi (M2).
+- `validateRecord` adalah satu-satunya pintu dari penyimpanan ke store: hanya `version === 1`, layout dikenal, jumlah slot sama dengan `shotCount`, dan tipe tiap bidang benar yang diterima. Rekaman rusak dihapus, bukan ditebak.
+- `SessionSync` dipasang di `src/app/booth/layout.tsx`: membaca penyimpanan, mengisi store hanya bila store masih segar (`layoutId === null` dicek ulang setelah `await`, supaya alur galeri dari Welcome tidak tertimpa), lalu berlangganan dengan jeda simpan 400 ms.
+- Store mendapat bidang `sessionReady` (awal `false`, tidak ikut `reset()`). `useRequireLayout` dan `useRequireShots` menunda pengalihan selama `sessionReady` masih `false`, jadi muat ulang di tengah langkah tidak memantul ke pemilih layout sebelum IndexedDB terbaca.
+- DataURL JPEG ditulis apa adanya. Uji e2e "foto pulih setelah dimuat ulang" lolos tanpa penyesuaian waktu, jadi kontingensi menyimpan `Blob` tidak dijalankan.
+
+### Penyimpangan M5
+
+|Hal|Dokumen atau acuan|Kenyataan|Tindakan|
+|---|---|---|---|
+|Baris "Ekspor" di halaman Hias|§10.3 dan rencana M5 hanya menyebut baris statis "Ekspor 600 x 1800 px (2 x 6 inci, 300 dpi)"|Setelah FR-03 ada, baris itu salah untuk grid|Dibuat mengikuti layout: `Ekspor {canvas.width} x {canvas.height} px ({inci} x {inci} inci, 300 dpi)`. Angka inci diturunkan dari 300 dpi, bukan ditulis tetap|
+|Label kartu dan ringkasan di pemilih layout|Rencana M5: ganti teks rel kanan jadi mengikuti kanvas|Kartu layout juga menampilkan "Ekspor 600 x 1800 px"|Keduanya mengikuti `LAYOUTS[id].canvas`|
+|Diagram layout di kartu pemilih|Acuan lama: satu kolom `flex`|Grid butuh dua kolom|Kontainer diagram menjadi `grid` dengan jumlah kolom dari `layout.columns`; strip tetap satu kolom|
+|Aksi utama di halaman Hias|Sebelumnya tombol unduh langsung (M4)|M5 memindahkan unduhan ke halaman Hasil|Tombol "Selesai & Unduh" di Hias menjadi tautan ke `/booth/result` (label tetap §12); unduhan dan cetak dijalankan di Hasil|
+|Halaman Hasil|§10 belum punya berkas acuan untuk `/booth/result`|Halaman tetap harus punya susunan|Disusun dari Booth Shell (§5) dan komponen §9: rel kiri ringkasan, tengah pratinjau dan baris privasi, rel kanan tiga aksi. Chip kepala panel "4 foto" gaya `lime` seperti Hias|
+|Rel kiri halaman Hasil|Hias memakai rel kiri untuk pilihan hias|Hasil tidak punya pilihan|Rel kiri dipakai ringkasan `dl` (Layout, Frame, Efek, Stiker) dalam kartu `radius-card`|
+|Permintaan `__nextjs_font` di uji privasi|Daftar putih uji: `/_next/`, `/mediapipe/`, `/models/`, `/stickers/`, `/favicon.ico`|Server pengembangan Next melayani fon lewat `__nextjs_font` (di produksi semuanya di bawah `/_next/`)|Awalan itu ditambahkan ke daftar putih dengan komentar; keduanya aset statis milik aplikasi|
+|`page.pdf` pada uji|Rencana: hitung halaman dari regex PDF|Regex bisa meleset bila Chromium memadatkan objek|Regex dipakai (berhasil untuk 1 halaman di semua uji); bila meleset di lingkungan lain, asersi kotak 384 x 576 px tetap menjadi bukti dan pemeriksaan dialog cetak menjadi uji manual|
+|`masukAmbilFoto` di `e2e/helpers.ts`|Rencana M5 menambah helper `masukHasil`|Verifikasi grid juga butuh masuk dengan layout lain|Helper `masukAmbilFotoLayout(page, label)` ditambah; `masukAmbilFoto` memanggilnya dengan "Strip 4 foto"|
+
+### Bukti browser untuk halaman Hasil
+
+Selain uji yang sudah disebut di atas, alur berikut dijalankan langsung di Chromium lewat Playwright (kamera palsu, foto galeri sebagai pembanding):
+
+|Pemeriksaan|Bukti|
+|---|---|
+|Unduhan strip|PNG IHDR 600 x 1800, di bawah 2 MB, nama `snapme-\d{8}-\d{4}.png`; toast "Strip tersimpan di perangkatmu." tampil|
+|Unduhan grid|PNG IHDR 1200 x 1800|
+|Lembar cetak|Media cetak: satu halaman, kotak gambar 384 x 576 px; grid juga satu halaman|
+|Privasi alur dasar|Tidak ada permintaan ke origin lain, tidak ada `/api/`; hanya halaman aplikasi dan aset statis (uji 1 `result.spec.ts`)|
+|Muat ulang di tengah langkah|2 foto pulih beserta isinya, frame "Malam" pulih, alur galeri 4 foto tidak tertimpa rekaman lama|
+|"Mulai dari awal"|Kembali ke pemilih layout dengan "Belum dipilih"; rekaman lama tidak kembali setelah muat ulang|
+|Halaman Hasil|Masuk daftar `e2e/a11y.spec.ts`: nol pelanggaran axe pada 360 dan 1280 px|
+
+### Uji manual yang perlu dilengkapi pengguna
+
+1. **Dialog cetak sungguhan.** `page.pdf` membuktikan satu halaman 4 x 6 inci, tetapi dialog cetak sistem (margin printer, "fit to page") tidak bisa diverifikasi agent. Cetak satu lembar 4R dari Chrome dan pastikan tidak ada margin tambahan.
+2. **Cetak grid.** Pastikan hasil cetak grid 2 x 2 pas di kertas 4R tanpa skala tambahan dari driver printer.

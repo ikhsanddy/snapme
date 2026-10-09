@@ -7,7 +7,7 @@ import type { Node as KonvaNode } from "konva/lib/Node"
 import type { Text as KonvaTextNode } from "konva/lib/shapes/Text"
 import { Group, Image as KonvaImage, Layer, Rect, Text } from "react-konva"
 
-import { getLayout, type LayoutId, type Rect as SlotRect } from "@/lib/layouts"
+import { FOOTER_WORDMARK_ROW, getLayout, type LayoutId, type Rect as SlotRect } from "@/lib/layouts"
 import type {
   Shot,
   StickerInstance,
@@ -22,8 +22,8 @@ import { resolveTokenColor } from "./tokenColor"
 import { useHtmlImage } from "./useHtmlImage"
 
 /* DESIGN-SYSTEM §10.3: isi strip di atas kanvas. Semua koordinat di berkas ini
-   memakai ruang strip 600 x 1800 dari `lib/layouts.ts`; panggungnya sendiri yang
-   diskalakan (StripCanvas), jadi strip-3 bekerja tanpa cabang khusus.
+   memakai ruang kanvas layout dari `lib/layouts.ts`; panggungnya sendiri yang
+   diskalakan (StripCanvas), jadi strip-3 dan grid bekerja tanpa cabang khusus.
    Berkas ini hanya boleh dimuat lewat `next/dynamic` (ARCHITECTURE §9). */
 
 const STRIP_RADIUS = 24
@@ -32,9 +32,6 @@ const STRIP_BORDER = 8
 const SLOT_BORDER = 6
 const WORDMARK_SIZE = 40
 const DATE_SIZE = 28
-/* Tinggi baris wordmark dan tanggal di kaki strip. Sisanya dipakai teks
-   pengguna (FR-10), supaya keduanya tidak saling menimpa. */
-const FOOTER_ROW = 100
 
 const DATE_FORMAT = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -295,7 +292,7 @@ export function StripStage({
           x={layout.margin}
           y={layout.footerRect.y}
           width={layout.footerRect.width / 2}
-          height={FOOTER_ROW}
+          height={FOOTER_WORDMARK_ROW}
           verticalAlign="middle"
           text="snapme"
           fontFamily={resolveFontFamily("display")}
@@ -310,7 +307,7 @@ export function StripStage({
             x={layout.footerRect.x + layout.footerRect.width / 2}
             y={layout.footerRect.y}
             width={layout.footerRect.width / 2}
-            height={FOOTER_ROW}
+            height={FOOTER_WORDMARK_ROW}
             verticalAlign="middle"
             align="right"
             text={DATE_FORMAT.format(new Date())}
