@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation"
 import {
   ArrowClockwise,
   ArrowRight,
-  Camera,
+  HandPalm,
+  HandPeace,
   Lock,
-  Timer,
+  ThumbsUp,
 } from "@phosphor-icons/react"
 import { useReducedMotion } from "motion/react"
 import Webcam from "react-webcam"
@@ -15,6 +16,8 @@ import Webcam from "react-webcam"
 import { BoothPanel } from "@/components/booth/BoothPanel"
 import { CameraPicker } from "@/components/booth/CameraPicker"
 import { CameraStage, type FlashKind } from "@/components/booth/CameraStage"
+import { GestureHUD, resolveHudState } from "@/components/booth/GestureHUD"
+import { GestureToggle } from "@/components/booth/GestureToggle"
 import { ShotTray } from "@/components/booth/ShotTray"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,10 +25,12 @@ import { captureFrame } from "@/features/camera/captureFrame"
 import { useCamera, type CameraErrorReason } from "@/features/camera/useCamera"
 import { isBusy } from "@/features/capture/machine"
 import { useCaptureMachine } from "@/features/capture/useCaptureMachine"
+import { useGestureSnap } from "@/features/gesture/useGestureSnap"
 import { LAYOUTS } from "@/lib/layouts"
 import {
   allFilled,
   countFilled,
+  hydrateGesturePreference,
   useBoothStore,
   useRequireLayout,
 } from "@/stores/booth"
@@ -33,8 +38,8 @@ import {
 /* FR-04 sampai FR-07: layar penjelas izin, penanganan izin ditolak, pratinjau
    dicerminkan dengan rasio slot, hitung mundur 3 detik, kilat tunggal, dan baki
    foto dengan ulang foto terakhir serta ulang foto tertentu.
-   Susunan mengikuti DESIGN-SYSTEM §10.2 dan docs/ui-reference/capture.html.
-   Sakelar Gesture Snap dan keadaannya menyusul di M3. */
+   M3 (GS-02 sampai GS-07): Gesture Snap dengan sakelar, HUD, dan jalur gagal
+   muat. Susunan mengikuti DESIGN-SYSTEM §10.2 dan docs/ui-reference/capture.html. */
 
 export default function CaptureStepPage() {
   const router = useRouter()
@@ -60,7 +65,25 @@ export default function CaptureStepPage() {
   const { requested, requestPermission, webcamRef, webcamProps, devices, selectDevice } =
     camera
   const cameraDeviceId = useBoothStore((state) => state.settings.cameraDeviceId)
+  const gestureEnabled = useBoothStore((state) => state.settings.gestureEnabled)
+  const setGestureEnabled = useBoothStore((state) => state.setGestureEnabled)
   const { phase, targetSlot, countdownValue, flash: flashOn } = state
+
+  /* GS-06: pilihan sakelar dibaca dari localStorage setelah hidrasi. */
+  useEffect(() => {
+    hydrateGesturePreference()
+  }, [])
+
+  /* GS-08: telapak mengulang foto terakhir; null berarti belum ada foto. */
+  const lastFilledIndex = shots.findLastIndex((shot) => shot !== null)
+  const gesture = useGestureSnap({
+    webcamRef,
+    enabled: gestureEnabled,
+    phase,
+    dispatch,
+    retakeTarget: lastFilledIndex < 0 ? null : lastFilledIndex,
+    onProceed: () => router.push("/booth/customize"),
+  })
 
   /* Efek pengambilan: satu kali tiap fase `capturing`, setelah hitung mundur habis. */
   useEffect(() => {
@@ -99,8 +122,9 @@ export default function CaptureStepPage() {
   const remaining = layout.shotCount - filled
   const done = allFilled(shots)
   const busy = isBusy(phase)
-  const lastFilledIndex = shots.findLastIndex((shot) => shot !== null)
   const showWebcam = requested && phase !== "idle" && phase !== "denied"
+  const cameraActive =
+    phase !== "idle" && phase !== "denied" && phase !== "requesting"
   /* prefers-reduced-motion: kilat menjadi kedip garis tepi area kamera (§7). */
   const flash: FlashKind = !flashOn
     ? "none"
@@ -120,6 +144,11 @@ export default function CaptureStepPage() {
       chip={<Badge>{layout.label}</Badge>}
       actions={
         <>
+          <GestureToggle
+            enabled={gestureEnabled}
+            onChange={setGestureEnabled}
+            hidden={gesture.status === "failed"}
+          />
           {devices.length > 1 ? (
             <CameraPicker
               devices={devices}
@@ -170,6 +199,19 @@ export default function CaptureStepPage() {
             flash={flash}
             onRequestPermission={requestPermissionForUser}
             onShoot={() => dispatch({ type: "SHOOT" })}
+            hud={
+              <GestureHUD
+                state={resolveHudState({
+                  cameraActive,
+                  enabled: gestureEnabled,
+                  status: gesture.status,
+                  phase,
+                  holdAction: gesture.holdAction,
+                })}
+                progress={gesture.holdProgress}
+                shotCount={layout.shotCount}
+              />
+            }
           >
             {showWebcam ? (
               <Webcam
@@ -182,7 +224,8 @@ export default function CaptureStepPage() {
           </CameraStage>
           <p className="flex items-center gap-2 text-sm text-muted">
             <Lock weight="bold" className="size-4 shrink-0" aria-hidden />
-            Kamera berjalan di perangkat ini. Tidak ada yang diunggah.
+            Kamera dan deteksi gesture berjalan di perangkat ini. Tidak ada yang
+            diunggah.
           </p>
         </>
       }
@@ -194,20 +237,16 @@ export default function CaptureStepPage() {
             </h2>
             <ul className="flex flex-col gap-2.5 text-[15px] leading-[1.35]">
               <li className="flex items-center gap-2.5">
-                <Camera weight="bold" className="size-6 shrink-0" aria-hidden />
-                Tombol kamera atau Spasi memotret
+                <HandPeace weight="bold" className="size-6 shrink-0" aria-hidden />
+                Dua jari: mulai hitung mundur
               </li>
               <li className="flex items-center gap-2.5">
-                <Timer weight="bold" className="size-6 shrink-0" aria-hidden />
-                Hitung mundur 3 detik sebelum jepret
+                <HandPalm weight="bold" className="size-6 shrink-0" aria-hidden />
+                Telapak: ulang foto terakhir
               </li>
               <li className="flex items-center gap-2.5">
-                <ArrowClockwise
-                  weight="bold"
-                  className="size-6 shrink-0"
-                  aria-hidden
-                />
-                Bisa ulang foto apa pun dari baki
+                <ThumbsUp weight="bold" className="size-6 shrink-0" aria-hidden />
+                Jempol: lanjut ke hias
               </li>
             </ul>
           </div>

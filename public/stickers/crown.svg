@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><!-- mahkota -->
+<path d="M36 196 L36 92 L82 138 L128 66 L174 138 L220 92 L220 196 Z" fill="#C3F53C" stroke="#141414" stroke-width="14" stroke-linejoin="round"/>
+<circle cx="36" cy="92" r="19" fill="#F0562B" stroke="#141414" stroke-width="14" stroke-linejoin="round"/><circle cx="128" cy="66" r="19" fill="#F0562B" stroke="#141414" stroke-width="14" stroke-linejoin="round"/><circle cx="220" cy="92" r="19" fill="#F0562B" stroke="#141414" stroke-width="14" stroke-linejoin="round"/>
+<rect x="28" y="166" width="200" height="32" rx="10" fill="#F4F1E6" stroke="#141414" stroke-width="14" stroke-linejoin="round"/></svg>

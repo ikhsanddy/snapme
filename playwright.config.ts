@@ -18,6 +18,11 @@ export default defineConfig({
     },
   ],
   use: { baseURL: "http://localhost:3000" },
+  /* Headless Chromium merender MediaPipe tanpa GPU: inisialisasi model dan
+     inferensi pertama bisa memblokir main thread beberapa detik sehingga timer
+     hitung mundur meleset. Batas bawaan 5 detik terlalu ketat untuk lingkungan
+     itu (M3, DECISIONS.md). */
+  expect: { timeout: 15_000 },
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",

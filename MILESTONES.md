@@ -28,7 +28,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 - [x] M1 Welcome dan kerangka booth
 - [x] M2 Kamera
 - [ ] M3 Gesture Snap
-- [ ] M4 Hias strip
+- [x] M4 Hias strip
 - [ ] M5 Hasil dan cetak
 - [ ] M6 Link strip dan QR
 - [ ] M7 Strip Hidup
@@ -148,13 +148,13 @@ Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai be
 
 **Pekerjaan**
 
-- [ ] Salin berkas wasm dan model ke `public/` (ARCHITECTURE §4). Tidak memuat dari CDN.
-- [ ] `gestureSource`: dimuat dinamis setelah izin kamera, laju dibatasi.
-- [ ] `holdDetector`: fungsi murni dengan uji unit (tahan cukup lama, lepas lebih awal, jeda setelah foto).
-- [ ] `GestureHUD` dengan empat keadaan dan sakelar Gesture Snap yang diingat.
-- [ ] Status "Menyiapkan gesture..." dan jalur gagal muat.
-- [ ] Uji Playwright: tidak ada permintaan jaringan yang membawa gambar selama `/booth/capture`.
-- [ ] **(P1)** Telapak untuk ulang, jempol untuk lanjut, dua tangan.
+- [x] Salin berkas wasm dan model ke `public/` (ARCHITECTURE §4). Tidak memuat dari CDN.
+- [x] `gestureSource`: dimuat dinamis setelah izin kamera, laju dibatasi.
+- [x] `holdDetector`: fungsi murni dengan uji unit (tahan cukup lama, lepas lebih awal, jeda setelah foto).
+- [x] `GestureHUD` dengan empat keadaan dan sakelar Gesture Snap yang diingat.
+- [x] Status "Menyiapkan gesture..." dan jalur gagal muat.
+- [x] Uji Playwright: tidak ada permintaan jaringan yang membawa gambar selama `/booth/capture`.
+- [x] **(P1)** Telapak untuk ulang, jempol untuk lanjut, dua tangan. Dua tangan lewat `numHands: 2` sejak P0; pengenalan telapak dan jempol dibuktikan uji unit `holdDetector`, karena kamera palsu tidak punya tangan.
 
 **Selesai bila**
 
@@ -176,14 +176,14 @@ Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai be
 
 **Pekerjaan**
 
-- [ ] `StripCanvas` dengan react-konva dari `lib/layouts.ts`.
-- [ ] Minimal 6 frame dan 6 efek (preset filter Konva).
-- [ ] Minimal 12 stiker di `public/stickers`. Boleh dibuat dengan role `image`, wajib ditinjau pengguna sebelum masuk repo.
-- [ ] Stiker: tempel, geser, putar, ubah ukuran, hapus, dengan `Transformer` bawaan Konva.
-- [ ] Padanan daftar untuk keyboard dan pembaca layar (DESIGN-SYSTEM §11).
-- [ ] Tab pil Frame, Efek, Stiker. Lembar bawah di layar sempit.
-- [ ] Ekspor PNG.
-- [ ] **(P1)** Teks dan tanggal. **(P1)** Pakai Foto Galeri, lalu tampilkan tombolnya di Welcome.
+- [x] `StripCanvas` dengan react-konva dari `lib/layouts.ts`.
+- [x] Minimal 6 frame dan 6 efek (preset filter Konva).
+- [x] Minimal 12 stiker di `public/stickers`. Boleh dibuat dengan role `image`, wajib ditinjau pengguna sebelum masuk repo. (Dua belas SVG ditulis tangan di repo atas keputusan pengguna, bukan lewat role `image`.)
+- [x] Stiker: tempel, geser, putar, ubah ukuran, hapus, dengan `Transformer` bawaan Konva.
+- [x] Padanan daftar untuk keyboard dan pembaca layar (DESIGN-SYSTEM §11).
+- [x] Tab pil Frame, Efek, Stiker. Lembar bawah di layar sempit. (Ditambah tab Teks untuk FR-10.)
+- [x] Ekspor PNG.
+- [x] **(P1)** Teks dan tanggal. **(P1)** Pakai Foto Galeri, lalu tampilkan tombolnya di Welcome.
 
 **Selesai bila**
 

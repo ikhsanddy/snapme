@@ -1,35 +1,52 @@
 "use client"
 
+import dynamic from "next/dynamic"
+import { Check } from "@phosphor-icons/react"
+
 import { BoothPanel } from "@/components/booth/BoothPanel"
 import { Badge } from "@/components/ui/badge"
 import { countFilled, useBoothStore, useRequireShots } from "@/stores/booth"
 
-/* Penyuntingan strip dikerjakan di M4. Halaman ini menjaga prasyarat FR-07:
-   tanpa semua slot terisi, langkah Hias dialihkan kembali ke Ambil Foto. */
-export default function CustomizeStepPage() {
-  const ready = useRequireShots()
-  const layoutId = useBoothStore((state) => state.layoutId)
-  const shots = useBoothStore((state) => state.shots)
+/* Prasyarat FR-07 tetap di sini: tanpa semua slot terisi, langkah Hias dialihkan
+   kembali ke Ambil Foto. Isi halaman dimuat dengan import() dinamis supaya Konva
+   hanya masuk bundel rute ini (ARCHITECTURE §9). */
 
-  if (!ready || layoutId === null) {
-    return null
-  }
+const CustomizeEditor = dynamic(() => import("@/features/editor/CustomizeEditor"), {
+  ssr: false,
+  loading: () => <EditorSkeleton />,
+})
+
+/* DESIGN-SYSTEM §9 (Skeleton): blok cream bergaris putus-putus mengikuti bentuk
+   akhir, tanpa spinner. */
+function EditorSkeleton() {
+  const shots = useBoothStore((state) => state.shots)
 
   return (
     <BoothPanel
       title="Hias Strip"
       backHref="/booth/capture"
-      chip={
-        <Badge variant="lime">{`${countFilled(shots)} foto siap`}</Badge>
+      actions={
+        <Badge variant="lime">
+          <Check weight="bold" aria-hidden />
+          {`${countFilled(shots)} foto siap`}
+        </Badge>
       }
       center={
-        <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-stage border-2 border-dashed border-muted bg-cream p-6 text-center">
-          <p className="max-w-[36ch] text-[15px] leading-[1.5] text-muted">
-            Penyuntingan strip dibangun di M4. Foto dan pilihan layout sudah
-            tersimpan di sesi ini.
-          </p>
+        <div className="flex min-h-[420px] items-center justify-center rounded-stage border-2 border-dashed border-muted bg-cream p-6">
+          <span className="sr-only">Menyiapkan kanvas hias</span>
         </div>
       }
     />
   )
+}
+
+export default function CustomizeStepPage() {
+  const ready = useRequireShots()
+  const layoutId = useBoothStore((state) => state.layoutId)
+
+  if (!ready || layoutId === null) {
+    return null
+  }
+
+  return <CustomizeEditor layoutId={layoutId} />
 }
