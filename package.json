@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "perf:lcp": "lighthouse http://localhost:3000 --output=json --output-path=test-results/lighthouse-welcome.json --only-categories=performance --chrome-flags=\"--headless=new\""
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.1.0",
@@ -48,6 +49,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "jsdom": "^30.1.2",
+    "lighthouse": "^13.5.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.3"

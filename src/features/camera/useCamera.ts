@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react"
 import type Webcam from "react-webcam"
 
+import { track } from "@/lib/analytics"
 import { useBoothStore } from "@/stores/booth"
 
 /* ARCHITECTURE §6: satu-satunya tempat react-webcam dipakai.
@@ -29,11 +30,19 @@ export function useCamera({ onGranted, onDenied }: UseCameraOptions) {
   const webcamRef = useRef<Webcam>(null)
   const [requested, setRequested] = useState(false)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  /* PRD §4: izin diberikan atau tidak adalah ukuran alur dasar. Pergantian
+     kamera memasang ulang `<Webcam>`, jadi hasilnya dihitung sekali per sesi
+     halaman supaya rasionya tidak membengkak. */
+  const permissionTracked = useRef(false)
   const deviceId = useBoothStore((state) => state.settings.cameraDeviceId)
   const selectDevice = useBoothStore((state) => state.setCameraDevice)
 
   const requestPermission = useCallback(() => {
     if (navigator.mediaDevices?.getUserMedia === undefined) {
+      if (!permissionTracked.current) {
+        permissionTracked.current = true
+        track("camera_denied")
+      }
       onDenied("unavailable")
       return
     }
@@ -51,12 +60,22 @@ export function useCamera({ onGranted, onDenied }: UseCameraOptions) {
   const handleGranted = useCallback(async () => {
     /* Label perangkat baru terbaca setelah izin, jadi enumerasi dijalankan di sini. */
     setDevices(await listCameras())
+    if (!permissionTracked.current) {
+      permissionTracked.current = true
+      track("camera_granted")
+    }
     onGranted()
   }, [onGranted])
 
   const handleError = useCallback(
     (error: string | DOMException) => {
       const name = typeof error === "string" ? error : error.name
+      if (!permissionTracked.current) {
+        permissionTracked.current = true
+        /* Kamera yang tidak ada diperlakukan sama dengan izin yang ditolak:
+           dua-duanya sesi yang tidak bisa memotret. */
+        track("camera_denied")
+      }
       onDenied(PERMISSION_ERRORS.includes(name) ? "denied" : "unavailable")
     },
     [onDenied]

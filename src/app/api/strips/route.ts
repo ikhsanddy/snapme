@@ -2,6 +2,7 @@ import {
   clientKeyFromRequest,
   countRecentCreations,
   CREATE_LIMIT,
+  isCrossSite,
   rateKeyFor,
 } from "@/lib/rateLimit"
 import {
@@ -45,6 +46,11 @@ export async function POST(request: Request) {
   if (!contentType.toLowerCase().startsWith("application/json")) {
     return Response.json(INVALID, { status: 400 })
   }
+  /* M9: gate jenis isi tidak bergantung perilaku peramban, jadi permintaan
+     yang jelas datang dari situs lain ditolak langsung. */
+  if (isCrossSite(request)) {
+    return Response.json(INVALID, { status: 400 })
+  }
 
   let payload: unknown
   try {
@@ -75,6 +81,16 @@ export async function POST(request: Request) {
   const livePath = liveKind === undefined ? null : stripLivePath(id, liveKind)
 
   try {
+    /* Gerbang murah sebelum menulis (temuan security-reviewer M9): kalau
+       jendela kuotanya sudah penuh, permintaan ditolak tanpa INSERT sama
+       sekali. Pemeriksaan setelah sisip tetap jadi gerbang resmi untuk
+       permintaan serentak. */
+    if (
+      (await countRecentCreations(admin, "strips", rateKey, now)) >= CREATE_LIMIT
+    ) {
+      return Response.json(TOO_MANY, { status: 429 })
+    }
+
     const { error: insertError } = await admin.from("strips").insert({
       id,
       layout: parsed.data.layout,

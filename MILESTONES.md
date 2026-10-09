@@ -307,7 +307,7 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 
 **Batas aman.** Migrasi `20261014000000_relays.sql` (tabel `relays`, dua indeks, `image/jpeg` di daftar jenis bucket) sudah diterapkan ke proyek Supabase `snapme` (ref `owdjkpzywzljnvuyfiui`) lewat `npx supabase db push` atas persetujuan pengguna di sesi M8; `supabase migration list` mengonfirmasi barisnya ada di remote. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau agent setelah disetujui.
 
-**Sisa untuk M9.** Constraint bentuk `slots` dan daftar layout tertutup di tabel `relays`, kolom `strip_id` + UPDATE bersyarat untuk menutup balapan pemulihan `complete`, dan uji manual gesture/estafet di perangkat sungguhan (Chromium headless tidak punya tangan).
+**Sisa untuk M9.** Constraint bentuk `slots` dan daftar layout tertutup di tabel `relays`, kolom `strip_id` + UPDATE bersyarat untuk menutup balapan pemulihan `complete`, dan uji manual gesture/estafet di perangkat sungguhan (Chromium headless tidak punya tangan). **Dua butir pertama selesai di M9** lewat `20261015000000_relays_hardening.sql` dan gerbang pemenang tunggal di rute `complete`; uji manual gesture tetap menunggu pengguna.
 
 ---
 
@@ -320,18 +320,18 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 
 **Pekerjaan**
 
-- [ ] Butir **(P1)** yang tertunda dari milestone sebelumnya.
-- [ ] Audit `@axe-core/playwright` di semua halaman dan uji keyboard manual untuk seluruh alur.
-- [ ] Ukur LCP Welcome dan ukuran bundel tiap rute, bandingkan dengan PRD §8.
-- [ ] Uji lintas browser: Chrome, Edge, Firefox, Safari, Chrome Android, Safari iOS.
-- [ ] Analitik tanpa cookie untuk ukuran di PRD §4. Pilihan alat diusulkan dulu ke pengguna.
-- [ ] Tinjau ulang semua butir ARCHITECTURE §13 dan perbarui dokumen yang nilainya berubah.
+- [x] Butir **(P1)** yang tertunda dari milestone sebelumnya. (SE-10, GestureHUD boleh-tanpa-gesture, `Open_Palm`, `Thumb_Up`, pemilih kamera, teks dan tanggal, FR-14, dan FR-13 sudah dikerjakan di M3 sampai M8. Sisa P1 M8 di tabel `relays` — constraint bentuk `slots`, daftar layout tertutup, kolom `strip_id` — dikerjakan di M9 lewat migrasi `20261015000000_relays_hardening.sql` dan gerbang pemenang tunggal di `POST /api/relays/[id]/complete`)
+- [x] Audit `@axe-core/playwright` di semua halaman dan uji keyboard manual untuk seluruh alur. (axe: 9 halaman × 2 viewport nol pelanggaran, ditambah dua audit ber-link `SUPABASE_E2E=1`; keyboard: `e2e/keyboard-flow.spec.ts` menuntaskan seluruh alur tanpa satu pun `page.mouse`. Uji pembaca layar manual masuk tabel pengguna)
+- [x] Ukur LCP Welcome dan ukuran bundel tiap rute, bandingkan dengan PRD §8. (Lighthouse preset seluler di server produksi: median LCP 3,17 detik terhadap batas 2,5 detik, selisih dan rencananya dicatat; ekspor strip median 922 ms terhadap target 2 detik; tabel transfer per rute diukur dari peramban karena Next.js 16 menghapus metrik `First Load JS`)
+- [x] Uji lintas browser: Chrome, Edge, Firefox, Safari, Chrome Android, Safari iOS. (Mesin Gecko dan WebKit hijau otomatis lewat proyek `firefox` dan `webkit`; Edge tidak terpasang dan `npx playwright install msedge` gagal karena hak akses, jadi proyek `msedge` dilepas dan Edge sungguhan masuk tabel manual pengguna; Chrome diliput proyek `chromium`; Chrome Android dan Safari iOS butuh perangkat sungguhan)
+- [x] Analitik tanpa cookie untuk ukuran di PRD §4. Pilihan alat diusulkan dulu ke pengguna. (Pengguna memilih endpoint peristiwa first-party; migrasi `20261016000000_events.sql` diterapkan, daftar peristiwa tertutup, kueri lima rasio PRD §4 didokumentasikan, dan peristiwa kunjungan sungguhan terbukti masuk basis data)
+- [x] Tinjau ulang semua butir ARCHITECTURE §13 dan perbarui dokumen yang nilainya berubah. (§13 ditulis ulang; §3, §7, §8, dan §11.1 diperbarui; PRD dan DESIGN-SYSTEM tidak berubah)
 
 **Butuh dari pengguna.** Cetak satu strip dengan QR di kertas 4R dan pindai dari cetakannya. Deploy ke Vercel.
 
 **Selesai bila**
 
-- Tidak ada pelanggaran axe tingkat serius atau kritis.
-- Target PRD §8 tercapai, atau selisihnya dicatat beserta rencana.
-- QR pada cetakan asli terbaca oleh kamera HP.
-- Daftar periksa DESIGN-SYSTEM §14 lolos untuk semua halaman.
+- Tidak ada pelanggaran axe tingkat serius atau kritis. (terpenuhi: audit otomatis nol pelanggaran di sembilan halaman pada 360 dan 1280 px, plus halaman strip dan estafet ber-link di bawah gerbang `SUPABASE_E2E=1`)
+- Target PRD §8 tercapai, atau selisihnya dicatat beserta rencana. (sebagian: ekspor strip dan FCP di dalam target; LCP Welcome 3,17 detik terhadap 2,5 detik, selisih 670 ms beserta tiga langkah rencananya dicatat di `docs/DECISIONS.md` M9)
+- QR pada cetakan asli terbaca oleh kamera HP. (**menunggu pengguna**: langkahnya ada di tabel manual `docs/DECISIONS.md` M9; agent tidak bisa mencetak dan memindai)
+- Daftar periksa DESIGN-SYSTEM §14 lolos untuk semua halaman. (terpenuhi: tabel per butir di `docs/DECISIONS.md` M9, termasuk hasil zoom 200% dan temuan keyboard pada pil pilihan hiasan)

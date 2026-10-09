@@ -16,6 +16,25 @@ export default defineConfig({
         },
       },
     },
+    /* M9: lintas peramban. Hanya `crossbrowser.spec.ts` yang dijalankan di
+       sini, karena berkas lain butuh perangkat media palsu (bendera Chromium)
+       atau asersi khusus Chromium. Proyek `chromium` tetap memuat semua berkas,
+       termasuk crossbrowser.spec.ts. Edge memakai Edge yang terpasang di mesin
+       (`channel: "msedge"`). */
+    {
+      name: "firefox",
+      testMatch: "**/crossbrowser.spec.ts",
+      use: { ...devices["Desktop Firefox"] },
+    },
+    {
+      name: "webkit",
+      testMatch: "**/crossbrowser.spec.ts",
+      use: { ...devices["Desktop Safari"] },
+    },
+    /* Proyek `msedge` dilepas: `npx playwright install msedge` gagal di mesin
+       ini ("insufficient privileges") dan Edge tidak terpasang, sedangkan
+       mesinnya sama dengan Chromium. Edge sungguhan masuk tabel uji manual
+       pengguna di docs/DECISIONS.md (M9). */
   ],
   use: { baseURL: "http://localhost:3000" },
   /* Headless Chromium merender MediaPipe tanpa GPU: inisialisasi model dan

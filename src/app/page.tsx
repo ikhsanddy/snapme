@@ -12,6 +12,7 @@ import {
 
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { GalleryPicker } from "@/components/site/GalleryPicker"
+import { SessionStartPing } from "@/features/metrics/SessionStartPing"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -40,6 +41,7 @@ export default function Home() {
   return (
     <div className="stage-grid flex min-h-dvh flex-1 flex-col">
       <div className="page-container flex flex-1 flex-col gap-6 py-6">
+        <SessionStartPing />
         <SiteHeader />
 
         <main className="flex flex-1 flex-col gap-6">

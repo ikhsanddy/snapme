@@ -34,6 +34,7 @@ import { readRelayToken } from "@/features/relay/relayToken"
 import { useQrImageUrl } from "@/features/share/useQrImage"
 import { LiveStage, type LiveStageHandle } from "@/features/live/LiveStage"
 import { pickLiveKind } from "@/features/live/mediaSupport"
+import { track } from "@/lib/analytics"
 import { getLayout, type LayoutId } from "@/lib/layouts"
 import type { LiveKind } from "@/lib/schemas"
 import { countFilled, hasLiveClips, useBoothStore } from "@/stores/booth"
@@ -156,6 +157,16 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
   const [finishing, setFinishing] = useState(false)
   const [liveBusy, setLiveBusy] = useState(false)
   const [videoBusy, setVideoBusy] = useState(false)
+  /* PRD §4: rasio "sampai unduh" dihitung per sesi halaman, bukan per klik,
+     supaya tombol yang ditekan dua kali tidak melampaui penyebutnya. */
+  const downloadTracked = useRef(false)
+
+  const trackDownload = () => {
+    if (!downloadTracked.current) {
+      downloadTracked.current = true
+      track("download_png")
+    }
+  }
 
   /* M7 (SH-02, SH-03): versi hidup ikut diunggah hanya bila sakelarnya nyala di
      langkah Hias, minimal satu slot berklip, dan browsernya bisa merekam. */
@@ -300,6 +311,7 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
           : { liveUpload: created.liveUpload }),
       }
       setShareStrip({ id: created.id, expiresAt: null })
+      track("strip_link_created")
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -316,6 +328,7 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
       return
     }
     downloadStrip(dataUrl, formatStripFilename(new Date()))
+    trackDownload()
     toast.success("Strip tersimpan di perangkatmu.")
   }
 
@@ -343,6 +356,8 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
         await completeStrip(completed.stripId)
       }
       downloadStrip(dataUrl, formatStripFilename(new Date()))
+      track("relay_completed")
+      trackDownload()
       toast.success("Estafet selesai. Strip kamu ada di link pribadi.")
       /* FR-14: rekaman perangkat dihapus supaya sesi teman tidak terbawa ke
          sesi berikutnya. `reset()` tidak dipanggil di sini: mengosongkan
@@ -497,7 +512,10 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
                 variant="neutral"
                 className="w-full"
                 disabled={sheetUrl === null}
-                onClick={() => window.print()}
+                onClick={() => {
+                  track("print_4r")
+                  window.print()
+                }}
               >
                 <Printer weight="bold" className="size-[22px]" aria-hidden />
                 Cetak 4R

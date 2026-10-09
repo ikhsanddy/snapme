@@ -1,4 +1,7 @@
+import path from "node:path"
 import { expect, type Page } from "@playwright/test"
+
+const FIXTURE_DIR = path.join(process.cwd(), "e2e", "fixtures")
 
 /* Konvensi navigasi bersama untuk e2e. Berkas ini dipakai capture.spec.ts,
    customize.spec.ts, dan a11y.spec.ts supaya alur menuju tiap langkah booth
@@ -93,4 +96,71 @@ export async function masukHasil(page: Page): Promise<void> {
   await page.getByRole("link", { name: "Selesai & Unduh" }).click()
   await page.waitForURL("**/booth/result")
   await expect(page.getByAltText("Pratinjau strip")).toBeVisible()
+}
+
+/** M6: hias dengan QR menyala, jalur yang dipakai uji ber-link. */
+export async function masukHiasDenganQr(page: Page): Promise<void> {
+  await masukHias(page)
+  await page.getByRole("switch", { name: "QR di strip" }).click()
+  await expect(
+    page.getByText("Kamu akan dimintai izin unggah saat mengunduh.")
+  ).toBeVisible()
+}
+
+/** FR-13 tanpa kamera: empat berkas galeri mengisi sesi bawaan lalu langsung
+ *  masuk langkah Hias. Dipakai uji lintas peramban dan uji kinerja ekspor. */
+export async function masukHiasDariGaleri(page: Page): Promise<void> {
+  await page.goto("/")
+  await expect(page.getByRole("link", { name: "Mulai Foto" }).first()).toBeVisible()
+
+  const chooser = page.waitForEvent("filechooser")
+  await page.getByRole("button", { name: "Pakai Foto Galeri" }).click()
+  await (await chooser).setFiles(
+    ["foto-1.png", "foto-2.png", "foto-3.png", "foto-4.png"].map((nama) =>
+      path.join(FIXTURE_DIR, nama)
+    )
+  )
+  await page.waitForURL("**/booth/customize")
+  await expect(page.getByText("4 foto siap", { exact: true })).toBeVisible()
+  await expect(page.locator("canvas")).toBeVisible()
+}
+
+/** Setiap uji ber-link memakai sidang pembatasan laju sendiri supaya kuota 10
+ *  link per jam tidak dipakai bersama antar-uji maupun antar-jalankan.
+ *  `x-real-ip` memang header yang dibaca rute; di produksi diisi platform
+ *  hosting. */
+export async function pasangSidangBaru(page: Page): Promise<void> {
+  const oktet = 20 + Math.floor(Math.random() * 200)
+  await page.setExtraHTTPHeaders({ "x-real-ip": `198.51.100.${oktet}` })
+}
+
+/** M8 (SE-01, SE-02): pembuat mengisi dua foto lalu membuat link estafet;
+ *  hasilnya URL `/r/{id}`. Dipakai relay.spec.ts dan a11y.spec.ts. */
+export async function undangEstafet(page: Page): Promise<string> {
+  await pasangSidangBaru(page)
+  await masukAmbilFoto(page)
+  await izinkanKamera(page)
+  await jepret(page)
+  await jepret(page)
+  await expect(page.getByText("2/4")).toBeVisible()
+
+  await page.getByRole("button", { name: "Estafet ke Teman" }).click()
+  const dialog = page.getByRole("dialog")
+  /* SE-02: apa yang diunggah, siapa yang bisa melihat, kapan terhapus. */
+  await expect(
+    dialog.getByText("Unggah foto estafet?", { exact: true })
+  ).toBeVisible()
+  await expect(
+    dialog.getByText(/Hanya orang yang kamu kirimi link yang bisa melengkapi/)
+  ).toBeVisible()
+  await dialog.getByRole("button", { name: "Buat Link Estafet" }).click()
+
+  await expect(page.getByText("Link estafet dibuat.")).toBeVisible({
+    timeout: 30_000,
+  })
+  const alamat = page.getByTestId("relay-url")
+  await expect(alamat).toContainText("/r/")
+  const url = (await alamat.textContent())?.trim() ?? ""
+  expect(url).toMatch(/\/r\/[A-Za-z0-9_-]{12,}$/)
+  return url
 }

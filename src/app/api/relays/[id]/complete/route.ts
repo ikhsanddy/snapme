@@ -29,7 +29,13 @@ import { hashToken, newDeleteToken, newStripId, verifyToken } from "@/lib/tokens
 
    Rute ini idempoten: estafet yang sudah `complete` bisa dipanggil lagi, dan
    yang dijawab adalah strip yang sama, atau URL unggah baru bila stripnya
-   masih draf. */
+   masih draf.
+
+   Jalur pemulihan yang terakhir itu bisa dimasuki dua permintaan sekaligus,
+   jadi ia dijaga gerbang pemenang tunggal (M9): draf baru hanya dipakai
+   setelah UPDATE bersyarat `relays.strip_id is null` berhasil, dan yang kalah
+   membuang draf yatimnya. Dengan begitu satu estafet tidak pernah punya dua
+   baris strip. */
 
 const UNAVAILABLE = { error: "Pembuatan link belum tersedia." }
 const MISSING_TOKEN = { error: "Token estafet tidak ada." }
@@ -113,27 +119,171 @@ async function reissueDraftStrip(
   }
 }
 
-/** Jawaban untuk estafet yang sudah `complete`: strip yang sama bila sudah
- *  selesai, URL unggah bila masih draf, atau draf baru bila stripnya sudah
- *  dihapus. */
-async function completedResponse(admin: SupabaseClient, row: RelayRow) {
+/** Baris strip yang menunjuk balik ke estafet ini. */
+async function findRelayStrip(admin: SupabaseClient, relayId: string) {
   const { data, error } = await admin
     .from("strips")
     .select(STRIP_COLUMNS)
-    .eq("relay_id", row.id)
+    .eq("relay_id", relayId)
     .limit(1)
     .maybeSingle()
   if (error !== null) {
     throw new Error(error.message)
   }
-  const strip = data as StripRow | null
-  if (strip === null || strip.status === "deleted") {
-    return Response.json(await createDraftStrip(admin, row.id, row.layout))
+  return data as StripRow | null
+}
+
+/** Jeda singkat antar-percobaan pembacaan baris strip pemenang. */
+function pauseBeforeReread(): Promise<void> {
+  const { promise, resolve } = Promise.withResolvers<void>()
+  setTimeout(resolve, 15)
+  return promise
+}
+
+/** Baris strip pemenang gerbang `relays.strip_id`. `strip` null berarti
+ *  kolomnya menunjuk strip yang barisnya tidak ada (sudah dihapus pembersih
+ *  atau belum sempat terlihat).
+ *
+ *  Pemenang menulis gerbangnya sebelum baris stripnya terbaca, jadi baris yang
+ *  belum ada dibaca ulang beberapa kali dulu: pembacaan yang terlalu cepat
+ *  tidak boleh disalahartikan sebagai strip yang hilang, karena gerbang yang
+ *  dibuka keliru bisa melahirkan pemenang kedua. */
+async function claimedStrip(admin: SupabaseClient, relayId: string) {
+  const { data, error } = await admin
+    .from("relays")
+    .select("strip_id")
+    .eq("id", relayId)
+    .maybeSingle()
+  if (error !== null) {
+    throw new Error(error.message)
   }
-  if (strip.status === "draft") {
-    return Response.json(await reissueDraftStrip(admin, strip))
+  const stripId = (data as { strip_id: string | null } | null)?.strip_id ?? null
+  if (stripId === null) {
+    return null
   }
-  return Response.json({ stripId: strip.id, expiresAt: strip.expires_at })
+  for (let percobaan = 0; percobaan < 4; percobaan += 1) {
+    const { data: stripData, error: stripError } = await admin
+      .from("strips")
+      .select(STRIP_COLUMNS)
+      .eq("id", stripId)
+      .maybeSingle()
+    if (stripError !== null) {
+      throw new Error(stripError.message)
+    }
+    if (stripData !== null) {
+      return { id: stripId, strip: stripData as StripRow }
+    }
+    await pauseBeforeReread()
+  }
+  return { id: stripId, strip: null }
+}
+
+/** Merekam pemenang: hanya berhasil bila `strip_id` masih kosong. */
+async function claimRelayStrip(
+  admin: SupabaseClient,
+  relayId: string,
+  stripId: string
+) {
+  const { data, error } = await admin
+    .from("relays")
+    .update({ strip_id: stripId })
+    .eq("id", relayId)
+    .is("strip_id", null)
+    .select("id")
+  if (error !== null) {
+    throw new Error(error.message)
+  }
+  return (data ?? []).length > 0
+}
+
+/** Membuka gerbang bila strip pemenangnya sudah tidak ada, supaya draf
+ *  berikutnya bisa mengisi kolom yang sama. */
+async function releaseRelayStrip(
+  admin: SupabaseClient,
+  relayId: string,
+  stripId: string
+) {
+  const { error } = await admin
+    .from("relays")
+    .update({ strip_id: null })
+    .eq("id", relayId)
+    .eq("strip_id", stripId)
+  if (error !== null) {
+    throw new Error(error.message)
+  }
+}
+
+/** Membuang draf yang kalah balapan. Barisnya saja: URL unggahnya baru dibuat
+ *  dan tidak pernah dipakai klien, jadi belum ada berkas yang bisa yatim.
+ *  Kegagalannya tidak menjatuhkan jawaban, karena pemenangnya sudah punya draf
+ *  yang sah; sisa baris yatim paling lama dibersihkan pembersih draf basi. */
+async function dropDraftStrip(admin: SupabaseClient, stripId: string) {
+  try {
+    const { error } = await admin
+      .from("strips")
+      .delete()
+      .eq("id", stripId)
+      .eq("status", "draft")
+    if (error !== null) {
+      throw new Error(error.message)
+    }
+  } catch (error) {
+    console.error("Draf strip estafet yang kalah balapan gagal dibuang:", error)
+  }
+}
+
+/** Jawaban untuk strip estafet yang sudah ada: draf diterbitkan ulang
+ *  unggahannya, yang sudah selesai dijawab apa adanya. */
+async function existingStripResponse(admin: SupabaseClient, strip: StripRow) {
+  if (strip.status === "complete") {
+    return Response.json({ stripId: strip.id, expiresAt: strip.expires_at })
+  }
+  return Response.json(await reissueDraftStrip(admin, strip))
+}
+
+/** Jawaban untuk estafet yang sudah `complete`: strip yang sama bila sudah
+ *  selesai, URL unggah bila masih draf, atau draf baru bila stripnya sudah
+ *  dihapus.
+ *
+ *  Jalur "stripnya sudah dihapus" bisa dimasuki dua permintaan sekaligus
+ *  (mis. pemulihan dari dua tab), jadi draf barunya dijaga gerbang
+ *  `relays.strip_id`: pembuat draf harus memenangkan UPDATE bersyarat
+ *  `strip_id is null` sebelum drafnya dipakai. Yang kalah membuang draf
+ *  yatimnya lalu memakai draf pemenang.
+ *
+ *  Gerbangnya dibaca lebih dulu daripada pencarian lewat `relay_id`, supaya
+ *  draf yang kalah balapan tidak pernah bisa diserahkan ke klien lain
+ *  (temuan tinjauan keamanan M9): `relay_id` hanya dipakai untuk baris lama
+ *  yang belum punya gerbang. Untuk alasan yang sama, satu estafet bisa punya
+ *  lebih dari satu baris strip kalau baris lamanya adalah batu nisan
+ *  penghapusan; yang dijaga di sini adalah satu strip AKTIF per estafet. */
+async function completedResponse(admin: SupabaseClient, row: RelayRow) {
+  /* Tiga putaran: balapan biasa selesai di putaran kedua. Putaran ketiga hanya
+     terpakai bila strip pemenang dihapus di antara dua permintaan. */
+  for (let putaran = 0; putaran < 3; putaran += 1) {
+    const winner = await claimedStrip(admin, row.id)
+    if (winner !== null) {
+      if (winner.strip !== null && winner.strip.status !== "deleted") {
+        return await existingStripResponse(admin, winner.strip)
+      }
+      await releaseRelayStrip(admin, row.id, winner.id)
+      continue
+    }
+
+    /* Tanpa pemenang di gerbang: baris lama dari sebelum migrasi (atau sisa
+       yang gerbangnya sudah dibuka) boleh dipakai apa adanya. */
+    const legacy = await findRelayStrip(admin, row.id)
+    if (legacy !== null && legacy.status !== "deleted") {
+      return await existingStripResponse(admin, legacy)
+    }
+
+    const draft = await createDraftStrip(admin, row.id, row.layout)
+    if (await claimRelayStrip(admin, row.id, draft.stripId)) {
+      return Response.json(draft)
+    }
+    await dropDraftStrip(admin, draft.stripId)
+  }
+  throw new Error("Klaim strip estafet tidak menemukan pemenang.")
 }
 
 export async function POST(
@@ -235,7 +385,10 @@ export async function POST(
       return Response.json(TAKEN, { status: 409 })
     }
 
-    return Response.json(await createDraftStrip(admin, row.id, row.layout))
+    /* Draf stripnya dibuat lewat jalur yang sama dengan pemulihan: gerbang
+       `relays.strip_id` berlaku untuk keduanya, jadi penuntasan dan pemulihan
+       yang berbarengan tetap hanya menghasilkan satu draf. */
+    return await completedResponse(admin, row)
   } catch (error) {
     console.error("POST /api/relays/[id]/complete gagal:", error)
     return Response.json(FAILED, { status: 500 })

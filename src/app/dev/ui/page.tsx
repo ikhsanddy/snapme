@@ -93,13 +93,20 @@ function SwitchRow() {
   return (
     <Row label="Bawaan, hidup, dan mati">
       <div className="flex items-center gap-3">
-        <Switch checked={on} onCheckedChange={setOn} id="gesture" />
+        {/* DESIGN-SYSTEM §9: sakelar selalu punya nama aksesibel, jadi contoh
+            di galeri pun tidak boleh telanjang (temuan axe M9). */}
+        <Switch
+          checked={on}
+          onCheckedChange={setOn}
+          id="gesture"
+          aria-label="Gesture Snap"
+        />
         <span className="font-mono text-xs font-bold uppercase">
           {on ? "Nyala" : "Mati"}
         </span>
       </div>
       <div className="flex items-center gap-3">
-        <Switch checked disabled />
+        <Switch checked disabled aria-label="Strip Hidup" />
         <span className="font-mono text-xs font-bold uppercase">Nyala</span>
       </div>
     </Row>
