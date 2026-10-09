@@ -25,7 +25,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 ## Status
 
 - [x] M0 Fondasi
-- [ ] M1 Welcome dan kerangka booth
+- [x] M1 Welcome dan kerangka booth
 - [ ] M2 Kamera
 - [ ] M3 Gesture Snap
 - [ ] M4 Hias strip
@@ -91,12 +91,12 @@ Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai be
 
 **Pekerjaan**
 
-- [ ] Welcome (`/`) sebagai komponen server, mengikuti anatomi DESIGN-SYSTEM §10.1.
-- [ ] Booth Shell dan stepper (`src/app/booth/layout.tsx`).
-- [ ] `lib/layouts.ts`: geometri Strip 4 dan Strip 3 (DESIGN-SYSTEM §5) dengan uji unit bahwa jumlah pikselnya pas.
-- [ ] `/booth/layout`: pilih layout, simpan ke state sesi.
-- [ ] `stores/booth.ts` (kerangka state di ARCHITECTURE §5) dan pengalihan langkah tanpa prasyarat.
-- [ ] `/privasi`.
+- [x] Welcome (`/`) sebagai komponen server, mengikuti anatomi DESIGN-SYSTEM §10.1.
+- [x] Booth Shell dan stepper (`src/app/booth/layout.tsx`).
+- [x] `lib/layouts.ts`: geometri Strip 4 dan Strip 3 (DESIGN-SYSTEM §5) dengan uji unit bahwa jumlah pikselnya pas.
+- [x] `/booth/layout`: pilih layout, simpan ke state sesi.
+- [x] `stores/booth.ts` (kerangka state di ARCHITECTURE §5) dan pengalihan langkah tanpa prasyarat.
+- [x] `/privasi`.
 
 **Bukan bagian milestone ini.** Tombol "Pakai Foto Galeri" belum ditampilkan sampai FR-13 dikerjakan di M4.
 

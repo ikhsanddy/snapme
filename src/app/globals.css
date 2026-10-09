@@ -125,6 +125,65 @@
   background-size: 56px 56px;
 }
 
+/* DESIGN-SYSTEM §5: wadah halaman. */
+@utility page-container {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 3vw, 40px);
+}
+
+/* DESIGN-SYSTEM §6: pita papan catur di tepi atas panel hero. */
+@utility checker-ribbon {
+  height: 20px;
+  background: repeating-conic-gradient(var(--color-violet) 0% 25%, var(--color-paper) 0% 50%) 0 0 / 20px
+    20px;
+  border-bottom: 3px solid var(--color-ink);
+}
+
+/* DESIGN-SYSTEM §3: skala tipografi display. */
+@utility display-xl {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(36px, 5.2vw, 68px);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--color-pink);
+  -webkit-text-stroke: 1.5px var(--color-ink);
+  text-shadow: 4px 4px 0 var(--color-ink);
+}
+
+@utility display-lg {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-pink);
+  text-shadow: 3px 3px 0 var(--color-ink);
+}
+
+@utility heading {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(22px, 2.6vw, 32px);
+  line-height: 1.1;
+}
+
+@utility title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+/* DESIGN-SYSTEM §9 (Swatch terpilih): cincin ganda paper lalu violet. */
+@utility ring-selected {
+  box-shadow:
+    0 0 0 3px var(--color-paper),
+    0 0 0 6px var(--color-violet);
+}
+
 /* DESIGN-SYSTEM §7: semua gerak menjadi perubahan langsung. */
 @media (prefers-reduced-motion: reduce) {
   *,
