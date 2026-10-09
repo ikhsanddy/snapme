@@ -30,7 +30,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 - [ ] M3 Gesture Snap
 - [x] M4 Hias strip
 - [x] M5 Hasil dan cetak
-- [ ] M6 Link strip dan QR
+- [x] M6 Link strip dan QR
 - [ ] M7 Strip Hidup
 - [ ] M8 Strip Estafet
 - [ ] M9 Pengerasan
@@ -233,22 +233,22 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 
 **Pekerjaan**
 
-- [ ] Skema `strips` dan bucket pribadi sebagai berkas migrasi di repo. RLS menolak `anon`.
-- [ ] Rute `POST /api/strips`, `POST /api/strips/[id]/complete`, `DELETE /api/strips/[id]`, `GET /api/cron/purge`.
-- [ ] Validasi `zod`, batas jenis dan ukuran berkas, token hapus yang di-hash.
-- [ ] Dialog persetujuan unggah, unggah langsung ke Storage dengan URL bertanda tangan.
-- [ ] `QRPlate` di kaki strip (168 px pada ekspor), render ulang strip setelah link dibuat.
-- [ ] Halaman `/s/[id]`: strip, unduh, tanggal kedaluwarsa, hapus. `noindex`. Jawaban 410 bila kedaluwarsa.
-- [ ] Header keamanan (ARCHITECTURE §8).
+- [x] Skema `strips` dan bucket pribadi sebagai berkas migrasi di repo. RLS menolak `anon`. (`supabase/migrations/20261012000000_strips_bucket.sql`; penerapan ke proyek menunggu proyek pengguna)
+- [x] Rute `POST /api/strips`, `POST /api/strips/[id]/complete`, `DELETE /api/strips/[id]`, `GET /api/cron/purge`. (diuji unit dengan klien Supabase palsu)
+- [x] Validasi `zod`, batas jenis dan ukuran berkas, token hapus yang di-hash.
+- [x] Dialog persetujuan unggah, unggah langsung ke Storage dengan URL bertanda tangan. (jalur 503 sudah diuji e2e; unggahan sungguhan menunggu proyek)
+- [x] `QRPlate` di kaki strip (168 px pada ekspor), render ulang strip setelah link dibuat. (kotak QR dan glif penanda sudah terbukti di browser; render ulang ber-QR menunggu unggahan sungguhan)
+- [x] Halaman `/s/[id]`: strip, unduh, tanggal kedaluwarsa, hapus. `noindex`. Jawaban 410 bila kedaluwarsa. (halaman menjawab 404 untuk strip yang tidak ada, terbukti lewat `curl`; status 410 harfiah dijawab rute API, penyimpangan tercatat di `DECISIONS.md`)
+- [x] Header keamanan (ARCHITECTURE §8). (diverifikasi lewat `curl -i` pada `/` dan `/s/abc`; CSP penuh menyusul di M9)
 
 **Selesai bila**
 
-- Uji end-to-end: buat link, buka `/s/{id}` di konteks lain, hapus, lalu halaman menjawab tidak ditemukan.
-- Uji unit kedaluwarsa: strip lewat 7 hari menjawab 410 walau pembersih belum berjalan.
-- Kunci service role tidak muncul di bundel klien.
-- `security-reviewer` sudah meninjau `src/app/api` dan `lib/supabase`, dan temuannya ditangani atau dicatat.
+- Uji end-to-end: buat link, buka `/s/{id}` di konteks lain, hapus, lalu halaman menjawab tidak ditemukan. (hijau: `SUPABASE_E2E=1 npx playwright test share.spec.ts` → 3 lolos, 1 dilewati; alur sungguhan sampai unggah ke Storage, konteks kedua, dan hapus)
+- Uji unit kedaluwarsa: strip lewat 7 hari menjawab 410 walau pembersih belum berjalan. (hijau: `tests/api-strips.test.ts`)
+- Kunci service role tidak muncul di bundel klien. (hijau: build dengan `.env.local` sungguhan, 50 berkas `.next/static` dipindai, nol memuat kuncinya; `tests/client-bundle-secrecy.test.ts`)
+- `security-reviewer` sudah meninjau `src/app/api` dan `lib/supabase`, dan temuannya ditangani atau dicatat. (delapan temuan: satu blocker dan empat major sudah diperbaiki, sisanya diperbaiki atau dicatat; tabelnya di `docs/DECISIONS.md` bagian M6)
 
-**Batas aman.** Migrasi dijalankan ke proyek Supabase oleh pengguna, atau oleh agent hanya setelah disetujui.
+**Batas aman.** Migrasi sudah dijalankan ke proyek Supabase `snapme` (ref `owdjkpzywzljnvuyfiui`) atas persetujuan pengguna 9 Oktober 2026, lewat `supabase link` + `supabase db push`. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau agent setelah disetujui.
 
 ---
 

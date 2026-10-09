@@ -43,6 +43,7 @@ export function SessionSync() {
           stickers: record.stickers,
           texts: record.texts,
           showDate: record.showDate,
+          share: record.share,
         })
       } else if (stored !== null && record === null) {
         /* Rekaman rusak atau dari versi lain: dibuang. */

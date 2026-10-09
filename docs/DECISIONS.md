@@ -497,3 +497,143 @@ Selain uji yang sudah disebut di atas, alur berikut dijalankan langsung di Chrom
 
 1. **Dialog cetak sungguhan.** `page.pdf` membuktikan satu halaman 4 x 6 inci, tetapi dialog cetak sistem (margin printer, "fit to page") tidak bisa diverifikasi agent. Cetak satu lembar 4R dari Chrome dan pastikan tidak ada margin tambahan.
 2. **Cetak grid.** Pastikan hasil cetak grid 2 x 2 pas di kertas 4R tanpa skala tambahan dari driver printer.
+
+## M6 Link strip dan QR (9 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M6
+
+`npx skills find` dijalankan untuk tiga kata kunci milestone (`supabase`, `security`, `nextjs route handlers`):
+
+|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
+|---|---|---|---|
+|`supabase`|`supabase/agent-skills@supabase`|314,7 ribu|Tidak dipasang (diusulkan ke pengguna)|
+||`supabase/agent-skills@supabase-postgres-best-practices`|435,8 ribu|Tidak dipasang (diusulkan ke pengguna)|
+|`security`|tidak ada yang relevan di luar dua kandidat resmi di atas| |Tidak dipasang|
+|`nextjs route handlers`|`vercel-labs/agent-skills@vercel-react-best-practices`|778,6 ribu|Sudah terpasang sejak M0|
+
+**Keputusan pengguna: tidak ada pemasangan skill baru di M6.** Kedua kandidat resmi Supabase diusulkan; pengguna menolaknya, jadi rujukan yang dipakai adalah dokumentasi resmi Supabase (Storage signed upload, RLS) dan tipe paket yang terpasang di `node_modules`.
+
+### Proyek Supabase: dibuat dan dimigrasi lewat CLI (9 Oktober 2026)
+
+Proyek `snapme` dibuat dengan Supabase CLI atas persetujuan pengguna (`npx supabase projects create snapme --org-id ahxywelellcukhlekfqa --region ap-southeast-1`), ref `owdjkpzywzljnvuyfiui`. CLI sudah punya sesi login di mesin ini, jadi tidak ada token yang perlu ditempel ke repo. Selanjutnya:
+
+1. `npx supabase link --project-ref owdjkpzywzljnvuyfiui` (kata sandi basis data dibuat acak oleh agent).
+2. `npx supabase db push` → `Applying migration 20261012000000_strips_bucket.sql` … `Finished supabase db push`.
+3. `.env.local` diisi empat variabel dari `.env.example` plus `SUPABASE_DB_PASSWORD` (kata sandi basis data, hanya untuk `db push` berikutnya). Berkas itu diabaikan `.gitignore` (diperiksa dengan `git check-ignore`), jadi tidak ada rahasia yang masuk repo.
+
+Bukti pemeriksaan langsung ke proyek (klien REST dengan kunci service role):
+
+|Pemeriksaan|Hasil|
+|---|---|
+|`insert` baris uji dengan service role|201|
+|Baca `strips` dengan kunci `anon`|200 `[]` → RLS menolak `anon` (kriteria M6)|
+|Baca `strips` dengan service role|200, barisnya terlihat|
+|`GET /storage/v1/bucket/snapme`|`public: false`, `file_size_limit: 2097152`, `allowed_mime_types: ["image/png"]`|
+|Baris uji dihapus|204|
+
+`supabase/config.toml` ikut di-commit; `supabase/.temp` diabaikan `.gitignore` bawaan CLI.
+
+### Pembatasan laju di basis data, bukan di memori fungsi serverless
+
+Keputusan pengguna. Setiap instans fungsi serverless punya memorinya sendiri, jadi hitungan di memori tidak mengikat. Yang disimpan pada baris strip adalah `rate_key` = 16 karakter pertama SHA-256 dari `alamat IP + ":" + RATE_LIMIT_SALT`, dan rute `POST /api/strips` menghitung baris satu jam terakhir dengan `rate_key` yang sama (`CREATE_LIMIT` 10, `CREATE_WINDOW_MS` 1 jam). Satu kalimat ditambahkan ke halaman Privasi bagian "Kapan foto diunggah". `x-forwarded-for` diambil hop pertama; tanpa header itu (pengembangan lokal) semua permintaan memakai satu keranjang `"lokal"`.
+
+### Unggahan langsung ke Storage, verifikasi di rute `complete`
+
+URL unggah bertanda tangan tidak bisa membatasi isi berkas, jadi batas 2 MB dan jenis PNG ditegakkan setelah unggah: rute `complete` membuat URL baca 60 detik lalu `HEAD` ke berkasnya dan memeriksa `content-length` dan `content-type`. Klien juga mengirim `contentType: "image/png"` saat mengunggah. `@supabase/storage-js` ditambahkan sebagai dependensi langsung (versi 2.117.3, MIT): `StorageClient` dipakai di browser untuk `uploadToSignedUrl`, dan paket itu **tidak** di-ekspor ulang oleh `@supabase/supabase-js` (diperiksa di `dist/index.d.mts` baris 829). Kunci service role tetap tidak pernah masuk klien.
+
+### Ekspor ulang ber-QR: antrean satu jalur di `ResultView`
+
+Panggung diubah ukurannya saat ekspor, jadi dua ekspor tidak boleh berjalan bersamaan (catatan M4). M6 menambah satu antrean: `runExport` dijalankan satu per satu, kunci `layoutId|effectId|qrImageUrl` menjaga ekspor yang sama tidak diulang, dan permintaan yang datang di tengah ekspor dijalankan sekali lagi setelahnya. Rencana menaruh seluruh alur di `features/share/createStripLink.ts`; kenyataannya QR harus lebih dulu dirender React (data URL dari `useQrImageUrl`), jadi yang dipisah adalah lapisan jaringannya (`features/share/api.ts`) dan orkestrasinya tinggal di `ResultView`. Urutannya: `POST /api/strips` → token hapus disimpan di perangkat → QR digambar → ekspor ulang → unggah → `POST complete` → tanggal kedaluwarsa masuk store. Kegagalan setelah id dibuat membuang token di perangkat, mengosongkan `share.strip`, dan menampilkan toast pesan server; baris draf yatim dibersihkan cron setelah 24 jam.
+
+### Kotak QR: 168 px, zona tenang 4 modul, sudut membulat
+
+Acuan `customize.html` menggambar kotak QR 56 px pada strip 210 px (≈ 27 persen) dengan ikon Phosphor di dalamnya, dan `StripStage` mengikuti proporsi itu (168 px pada kanvas 600 px). Dua penyesuaian dari rencana:
+
+1. **Zona tenang 4 modul di dalam kotak 168 px** (`margin: 4` pada `qrcode`), bukan 2 modul. Kotak QR tepat sebesar gambarnya, sedangkan latar strip bisa gelap (frame "Malam"), jadi zona tenang tidak boleh bergantung pada latar luar.
+2. **Sudut kotak membulat 16 px** dengan gambar QR terjepit mengikutinya, sama seperti acuan. Jepitan itu hanya memakan zona tenang, jadi modul QR tidak tersentuh.
+
+Glif penanda di dalam kotak disalin dari atribut `d` ikon `QrCode` bobot bold `@phosphor-icons/react` (viewBox 0 0 256 256) dengan komentar asalnya: Konva tidak bisa merender komponen React, dan §8 melarang menggambar path ikon sendiri. Glif hanya muncul di kanvas Hias (perilaku acuan); di langkah Hasil kotak QR baru digambar setelah QR sungguhan ada, supaya strip yang diunduh tanpa link tidak pernah berisi glif penanda.
+
+### Penyimpangan M6
+
+|Hal|Dokumen atau acuan|Kenyataan|Tindakan|
+|---|---|---|---|
+|Status 410 dari halaman `/s/[id]`|SH-05 dan MILESTONES M6: "jawaban 410 bila kedaluwarsa"|App Router tidak bisa memasang status pada halaman yang sudah dirender|Halaman merender tampilan kedaluwarsa ber-`noindex`; status 410 harfiah dijawab rute API (`complete` dan `DELETE`, diuji unit). Fallback `middleware` tidak dipakai karena tidak ada kebutuhan nyata. **Dikonfirmasi pengguna 9 Oktober 2026**|
+|Rute blocking `/s/[id]`|Rencana: `await connection()` di halaman|Next 16 Cache Components menolak akses data runtime di luar `<Suspense>`; halaman ini isinya seluruhnya satu baris basis data, jadi tidak ada bagian statis yang berguna untuk di-stream|`export const instant = false` (rute blocking) supaya `notFound()` benar-benar menjawab 404, bukan 200 yang menyusul tampilan tidak ditemukan di tengah aliran. Dibuktikan `curl -i /s/abc` → 404. **Dikonfirmasi pengguna 9 Oktober 2026**|
+|Tipe konteks route handler|Rencana: `RouteContext<'/jalur'>`|`RouteContext` baru ada setelah `.next/types` dibuat (`.next` tidak di-commit)|Konteks ditulis `{ params: Promise<{ id: string }> }` seperti contoh dokumentasi Next, jadi `npm run typecheck` tidak bergantung hasil typegen|
+|Tombol "Unduh" di `/s/[id]`|Rencana: `secondary lg`|§14 menuntut tepat satu aksi `primary` per layar, dan halaman ini tidak punya aksi lain|"Unduh" menjadi `primary lg`|
+|Baris atas `/s/[id]` dan 404|Rencana: `SiteHeader`|`SiteHeader` selalu membawa CTA "Mulai Foto", jadi labelnya muncul dua kali di layar yang aksinya sudah dipegang panel|`SiteHeader` menerima `ctaVariant="none"`; kedua halaman memakainya|
+|Nama berkas unduhan di `/s/[id]`|FR-11: `snapme-YYYYMMDD-HHmm.png`|Halaman ini tidak tahu waktu pengambilan foto; yang diketahui hanya id strip|`snapme-{id}.png` lewat parameter `download` URL bertanda tangan|
+|Kartu bagikan di langkah Hasil|§9 dan acuan tidak memuat kartu untuk langkah Hasil|SH-04 menuntut persetujuan unggah dan link yang bisa disalin|Kartu `radius-card` bergaris sama seperti kartu QR di Hias: keadaan belum ada link, sedang dibuat, dan sudah jadi (alamat, salin, tanggal kedaluwarsa). Tidak ada aksi `tangerine` baru|
+|CSP|ARCHITECTURE §8 menyebut CSP|MediaPipe butuh `wasm-unsafe-eval`; tanpa CSP pun wasm satu origin sudah berjalan, dan aturan penuh dijadwalkan M9|Yang dipasang sekarang: `Permissions-Policy: camera=(self)`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` (khusus `/s` dan `/r`: `no-referrer`), `X-Robots-Tag: noindex`, dan `Content-Security-Policy: frame-ancestors 'none'` untuk `/s` dan `/r`. CSP penuh menyusul di M9|
+|Tombol hapus di `/s/[id]`|Rencana: `readStripToken(id)` lalu `null` bila tidak ada|Membaca localStorage saat render membuat penanda server dan hasil hidrasi berbeda|Token dibaca lewat `useSyncExternalStore` (snapshot server `null`), lalu token diteruskan sebagai argumen ke handler hapus|
+|Placeholder QR di Hias vs Hasil|Acuan menampilkan kotak QR begitu sakelarnya nyala|Strip yang diunduh tidak boleh berisi glif penanda|Kanvas Hias menampilkan glif (perilaku acuan), kanvas ekspor di Hasil hanya menampilkan QR sungguhan|
+
+### Pre-Flight Check taste-skill untuk permukaan M6
+
+Design Read dan dial dinyatakan sebelum menulis kode UI (DESIGN-SYSTEM §0): consumer photobooth web app untuk pelajar dan mahasiswa Indonesia, playful Y2K neo-brutalist, shadcn/ui + Tailwind v4 yang di-restyle dengan token DESIGN-SYSTEM.md; `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`.
+
+Permukaan yang dapat perlakuan penuh: halaman `/s/[id]` (berikut tampilan kedaluwarsanya) dan halaman 404. Kartu bagikan di langkah Hasil hanya mengikuti pagar umum (state lengkap, kontras, `prefers-reduced-motion`, larangan pola klise).
+
+|Pemeriksaan|Hasil|
+|---|---|
+|Nol em dash dan en dash di teks antarmuka|Lolos: pencarian karakter itu di `src/` tidak menemukan satu pun|
+|Satu label per maksud|Lolos setelah satu perbaikan: tombol pemicu dan tombol konfirmasi dialog semula "Buat Link dan Unggah" dan "Unggah dan Buat Link"; keduanya kini "Buat Link dan Unggah". Label tetap §12 tidak berubah|
+|Tepat satu aksi `primary` per layar|Lolos: `/s/[id]` aktif → "Unduh"; kedaluwarsa → "Mulai Foto"; 404 → "Mulai Foto"; langkah Hasil tetap "Selesai & Unduh" (kartu bagikan memakai `secondary` dan `neutral`)|
+|Pasangan warna hanya dari tabel §2|Lolos: `ink` di `paper`, `lime`, `violet-soft`; `paper` di `violet`; `muted` di `paper`; `danger` di `paper`. Tidak ada nilai mentah baru (pencarian heks di `src/` hanya menemukan `globals.css`)|
+|Kontras kontrol|Lolos: sakelar memakai pasangan §9 (`violet` nyala, `cream` mati) dengan teks keadaan di kartu, tombol `neutral` `ink` di atas `paper`|
+|Hitungan `label` huruf besar|Lolos: satu label di `/s/[id]` (tautan "Privasi" di baris atas), batas `ceil(4 bagian / 3)` = 2|
+|Tanpa pola klise|Lolos: bukan tiga kartu sama lebar, tanpa gradasi hiasan, tanpa Inter, tanpa hero tengah|
+|`prefers-reduced-motion`|Lolos: M6 tidak menambah gerak baru; aturan global `globals.css` tetap mematikan transisi dan animasi|
+|Gambar nyata|Lolos: satu-satunya gambar di `/s/[id]` adalah strip milik pengguna sendiri dari Storage; tidak ada foto contoh|
+|Keadaan memuat, kosong, galat, nonaktif|Lolos: kartu bagikan punya empat keadaan (belum ada link, menyiapkan, mengunggah, siap), tombol nonaktif saat sibuk, galat lewat toast dan pesan di rel kanan, halaman strip punya keadaan kedaluwarsa dan 404|
+|Keyboard dan cincin fokus|Lolos: dialog dan sakelar dari Radix (fokus terkurung, Esc menutup), semua kontrol memakai `Button`/`Switch` bergaya §9; pemindaian axe pada halaman 404 di 360 dan 1280 px nol pelanggaran (`e2e/a11y.spec.ts`)|
+|Rapi pada 360, 768, dan 1280 px|Lolos untuk 404 dan kartu QR (diukur pada 360 dan 1280). Halaman strip berisi data belum bisa dirender tanpa proyek Supabase, jadi pembandingan lebar ketiganya menyusul bersama e2e ber-link|
+|Pre-Flight Check untuk `/s/{id}`|Dijalankan pada halaman yang bisa dirender sekarang (404 dan pemberitahuan kedaluwarsa); tampilan strip berisi data diperiksa lagi setelah proyek ada|
+
+### Bukti browser M6
+
+|Pemeriksaan|Bukti|
+|---|---|
+|Sakelar QR di Hias|Sakelar `switch` "QR di strip" menyala, pemberitahuan lime "Kamu akan dimintai izin unggah saat mengunduh." tampil, dan sidik jari kanvas berubah (kotak QR + glif tergambar). Uji 1 `e2e/share.spec.ts`|
+|Persetujuan unggah|Dialog "Unggah strip?" menyebut apa yang diunggah, siapa yang bisa melihat, dan masa 7 hari. Uji 2 `e2e/share.spec.ts`|
+|Tanpa proyek Supabase|Klik "Buat Link dan Unggah" menjawab 503 dan menampilkan "Pembuatan link belum tersedia."; kartu kembali menawarkan unggah. Uji 2 `e2e/share.spec.ts` (dilewati saat `.env.local` sudah ada)|
+|Alur ber-link sungguhan|`SUPABASE_E2E=1 npx playwright test share.spec.ts` → 3 lolos, 1 dilewati (uji 503). Uji 4: buat link (unggah PNG ber-QR ke Storage lewat URL bertanda tangan), toast "Link strip dibuat.", alamat `/s/{id}` dan tanggal kedaluwarsa tampil, konteks browser kedua membuka alamat itu dan melihat stripnya tanpa tombol "Hapus strip", lalu pemilik menghapus dan halaman menjawab 404. Baris `complete` dan batu nisan `deleted` terlihat di basis data setelah uji|
+|Berkas sisa uji dibersihkan|Setelah uji, sisa baris dan berkas di Storage dihapus manual lewat klien REST; `strips` kembali kosong|
+|Halaman strip yang tidak ada|`curl -i http://localhost:3000/s/abc` → `404 Not Found` dengan `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex`, `Content-Security-Policy: frame-ancestors 'none'`, `Permissions-Policy: camera=(self)`; `/` tetap `strict-origin-when-cross-origin`|
+|Kunci service role tidak di bundel klien|Build dengan `.env.local` sungguhan: 50 berkas di `.next/static` dipindai, nol memuat kunci service role, sedangkan `NEXT_PUBLIC_SUPABASE_URL` memang ada (memang publik, jadi pemindaiannya terbukti sanggup menemukan nilai yang bocor). `tests/client-bundle-secrecy.test.ts` juga memeriksa tidak ada berkas `"use client"` yang mengimpor `lib/supabase/server`|
+
+### Perbandingan berdampingan kartu QR dengan `customize.html`
+
+Diukur dengan `getComputedStyle` di Chromium pada 360 dan 1280 px (skrip sementara, tidak disimpan di repo).
+
+|Bagian|Acuan|Produk|
+|---|---|---|
+|Kartu|`paper`, garis 2 `ink`, radius 14, padding 16|sama persis|
+|Judul|Unbounded 800 16 px|sama persis|
+|Paragraf isi|Space Grotesk 400 15 px, tinggi baris 21 px|Space Grotesk **500** 15 px, tinggi baris 21 px. §3 menetapkan teks isi 500, jadi dokumen yang menang|
+|Pemberitahuan izin|`lime`, garis 2 `ink`, radius 10, padding 8 10, 14 px|sama persis|
+|Sakelar|56 x 32, radius 999|sama persis|
+
+### Tinjauan `security-reviewer` (M6)
+
+Subagent `security-reviewer` (baca-saja) meninjau `src/app/api`, `src/lib/supabase`, `src/lib/tokens.ts`, `src/lib/rateLimit.ts`, `src/lib/expiry.ts`, `src/features/share`, migrasi, `next.config.ts`, dan `vercel.json`. Delapan temuan, semuanya ditangani sebelum commit:
+
+|#|Tingkat|Temuan|Tindakan|
+|---|---|---|---|
+|1|blocker|`POST /api/strips` menghitung `still_path` hanya untuk URL unggah dan **tidak menulisnya ke baris**, sedangkan rute `complete` menolak baris ber-`still_path` null. Alur ber-link selalu gagal 422, dan berkas yang terunggah tidak punya jejak untuk dihapus. Uji unit tidak menangkapnya karena klien palsu menambal `still_path` di setiap baris|`still_path` ditulis sejak pembuatan. Klien palsu tidak lagi menambal kolom itu (hanya nilai bawaan kolom), dan uji "membuat baris draf" sekarang memeriksanya|
+|2|major|Bucket tidak punya `file_size_limit` dan `allowed_mime_types`, jadi URL unggah menerima berkas jauh di atas 2 MB dan berkas yang ditolak 422 tidak dibuang|Migrasi memasang `file_size_limit` 2 MB dan `allowed_mime_types` `image/png` (dengan `on conflict do update`); rute `complete` membuang berkas yang ditolak dan membandingkan jenis persis (`image/pngx` tidak lolos lagi)|
+|3|major|Token unggah berlaku sekitar 2 jam dan Storage tidak melihat tabel: berkas bisa diunggah setelah barisnya dihapus, dan tidak ada yang pernah membersihkannya|`DELETE` tidak lagi menghapus barisnya, melainkan menjadikannya batu nisan `status = 'deleted'` dengan `expires_at = now + 3 jam` (lebih lama dari token unggah). Pembersih harian membuang baris dan berkasnya setelah masa tenggang itu; `/s/[id]` hanya menerima `complete`, jadi strip yang dihapus tetap 404|
+|4|major|Kuota pembatasan laju dihitung dari baris `strips`, sedangkan `DELETE` menghapus baris itu: siklus buat-hapus-buat mengembalikan kuota tanpa batas|Batu nisan temuan 3 sekaligus menutup ini: baris `deleted` tetap ikut dihitung selama jendela satu jam, dan masa tenggangnya (3 jam) lebih panjang dari jendela|
+|5|major|Periksa-dulu-lalu-sisip tidak atomik: permintaan serentak semuanya melihat hitungan di bawah batas|Urutannya dibalik menjadi hitung-setelah-sisip: baris baru disisipkan, dihitung, dan dibuang lagi bila kuota sudah lewat. Overshoot hanya mungkin beberapa baris pada balapan sempit, bukan seluruh burst|
+|6|minor|Sidang alamat IP diambil dari hop pertama `x-forwarded-for`, yang bisa dipalsukan klien bila proxy hanya menambahkan|`x-real-ip` (diisi platform hosting, Vercel menimpanya) dipakai lebih dulu; `x-forwarded-for` hop pertama hanya cadangan. Diuji: header `x-forwarded-for` palsu tidak memindahkan keranjang saat `x-real-ip` ada. Bila kelak di-host sendiri, semantik proxy-nya wajib diperiksa lagi|
+|7|minor|`POST /api/strips` menerima `content-type` apa pun, jadi halaman lintas situs bisa membakar kuota pengunjung lewat `fetch` `no-cors` atau form biasa|Rute menolak permintaan yang bukan `application/json`|
+|8|minor|Garam pembatasan laju kosong diam-diam memakai `"dev-garam"`, dan sidangnya bisa dibalik dengan menebak ruang alamat IPv4|`rateKeyFor` mengembalikan `null` tanpa garam, dan rutenya menjawab 503 (aplikasi tetap jalan tanpa proyek maupun garam)|
+
+Kategori yang dinyatakan bersih oleh peninjau: entropi dan perbandingan token, pemeriksaan otorisasi tiap rute, RLS dan model kapabilitas URL bertanda tangan, autentikasi cron, XSS/injeksi di halaman `/s/[id]` (id dan URL bertanda tangan dirender sebagai atribut), dan kebocoran pesan galat.
+
+### Uji manual yang perlu dilengkapi pengguna
+
+1. **Pindai QR dari cetakan.** Pengguna melaporkan sudah mencoba cetak dan pindai (9 Oktober 2026), tanpa rincian perangkat dan berapa yang berhasil. Karena strip ber-QR baru bisa diekspor setelah alur link berjalan hari ini, ulangi sekali dengan strip ber-link sungguhan (frame "Malam" sekaligus frame terang) dan catat perangkatnya; hasilnya menggantikan baris ini. Tetap syarat rilis M9.
+2. **Jadwal cron.** `vercel.json` memasang pembersih harian 03:00 UTC. Deploy baru terjadi di M9, jadi jalannya cron belum pernah terlihat. Pembersihnya sendiri sudah diuji unit (baris kedaluwarsa, draf basi, batu nisan).
+3. **Kata sandi basis data.** Dibuat acak oleh agent dan disimpan di `.env.local` (tidak di-commit). Simpan di pengelola kata sandi pengguna; kalau hilang, reset dari dasbor Supabase lalu perbarui `.env.local`.

@@ -9,6 +9,7 @@ import type { Stage as KonvaStage } from "konva/lib/Stage"
 import { BoothPanel } from "@/components/booth/BoothPanel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import {
   Drawer,
   DrawerContent,
@@ -23,8 +24,8 @@ import StripCanvas from "./StripCanvas"
 import { getEffect, getFrame } from "./presets"
 
 /* DESIGN-SYSTEM §10.3: halaman Hias Strip. Rel kiri pilihan hias (lembar bawah
-   di layar sempit), tengah kanvas strip, rel kanan ringkasan dan aksi utama.
-   Kartu Strip Hidup dan QR di strip menyusul di M6 dan M7.
+   di layar sempit), tengah kanvas strip, rel kanan kartu QR di strip, ringkasan,
+   dan aksi utama. Kartu Strip Hidup menyusul di M7.
    Berkas ini dan seluruh isi `features/editor` hanya dimuat lewat import()
    dinamis dari halaman, supaya Konva tidak ikut bundel `/` dan `/booth/capture`. */
 
@@ -33,6 +34,9 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
   const frameId = useBoothStore((state) => state.frameId)
   const effectId = useBoothStore((state) => state.effectId)
   const stickers = useBoothStore((state) => state.stickers)
+  const qrEnabled = useBoothStore((state) => state.share.qrEnabled)
+  const shareStrip = useBoothStore((state) => state.share.strip)
+  const setQrEnabled = useBoothStore((state) => state.setQrEnabled)
 
   const stageRef = useRef<KonvaStage>(null)
   const groupRef = useRef<KonvaGroup>(null)
@@ -83,6 +87,42 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
         }
         right={
           <>
+            {/* SH-04: kartu QR di strip. Teksnya dari docs/ui-reference/
+                customize.html; tidak ada aksi `tangerine` baru di sini supaya
+                satu aksi utama per layar tetap "Selesai & Unduh". */}
+            <div className="flex flex-col gap-2 rounded-card border-2 border-ink bg-paper p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-base font-extrabold">
+                  QR di strip
+                </h2>
+                <Switch
+                  checked={qrEnabled || shareStrip !== null}
+                  disabled={shareStrip !== null}
+                  onCheckedChange={setQrEnabled}
+                  aria-label="QR di strip"
+                />
+              </div>
+              <p className="text-[15px] leading-[1.4]">
+                QR membuka halaman strip. Fotomu diunggah ke link pribadi dan
+                terhapus otomatis setelah 7 hari.
+              </p>
+              {shareStrip !== null ? (
+                <p
+                  role="status"
+                  className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
+                >
+                  Link sudah dibuat di langkah Hasil.
+                </p>
+              ) : qrEnabled ? (
+                <p
+                  role="status"
+                  className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
+                >
+                  Kamu akan dimintai izin unggah saat mengunduh.
+                </p>
+              ) : null}
+            </div>
+
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[15px]">
               <dt className="self-center font-mono text-xs font-bold tracking-[0.06em] text-muted uppercase">
                 Frame

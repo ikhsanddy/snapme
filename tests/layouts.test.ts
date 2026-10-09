@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 
-import { LAYOUTS, getLayout, type LayoutId } from "@/lib/layouts"
+import {
+  footerTextWidth,
+  getLayout,
+  LAYOUTS,
+  QR_GAP,
+  QR_SIZE,
+  qrRect,
+  type LayoutId,
+} from "@/lib/layouts"
 
 const IDS: LayoutId[] = ["strip-4", "strip-3"]
 
@@ -113,5 +121,48 @@ describe("layout grid 2 x 2", () => {
     expect(layout.footerRect.y + layout.footerRect.height).toBe(
       layout.canvas.height
     )
+  })
+})
+
+/* SH-04: QR 168 x 168 px di kanan kaki strip, 16 px dari kotak teks. */
+describe("geometri QR di kaki strip", () => {
+  it("kotak QR 168 px dan menempel tepi kanan kaki", () => {
+    for (const id of ["strip-4", "strip-3", "grid-2x2"] as LayoutId[]) {
+      const layout = getLayout(id)
+      const kotak = qrRect(layout)
+
+      expect(kotak.width).toBe(QR_SIZE)
+      expect(kotak.height).toBe(QR_SIZE)
+      expect(kotak.x + kotak.width).toBe(
+        layout.footerRect.x + layout.footerRect.width
+      )
+      /* Tegak lurus di tengah kaki strip. */
+      expect(kotak.y + kotak.height / 2).toBe(
+        layout.footerRect.y + layout.footerRect.height / 2
+      )
+      expect(kotak.y).toBeGreaterThanOrEqual(layout.footerRect.y)
+      expect(kotak.y + kotak.height).toBeLessThanOrEqual(
+        layout.footerRect.y + layout.footerRect.height
+      )
+    }
+  })
+
+  it("posisi QR sama dengan angka di rencana M6", () => {
+    expect(qrRect(getLayout("strip-4"))).toMatchObject({ x: 396, y: 1614 })
+    expect(qrRect(getLayout("grid-2x2"))).toMatchObject({ x: 984, y: 1596 })
+  })
+
+  it("kotak teks menyempit tepat selebar kaki dikurangi QR dan jaraknya", () => {
+    for (const id of ["strip-4", "grid-2x2"] as LayoutId[]) {
+      const layout = getLayout(id)
+      expect(footerTextWidth(layout, false)).toBe(layout.footerRect.width)
+      expect(footerTextWidth(layout, true)).toBe(
+        layout.footerRect.width - QR_SIZE - QR_GAP
+      )
+      /* Kotak teks tidak boleh menyentuh QR. */
+      expect(
+        layout.footerRect.x + footerTextWidth(layout, true) + QR_GAP
+      ).toBe(qrRect(layout).x)
+    }
   })
 })

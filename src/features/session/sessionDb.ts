@@ -1,7 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb"
 
 import { LAYOUTS, type LayoutId } from "@/lib/layouts"
-import type { Shot, StickerInstance, StripText } from "@/stores/booth"
+import type { ShareState, Shot, StickerInstance, StripText } from "@/stores/booth"
 
 /* FR-14: sesi bertahan saat halaman dimuat ulang. Hanya state yang perlu
    dipulihkan yang disimpan; pengaturan perangkat punya jalurnya sendiri
@@ -24,6 +24,10 @@ export interface SessionRecord {
   stickers: StickerInstance[]
   texts: StripText[]
   showDate: boolean
+  /** M6: pilihan QR dan id link. Token hapus sengaja tidak ikut; ia tinggal di
+   *  localStorage (`features/share/stripToken.ts`), jadi rekaman ini tidak
+   *  berisi rahasia. */
+  share: ShareState
 }
 
 /** Bagian state sesi yang disimpan. `settings` dan `sessionReady` bukan milik
@@ -37,6 +41,7 @@ export type SessionState = Pick<
   | "stickers"
   | "texts"
   | "showDate"
+  | "share"
 >
 
 interface SessionDb extends DBSchema {
@@ -96,6 +101,36 @@ function isText(value: unknown): value is StripText {
   )
 }
 
+/* Panjang id yang diterima: nanoid saat ini 12 karakter, dan rentang ini
+   memberi ruang bila panjangnya berubah tanpa melemahkan pemeriksaan. */
+const SHARE_ID_MIN = 8
+const SHARE_ID_MAX = 32
+
+function isShare(value: unknown): value is ShareState {
+  if (typeof value !== "object" || value === null) {
+    return false
+  }
+  const share = value as Record<string, unknown>
+  if (typeof share.qrEnabled !== "boolean") {
+    return false
+  }
+  if (share.strip === null) {
+    return true
+  }
+  if (typeof share.strip !== "object") {
+    return false
+  }
+  const strip = share.strip as Record<string, unknown>
+  if (
+    typeof strip.id !== "string" ||
+    strip.id.length < SHARE_ID_MIN ||
+    strip.id.length > SHARE_ID_MAX
+  ) {
+    return false
+  }
+  return strip.expiresAt === null || typeof strip.expiresAt === "string"
+}
+
 export function serializeSession(state: SessionState): SessionRecord {
   return {
     version: SESSION_VERSION,
@@ -106,6 +141,7 @@ export function serializeSession(state: SessionState): SessionRecord {
     stickers: state.stickers,
     texts: state.texts,
     showDate: state.showDate,
+    share: state.share,
   }
 }
 
@@ -152,6 +188,12 @@ export function validateRecord(value: unknown): SessionRecord | null {
   if (typeof record.showDate !== "boolean") {
     return null
   }
+  /* Rekaman sebelum M6 tidak punya `share`; bentuknya diterima apa adanya
+     dengan nilai awal, jadi versi rekaman tidak perlu dinaikkan. */
+  const share = record.share
+  if (share !== undefined && !isShare(share)) {
+    return null
+  }
 
   return {
     version: SESSION_VERSION,
@@ -162,6 +204,7 @@ export function validateRecord(value: unknown): SessionRecord | null {
     stickers: record.stickers as StickerInstance[],
     texts: record.texts as StripText[],
     showDate: record.showDate,
+    share: share === undefined ? { qrEnabled: false, strip: null } : share,
   }
 }
 
