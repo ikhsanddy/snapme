@@ -73,6 +73,17 @@ export interface LiveState {
   enabled: boolean
 }
 
+/** M8 (SE-04, SE-05, SE-10): irisan Strip Estafet. `lockedSlots` berisi indeks
+ *  slot milik pihak lain yang tidak boleh diubah dari perangkat ini;
+ *  `ghostEnabled` adalah sakelar bayangan pose teman di pratinjau kamera.
+ *  `role` menentukan siapa yang boleh menuntaskan unggahan di langkah Hasil. */
+export interface RelaySession {
+  id: string
+  role: "host" | "guest"
+  lockedSlots: number[]
+  ghostEnabled: boolean
+}
+
 /** Perubahan yang boleh ditulis balik dari kanvas atau daftar "Isi strip". */
 export type StickerPatch = Partial<
   Pick<StickerInstance, "x" | "y" | "rotation" | "width">
@@ -98,6 +109,10 @@ interface BoothState extends EditorState {
   settings: BoothSettings
   share: ShareState
   live: LiveState
+  relay: RelaySession | null
+  /** M8 (SE-10): sesi yang dibuka dari estafet yang sudah selesai. Hanya
+   *  lokal: tidak ada unggahan baru, jadi kartu bagikan dan QR disembunyikan. */
+  localOnly: boolean
   /** FR-14: `true` setelah SessionSync selesai membaca IndexedDB. Bukan milik
    *  rekaman dan tidak direset, supaya gerbang langkah booth menunggu, bukan
    *  memantul lebih dulu. */
@@ -118,6 +133,9 @@ interface BoothState extends EditorState {
   setQrEnabled: (enabled: boolean) => void
   setShareStrip: (strip: ShareState["strip"]) => void
   setLiveEnabled: (enabled: boolean) => void
+  setRelay: (relay: RelaySession | null) => void
+  setGhostEnabled: (enabled: boolean) => void
+  setLocalOnly: (localOnly: boolean) => void
   reset: () => void
 }
 
@@ -158,6 +176,8 @@ function freshState() {
     showDate: false,
     share: { qrEnabled: false, strip: null },
     live: { enabled: false },
+    relay: null as RelaySession | null,
+    localOnly: false,
   }
 }
 
@@ -299,6 +319,14 @@ export const useBoothStore = create<BoothState>((set) => ({
   setShareStrip: (strip) =>
     set((state) => ({ share: { ...state.share, strip } })),
   setLiveEnabled: (enabled) => set({ live: { enabled } }),
+  setRelay: (relay) => set({ relay }),
+  setGhostEnabled: (enabled) =>
+    set((state) =>
+      state.relay === null
+        ? {}
+        : { relay: { ...state.relay, ghostEnabled: enabled } }
+    ),
+  setLocalOnly: (localOnly) => set({ localOnly }),
   reset: () =>
     set((state) => {
       closeShotClips(state.shots)

@@ -46,15 +46,17 @@ export function rateKeyFor(clientKey: string): string | null {
 }
 
 /** Jumlah pembuatan link dalam jendela terakhir untuk sidang ini, dihitung
- *  dari baris yang ada di tabel (termasuk draf dan batu nisan). */
+ *  dari baris yang ada di tabel (termasuk draf dan batu nisan). M8: tabelnya
+ *  dipilih pemanggil, karena estafet memakai kuota terpisah dari strip. */
 export async function countRecentCreations(
   admin: SupabaseClient,
+  table: "strips" | "relays",
   rateKey: string,
   now: Date
 ): Promise<number> {
   const since = new Date(now.getTime() - CREATE_WINDOW_MS).toISOString()
   const { count, error } = await admin
-    .from("strips")
+    .from(table)
     .select("id", { count: "exact", head: true })
     .eq("rate_key", rateKey)
     .gt("created_at", since)

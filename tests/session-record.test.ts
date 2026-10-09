@@ -21,6 +21,8 @@ function validState(): SessionState {
     texts: [{ id: "t1", value: "halo", x: 300, y: 1696, rotation: 0, fontSize: 44 }],
     showDate: true,
     share: { qrEnabled: true, strip: { id: "stripid12345", expiresAt: null } },
+    relay: null,
+    localOnly: false,
   }
 }
 

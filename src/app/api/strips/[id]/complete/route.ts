@@ -7,6 +7,7 @@ import {
   STORAGE_BUCKET,
 } from "@/lib/schemas"
 import { getSupabaseAdmin } from "@/lib/supabase/server"
+import { verifyStoredFile } from "@/lib/supabase/storage"
 import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
 
 /* ARCHITECTURE §7: POST /api/strips/[id]/complete memverifikasi berkas yang
@@ -56,35 +57,16 @@ export async function POST(
     if (row.status === "complete") {
       return Response.json({ id, expiresAt: row.expires_at })
     }
-    if (row.still_path === null) {
-      return Response.json(FILE_REJECTED, { status: 422 })
-    }
     const stillPath = row.still_path
-
-    const { data: signed, error: signError } = await admin.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(stillPath, 60)
-    if (signError !== null || signed === null) {
-      return Response.json(FILE_REJECTED, { status: 422 })
-    }
-
-    const head = await fetch(signed.signedUrl, { method: "HEAD" })
-    const byteLength = Number(head.headers.get("content-length") ?? "0")
-    /* Jenis persis, bukan awalan: "image/pngx" juga diawali "image/png". */
-    const mediaType = (head.headers.get("content-type") ?? "")
-      .split(";")[0]
-      .trim()
-      .toLowerCase()
     if (
-      !head.ok ||
-      !Number.isFinite(byteLength) ||
-      byteLength <= 0 ||
-      byteLength > STILL_BYTE_LIMIT ||
-      mediaType !== STILL_MIME
+      stillPath === null ||
+      !(await verifyStoredFile(admin, stillPath, STILL_BYTE_LIMIT, [STILL_MIME]))
     ) {
       /* Berkas yang ditolak langsung dibuang supaya tidak menumpuk di Storage;
          batas ukuran dan jenis juga ditegakkan bucket (migrasi M6). */
-      await admin.storage.from(STORAGE_BUCKET).remove([stillPath])
+      if (stillPath !== null) {
+        await admin.storage.from(STORAGE_BUCKET).remove([stillPath])
+      }
       return Response.json(FILE_REJECTED, { status: 422 })
     }
 
@@ -96,26 +78,12 @@ export async function POST(
     let liveInvalid = false
     const livePath = row.live_path
     if (livePath !== null) {
-      const { data: liveSigned, error: liveSignError } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrl(livePath, 60)
-      if (liveSignError !== null || liveSigned === null) {
-        liveInvalid = true
-      } else {
-        const liveHead = await fetch(liveSigned.signedUrl, { method: "HEAD" })
-        const liveBytes = Number(liveHead.headers.get("content-length") ?? "0")
-        const liveType = (liveHead.headers.get("content-type") ?? "")
-          .split(";")[0]
-          .trim()
-          .toLowerCase()
-        liveInvalid = !(
-          liveHead.ok &&
-          Number.isFinite(liveBytes) &&
-          liveBytes > 0 &&
-          liveBytes <= LIVE_BYTE_LIMIT &&
-          LIVE_MEDIA_TYPES[liveType] === true
-        )
-      }
+      liveInvalid = !(await verifyStoredFile(
+        admin,
+        livePath,
+        LIVE_BYTE_LIMIT,
+        Object.keys(LIVE_MEDIA_TYPES)
+      ))
       if (liveInvalid) {
         try {
           await admin.storage.from(STORAGE_BUCKET).remove([livePath])

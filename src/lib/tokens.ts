@@ -14,6 +14,13 @@ export function newStripId(): string {
   return nanoid(STRIP_ID_LENGTH)
 }
 
+/** M8: ID link estafet. Panjangnya sama dengan ID strip (ARCHITECTURE §8:
+ *  nanoid 12 karakter atau lebih), tapi konsepnya berbeda: relay adalah baris
+ *  sendiri, bukan strip. */
+export function newRelayId(): string {
+  return nanoid(STRIP_ID_LENGTH)
+}
+
 export function newDeleteToken(): string {
   return randomBytes(TOKEN_BYTES).toString("base64url")
 }

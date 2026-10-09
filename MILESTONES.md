@@ -32,7 +32,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 - [x] M5 Hasil dan cetak
 - [x] M6 Link strip dan QR
 - [x] M7 Strip Hidup
-- [ ] M8 Strip Estafet
+- [x] M8 Strip Estafet
 - [ ] M9 Pengerasan
 
 Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai berarti" di `AGENTS.md` terpenuhi.
@@ -291,19 +291,23 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 
 **Pekerjaan**
 
-- [ ] Skema `relays` sebagai migrasi. Rute `POST /api/relays`, `claim`, `complete`, `DELETE`.
-- [ ] `RelayInviteCard`, dialog persetujuan, bagikan lewat Web Share API atau salin.
-- [ ] Halaman `/r/[id]`: foto yang sudah ada, slot terkunci, ambil giliran.
-- [ ] Overlay bayangan 35% di pratinjau kamera teman, dengan sakelar.
-- [ ] Giliran hanya bisa diambil sekali (dijamin di basis data, bukan hanya di klien).
-- [ ] Status pembuat: "Menunggu teman", "Selesai". Batalkan dan hapus.
-- [ ] Kedaluwarsa 48 jam, ikut dibersihkan oleh pembersih M6.
+- [x] Skema `relays` sebagai migrasi. Rute `POST /api/relays`, `claim`, `complete`, `strip`, `DELETE`. (`supabase/migrations/20261014000000_relays.sql`; rute diuji unit dengan klien Supabase palsu: `tests/api-relays.test.ts` 22 lolos. Migrasi sudah diterapkan ke proyek `snapme` atas persetujuan pengguna di sesi M8)
+- [x] `RelayInviteCard`, dialog persetujuan, bagikan lewat Web Share API atau salin. (`src/components/booth/RelayInviteCard.tsx` + `src/features/relay/shareLink.ts`; jalur salin diuji e2e, jalur Web Share lewat guard `canShare`)
+- [x] Halaman `/r/[id]`: foto yang sudah ada, slot terkunci, ambil giliran. (`src/app/r/[id]/page.tsx` + `RelayJoinView`; foto pembuat lewat URL bertanda tangan 1 jam)
+- [x] Overlay bayangan 35% di pratinjau kamera teman, dengan sakelar. (prop `overlay` di `CameraStage`, sakelar "Bayangan pose teman" dengan chip Nyala/Mati; dijaga `e2e/relay.spec.ts`)
+- [x] Giliran hanya bisa diambil sekali (dijamin di basis data, bukan hanya di klien). (`UPDATE ... WHERE status = 'waiting'`; nol baris berubah → 409. Uji unit + uji klaim bersamaan e2e)
+- [x] Status pembuat: "Menunggu teman", "Selesai". Batalkan dan hapus. (`RelayJoinView` dan `RelayCompleteView` + `RelayCancel.tsx`, SE-09 bisa kapan pun, termasuk setelah selesai)
+- [x] Kedaluwarsa 48 jam, ikut dibersihkan oleh pembersih M6. (`RELAY_TTL_HOURS = 48`, kelompok `relays` di `GET /api/cron/purge`; uji unit pembersih)
 
 **Selesai bila**
 
-- Uji Playwright dua konteks browser: pembuat mengisi slot 1 dan 3, teman mengisi 2 dan 4, keduanya sampai di `/s/{id}` yang sama.
-- Uji: konteks ketiga yang membuka link melihat "Estafet ini sudah diambil". Dua permintaan `claim` bersamaan hanya satu yang berhasil.
-- `security-reviewer` sudah meninjau rute estafet.
+- Uji Playwright dua konteks browser: pembuat mengisi slot 1 dan 3, teman mengisi 2 dan 4, keduanya sampai di `/s/{id}` yang sama. (hijau: `SUPABASE_E2E=1 npx playwright test relay.spec.ts` → 4 lolos; teman mendarat di `/s/{id}` dan gambar stripnya dimuat dari Storage bertanda tangan, pembuat melihat tautan ke path yang sama)
+- Uji: konteks ketiga yang membuka link melihat "Estafet ini sudah diambil". Dua permintaan `claim` bersamaan hanya satu yang berhasil. (hijau di berkas yang sama: konteks ketiga melihat pesannya tanpa tombol, dan dua `POST claim` paralel menghasilkan tepat 200 + 409 terhadap Postgres sungguhan)
+- `security-reviewer` sudah meninjau rute estafet. (selesai: satu temuan major — gate token di `/r/[id]` status selesai hanya presentasional — sudah diperbaiki dengan rute ber-token `POST /api/relays/[id]/strip`; empat temuan minor dicatat di `docs/DECISIONS.md` M8, dua di antaranya ikut diperbaiki. Catatan: gate jenis isi `claim` dan validasi runtime baris `relays`)
+
+**Batas aman.** Migrasi `20261014000000_relays.sql` (tabel `relays`, dua indeks, `image/jpeg` di daftar jenis bucket) sudah diterapkan ke proyek Supabase `snapme` (ref `owdjkpzywzljnvuyfiui`) lewat `npx supabase db push` atas persetujuan pengguna di sesi M8; `supabase migration list` mengonfirmasi barisnya ada di remote. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau agent setelah disetujui.
+
+**Sisa untuk M9.** Constraint bentuk `slots` dan daftar layout tertutup di tabel `relays`, kolom `strip_id` + UPDATE bersyarat untuk menutup balapan pemulihan `complete`, dan uji manual gesture/estafet di perangkat sungguhan (Chromium headless tidak punya tangan).
 
 ---
 

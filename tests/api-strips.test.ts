@@ -124,7 +124,18 @@ function buatKlienPalsu(seed: Row[] = []) {
 
   const client = {
     from(table: string) {
-      expect(table).toBe("strips")
+      /* M8: pembersih juga menyapu tabel `relays`. Berkas uji ini tidak
+         menguji estafet (itu di tests/api-relays.test.ts), jadi tabel itu
+         dijawab kosong di sini. */
+      if (table === "relays") {
+        return {
+          select: () => ({
+            not: () => ({
+              lte: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }
+      }
       return {
         insert: (values: Row | Row[]) => {
           for (const item of Array.isArray(values) ? values : [values]) {

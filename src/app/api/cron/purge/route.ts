@@ -1,5 +1,6 @@
 import { isExpired, isStaleDraft, STALE_DRAFT_HOURS } from "@/lib/expiry"
 import { STORAGE_BUCKET } from "@/lib/schemas"
+import { RELAY_COLUMNS, relaySlotsOf, type RelayRow } from "@/lib/supabase/relays"
 import { getSupabaseAdmin } from "@/lib/supabase/server"
 import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
 
@@ -8,8 +9,12 @@ import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
    Vercel Cron). Dua kelompok dibersihkan: baris yang sudah lewat
    `expires_at`, dan draf yang tidak pernah diselesaikan kliennya (pengguna
    menutup halaman sebelum mengunggah), supaya baris yatim tidak menumpuk.
+   M8 menambahkan kelompok yang sama untuk `relays`: link estafet 48 jam dan
+   baris yang dibatalkan (masa tenggang batu nisannya sendiri) dibuang beserta
+   berkas slotnya.
    Kedaluwarsa tetap juga diperiksa saat baca (complete/DELETE dan halaman
-   /s/[id]), jadi pembersih ini menjaga penyimpanan, bukan kebenaran status. */
+   /s/[id] serta /r/[id]), jadi pembersih ini menjaga penyimpanan, bukan
+   kebenaran status. */
 
 const HOUR_MS = 3_600_000
 
@@ -67,31 +72,68 @@ export async function GET(request: Request) {
         isStaleDraft(row.created_at, row.status, now)
     )
     const ids = [...new Set(rows.map((row) => row.id))]
-    if (ids.length === 0) {
-      return Response.json({ purged: 0 })
-    }
-
-    const paths = rows
-      .flatMap((row) => [row.still_path, row.live_path])
-      .filter((path): path is string => path !== null)
-    if (paths.length > 0) {
-      const { error: removeError } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .remove(paths)
-      if (removeError !== null) {
-        throw new Error(removeError.message)
+    let purged = 0
+    if (ids.length > 0) {
+      const paths = rows
+        .flatMap((row) => [row.still_path, row.live_path])
+        .filter((path): path is string => path !== null)
+      if (paths.length > 0) {
+        const { error: removeError } = await admin.storage
+          .from(STORAGE_BUCKET)
+          .remove(paths)
+        if (removeError !== null) {
+          throw new Error(removeError.message)
+        }
       }
+
+      const { error: deleteError } = await admin
+        .from("strips")
+        .delete()
+        .in("id", ids)
+      if (deleteError !== null) {
+        throw new Error(deleteError.message)
+      }
+      purged += ids.length
     }
 
-    const { error: deleteError } = await admin
-      .from("strips")
-      .delete()
-      .in("id", ids)
-    if (deleteError !== null) {
-      throw new Error(deleteError.message)
+    /* M8: link estafet yang lewat 48 jam, dan baris yang dibatalkan setelah
+       masa tenggangnya habis. Strip hasil estafet tidak disentuh di sini: ia
+       punya umur 7 hari sendiri (SE-08). */
+    const { data: relayRows, error: relayError } = await admin
+      .from("relays")
+      .select(RELAY_COLUMNS)
+      .not("expires_at", "is", null)
+      .lte("expires_at", now.toISOString())
+    if (relayError !== null) {
+      throw new Error(relayError.message)
+    }
+    const relays = ((relayRows ?? []) as RelayRow[]).filter((row) =>
+      isExpired(row.expires_at, now)
+    )
+    const relayIds = [...new Set(relays.map((row) => row.id))]
+    if (relayIds.length > 0) {
+      const relayPaths = relays.flatMap((row) =>
+        relaySlotsOf(row).map((slot) => slot.path)
+      )
+      if (relayPaths.length > 0) {
+        const { error: relayRemoveError } = await admin.storage
+          .from(STORAGE_BUCKET)
+          .remove(relayPaths)
+        if (relayRemoveError !== null) {
+          throw new Error(relayRemoveError.message)
+        }
+      }
+      const { error: relayDeleteError } = await admin
+        .from("relays")
+        .delete()
+        .in("id", relayIds)
+      if (relayDeleteError !== null) {
+        throw new Error(relayDeleteError.message)
+      }
+      purged += relayIds.length
     }
 
-    return Response.json({ purged: ids.length })
+    return Response.json({ purged })
   } catch (error) {
     console.error("GET /api/cron/purge gagal:", error)
     return Response.json(

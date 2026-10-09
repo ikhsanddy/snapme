@@ -23,6 +23,14 @@ import {
 } from "@/features/share/api"
 import { ShareCard } from "@/features/share/ShareCard"
 import { clearStripToken, saveStripToken } from "@/features/share/stripToken"
+import {
+  completeRelay,
+  dataUrlToBlob,
+  RelaySlotsNeededError,
+  uploadRelaySlot,
+  type CompletedRelay,
+} from "@/features/relay/api"
+import { readRelayToken } from "@/features/relay/relayToken"
 import { useQrImageUrl } from "@/features/share/useQrImage"
 import { LiveStage, type LiveStageHandle } from "@/features/live/LiveStage"
 import { pickLiveKind } from "@/features/live/mediaSupport"
@@ -58,6 +66,34 @@ const IMAGE_WAIT_STEP_MS = 50
    pilihan tidak pernah dipanggil. */
 const IGNORE = () => {}
 
+/** M8 (SE-07): satu percobaan penuntasan estafet. Bila rutenya menjawab bahwa
+ *  Berkas slot teman belum lengkap (mis. sesi ini pulih dari perangkat lain),
+ *  foto yang ada di sesi lokal diunggah ke URL pengganti itu, lalu rutenya
+ *  dicoba sekali lagi. */
+async function finishRelayOnce(
+  id: string,
+  token: string
+): Promise<CompletedRelay> {
+  try {
+    return await completeRelay(id, token)
+  } catch (error) {
+    if (!(error instanceof RelaySlotsNeededError) || error.uploads.length === 0) {
+      throw error
+    }
+    const { shots } = useBoothStore.getState()
+    await Promise.all(
+      error.uploads.map((upload) => {
+        const shot = shots[upload.index]
+        if (shot === null || shot === undefined) {
+          throw new Error("Isi ulang foto yang kurang.")
+        }
+        return uploadRelaySlot(upload, dataUrlToBlob(shot.still))
+      })
+    )
+    return await completeRelay(id, token)
+  }
+}
+
 /** Ekspor menyalin kanvas saat ini, jadi setiap gambar bernama di dalam grup
  *  harus sudah terpasang. */
 async function waitForImages(group: KonvaGroup, names: string[]): Promise<void> {
@@ -91,6 +127,13 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
   const share = useBoothStore((state) => state.share)
   const setShareStrip = useBoothStore((state) => state.setShareStrip)
   const reset = useBoothStore((state) => state.reset)
+  /* M8 (SE-07): sesi teman menuntaskan estafet dari sini, bukan membuat link
+     sendiri, jadi kartu bagikan tidak muncul dan aksi utamanya menuntaskan
+     dulu lalu mengunduh. */
+  const relay = useBoothStore((state) => state.relay)
+  const localOnly = useBoothStore((state) => state.localOnly)
+  const isGuest = relay?.role === "guest"
+  const hidesUpload = isGuest || localOnly
 
   const stageRef = useRef<KonvaStage>(null)
   const groupRef = useRef<KonvaGroup>(null)
@@ -110,6 +153,7 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
   const [sheetUrl, setSheetUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [finishing, setFinishing] = useState(false)
   const [liveBusy, setLiveBusy] = useState(false)
   const [videoBusy, setVideoBusy] = useState(false)
 
@@ -275,6 +319,51 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
     toast.success("Strip tersimpan di perangkatmu.")
   }
 
+  /** M8 (SE-07): "Selesai & Unduh" milik teman. Estafetnya dituntaskan dulu
+   *  (foto slot yang belum terunggah ikut dikirim), stripnya diunggah, lalu
+   *  berkasnya diunduh dan halaman beralih ke /s/{id}. */
+  async function handleFinishRelay() {
+    if (dataUrl === null || finishing || relay === null) {
+      return
+    }
+    const stored = readRelayToken(relay.id)
+    if (stored === null || stored.role !== "guest") {
+      toast.error("Token estafet tidak ada. Buka lagi link estafetmu.")
+      return
+    }
+    setFinishing(true)
+    try {
+      const completed = await finishRelayOnce(relay.id, stored.token)
+      if (completed.deleteToken !== undefined) {
+        saveStripToken(completed.stripId, completed.deleteToken)
+      }
+      if (completed.upload !== undefined) {
+        const blob = await (await fetch(dataUrl)).blob()
+        await uploadStripStill(completed.upload, blob)
+        await completeStrip(completed.stripId)
+      }
+      downloadStrip(dataUrl, formatStripFilename(new Date()))
+      toast.success("Estafet selesai. Strip kamu ada di link pribadi.")
+      /* FR-14: rekaman perangkat dihapus supaya sesi teman tidak terbawa ke
+         sesi berikutnya. `reset()` tidak dipanggil di sini: mengosongkan
+         layout dan foto sebelum navigasi selesai membuat gerbang langkah booth
+         mengalihkan ke pemilih layout lebih dulu. Sesi di memori dibiarkan
+         utuh sampai pengguna memulai sesi baru; yang dilepas hanya irisan
+         estafetnya, supaya baki foto tidak lagi terkunci. */
+      await clearSession()
+      useBoothStore.setState({ relay: null })
+      router.push(`/s/${completed.stripId}`)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Estafet belum bisa diselesaikan. Coba lagi sebentar lagi."
+      )
+    } finally {
+      setFinishing(false)
+    }
+  }
+
   function handleRestart() {
     /* FR-14: rekaman di perangkat dihapus lebih dulu, lalu sesi di memori. */
     void clearSession()
@@ -362,15 +451,19 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
             </p>
             <p className="flex items-center justify-center gap-2 text-sm text-muted">
               <Lock weight="bold" className="size-5 shrink-0" aria-hidden />
-              {shareStrip === null
-                ? "Semua diproses di perangkat ini. Tidak ada yang diunggah."
-                : "Strip kamu ada di link pribadi. Tidak ada yang lain diunggah."}
+              {isGuest
+                ? "Kamera dan hiasan berjalan di perangkat ini. Stripnya diunggah saat estafetnya diselesaikan."
+                : localOnly
+                  ? "Salinan ini hanya di perangkatmu. Tidak ada yang diunggah."
+                  : shareStrip === null
+                    ? "Semua diproses di perangkat ini. Tidak ada yang diunggah."
+                    : "Strip kamu ada di link pribadi. Tidak ada yang lain diunggah."}
             </p>
           </>
         }
         right={
           <div className="mt-auto flex flex-col gap-3">
-            {share.qrEnabled || shareStrip !== null ? (
+            {hidesUpload ? null : share.qrEnabled || shareStrip !== null ? (
               <ShareCard
                 strip={shareStrip}
                 busy={linking}
@@ -384,15 +477,21 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
               <Button
                 size="lg"
                 className="w-full"
-                disabled={dataUrl === null}
-                onClick={handleDownload}
+                disabled={dataUrl === null || finishing}
+                onClick={() =>
+                  isGuest ? void handleFinishRelay() : handleDownload()
+                }
               >
                 <DownloadSimple
                   weight="bold"
                   className="size-[22px]"
                   aria-hidden
                 />
-                {preparing ? "Menyiapkan berkas..." : "Selesai & Unduh"}
+                {isGuest && finishing
+                  ? "Menyelesaikan estafet..."
+                  : preparing
+                    ? "Menyiapkan berkas..."
+                    : "Selesai & Unduh"}
               </Button>
               <Button
                 variant="neutral"
