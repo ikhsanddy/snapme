@@ -61,3 +61,73 @@ Semua perubahan berikut hanya menyentuh kelas Tailwind dan susunan internal komp
 | Durasi dialog | Registry memakai `duration-100` | Diganti `duration-[120ms]` mengikuti DESIGN-SYSTEM §7 |
 | Impor `cn` | Berkas registry sebagian mengimpor dari paket `cn`, sebagian dari `@/lib/utils` | Dibiarkan seperti aslinya; `src/lib/utils.ts` hanya me-re-export dari paket `cn`, jadi keduanya sama |
 | Overlay dialog dan lembar bawah | §9 tidak menetapkan warna overlay | Dipakai `bg-ink/60`, warna token yang sudah ada, tanpa efek kaca atau blur |
+
+## M1 Welcome dan kerangka booth (9 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M1
+
+`npx skills find` dijalankan untuk tiga kata kunci milestone (`web design guidelines`, `react best practices`, `accessibility`):
+
+|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
+|---|---|---|---|
+|`web design guidelines`|`vercel-labs/agent-skills@web-design-guidelines`|709,8 ribu|Tidak dipasang|
+||`leonxlnx/taste-skill@design-taste-frontend`|576,7 ribu|Sudah terpasang di M0|
+|`react best practices`|`vercel-labs/agent-skills@vercel-react-best-practices`|778,6 ribu|Sudah terpasang di M0|
+|`accessibility`|`addyosmani/web-quality-skills@accessibility`|59,4 ribu|Tidak dipasang|
+||`jakubkrehel/skills@better-accessibility`|24,8 ribu|Tidak dipasang|
+
+**Keputusan: tidak ada pemasangan skill baru di M1.** Dua skill yang sudah terpasang menutupi kebutuhan M1, dan audit aksesibilitas menyeluruh memang dijadwalkan di M9 dengan `@axe-core/playwright` (sudah ada di devDependencies). Kedua kandidat aksesibilitas diusulkan ke pengguna; pemasangannya menunggu persetujuan.
+
+### Pre-Flight Check taste-skill untuk Welcome
+
+Dijalankan untuk `/` dengan pengecualian DESIGN-SYSTEM §0. Yang diperiksa dan hasilnya:
+
+|Pemeriksaan|Hasil|
+|---|---|
+|Design Read dan dial dinyatakan sebelum menulis kode|Dinyatakan: consumer photobooth web app untuk pelajar dan mahasiswa Indonesia, playful Y2K neo-brutalist, shadcn/ui + Tailwind v4 di-restyle token DESIGN-SYSTEM.md; `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`|
+|Nol em dash dan en dash di teks antarmuka|Lolos. Pencarian karakter em dash dan en dash di `src/` tidak menemukan satu pun|
+|Satu label per maksud, CTA tidak membungkus|Lolos. "Mulai Foto" hanya untuk memulai sesi, pil satu baris pada 360 sampai 1280 px|
+|Pasangan warna hanya dari tabel §2|Lolos. Diperiksa: `ink` di `paper`, `lime`, `violet-soft`, `tangerine`; `paper` di `violet` dan `ink`; `muted` di `paper`, `cream`, `lime`|
+|Kontras tombol dan kontrol|Lolos. Label tombol utama selalu `ink` di atas `tangerine` (5,33); kartu radio `ink` di atas `paper` (18,11) dengan cincin fokus `violet` 3 px|
+|Hitungan eyebrow|2 label huruf besar di halaman, batas `ceil(4 bagian / 3)` = 2. Lolos|
+|Tanpa pola klise|Lolos. Bukan tiga kartu sama lebar (ubin 2 : 1 : 1), bukan hero tengah, tanpa gradasi hiasan, tanpa Inter|
+|`prefers-reduced-motion`|Lolos. Aturan global di `globals.css` mematikan transisi dan animasi|
+|Gambar nyata|**Penyimpangan tercatat.** §8 melarang memakai wajah orang tanpa izin dan mengizinkan blok warna berlabel "Foto contoh"; halaman acuan memakai blok yang sama|
+|Kepala hero maksimal 2 baris|**Penyimpangan tercatat.** Pada 360 px judul membungkus 3 baris, sama seperti `welcome.html`. Syarat yang mengikat adalah FR-01, dan itu diuji otomatis: aksi utama terlihat tanpa menggulir pada 360 x 640 dan 1366 x 768|
+|Motion ditampilkan bila klaim > 4|**Penyimpangan tercatat.** Welcome hanya memakai umpan balik tekan tombol (§7), sama seperti acuan. Gerak lain (`motion/react`) masuk di langkah booth pada milestone yang memilikinya|
+
+### Audit aksesibilitas M1
+
+Skill `accessibility` dari `addyosmani/web-quality-skills` dipasang ke `.agents/skills/accessibility` (dan tercatat di `skills-lock.json`) setelah usulan M1 disetujui. Pemeriksaan kelayakan sebelum pasang: lisensi MIT, commit terakhir `2026-08-24`, 2.909 bintang, tidak diarsipkan. Skill ini memakai alur bukti lebih dulu (Lighthouse atau axe pada halaman yang sudah dirender, lalu pemeriksaan manual).
+
+**Otomatis.** `e2e/a11y.spec.ts` menjalankan axe-core 4.14 lewat `@axe-core/playwright` pada empat halaman M1 (`/`, `/privasi`, `/booth/layout`, `/booth/capture`) di dua lebar (360 dan 1280 px), dengan tag `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`. Hasil: nol pelanggaran pada delapan pemindaian. Uji ini permanen, jadi regresi aksesibilitas M1 akan ketahuan.
+
+**Manual** (skrip sekali pakai di luar repo, karena alat otomatis hanya menangkap sebagian hambatan):
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Urutan fokus | Logis dan mengikuti urutan visual di keempat halaman. `/booth/capture` hanya punya dua sasaran (wordmark dan Kembali) karena isinya masih kerangka |
+| Penanda fokus terlihat | Ada di setiap elemen yang bisa difokus (cincin `violet` 3 px atau garis tepi `ink`) |
+| Ukuran sasaran (2.5.8 AA) | Sasaran terkecil 40 x 40 px (kotak wordmark), batas 24 x 24 px. Tombol 44 sampai 56 px |
+| Landmark | `header`, `nav`, `main`, dan `footer` di `/` dan `/privasi`; `header` dan `main` di halaman booth |
+| Hierarki judul | `h1` lalu `h2` lalu `h3`, tanpa lompatan, di keempat halaman |
+| Bahasa halaman | `lang="id"` di akar dokumen |
+
+Perbaikan yang lahir dari audit: `/` sebelumnya tidak punya landmark `main`; konten hero sampai panel langkah sekarang dibungkus `main`, dan kaki privasi tetap di luarnya. Pemeriksaan pembaca layar nyata (NVDA atau VoiceOver) dan zoom 200 persen tetap dijadwalkan di M9.
+
+### Penyimpangan dan keputusan M1
+
+|Hal | Dokumen | Kenyataan | Tindakan |
+|---|---|---|---|
+| CTA di baris atas | §10.1 dan `welcome.html` memakai tombol `primary sm` | §1 melarang dua tombol jingga per layar dan §14 menuntut tepat satu aksi `primary` | Welcome dan booth: CTA header varian `secondary`. `/privasi` tidak punya aksi lain: CTA header varian `primary`. `SiteHeader` menerima prop `ctaVariant` |
+| `display-lg` | §3: pink + bayangan keras, tanpa garis tepi huruf. Berkas acuan `capture.html` menambah `-webkit-text-stroke: 1px` | Dokumen menang | Tanpa garis tepi huruf. Dengan begitu 22 px pada layar sempit tetap lolos sebagai teks besar (3,36 : 1, batas 3 : 1) |
+| Judul ubin Gesture Snap | `welcome.html` memakai 28 px | §3 membatasi `title` pada 16 sampai 22 px | Semua judul kartu memakai `title` 22 px. Perbedaan tampak saat dibandingkan berdampingan, disengaja |
+| Judul panel "Dari kamera sampai cetak" | `welcome.html` memakai `clamp(18px, 2vw, 24px)` | §3 tidak punya gaya di rentang itu | Memakai `title` 22 px |
+| Kotak wordmark | `welcome.html` memakai radius 12 px | §4 hanya punya `radius-thumb` 10 px | Memakai `rounded-thumb`. Perlu satu kalimat di §4 atau token baru bila 12 px memang disengaja |
+| Slot kosong pada diagram hero | §4 menetapkan `border-empty` 2 px putus-putus `muted` | `muted` di atas `violet-soft` hanya 2,89 : 1, di bawah batas 3 : 1 untuk komponen nonteks | Diagram hero memakai garis putus-putus `ink` (8,3 : 1). Slot kosong di atas `cream` atau `paper` tetap memakai `muted` |
+| Pilihan layout | §9 hanya menspesifikasikan "Swatch terpilih" | Radio asli perlu bisa diklik di seluruh kartu | Radio ditumpuk selebar kartu dengan `opacity-0`, kartu jadi sasaran klik, nama aksesibel dari `aria-labelledby` dan `aria-describedby`. Dibuktikan uji Playwright |
+| Tombol "Pakai Foto Galeri" | §10.1 menampilkannya di hero | FR-13 masuk P1 dan MILESTONES M1 menundanya | Belum ditampilkan. Perbedaan tunggal pada pembandingan teks dengan `welcome.html` |
+| Utilitas baru di `globals.css` | §3, §5, §6, §9 | Gaya ini dipakai lebih dari satu halaman | Ditambah `page-container`, `checker-ribbon`, `display-xl`, `display-lg`, `heading`, `title`, `ring-selected` supaya tidak ada nilai mentah di komponen |
+| Cakupan `/booth/capture` | §10.2 menggambarkan kamera, baki foto, HUD gesture | M2 sampai M4 yang mengerjakannya | M1 hanya kerangka: area kamera kosong, slot kosong, aksi utama nonaktif. `CameraStage`, `ShotTray`, `ShutterButton`, `CountdownOverlay` belum dibuat |
+| Cakupan `stores/booth.ts` | §5 mencantumkan `shots`, `editor`, `live`, `share`, `relay` | Milestone M1 belum memakainya | Hanya `layoutId` dan `settings` yang dibuat, sisanya menyusul bersama milestone pemiliknya supaya tidak ada tipe spekulatif |
+| Halaman `/booth/layout` | §5 menamai rute ini | Nama folder segmen sama dengan berkas konvensi `layout.tsx` | Next 16 menerimanya: `src/app/booth/layout.tsx` dan `src/app/booth/layout/page.tsx` berdampingan. Dibuktikan build dan uji Playwright |
