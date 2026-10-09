@@ -1,8 +1,9 @@
+import { getBindings } from "@/lib/cloudflare"
+import { selectRelay } from "@/lib/db/relays"
+import { relaySlotsOf } from "@/lib/db/rows"
+import { selectStripForRelay } from "@/lib/db/strips"
 import { isExpired } from "@/lib/expiry"
-import { STORAGE_BUCKET } from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
-import { RELAY_COLUMNS, relaySlotsOf, type RelayRow } from "@/lib/supabase/relays"
-import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
+import { presignGet } from "@/lib/r2/presign"
 import { verifyToken } from "@/lib/tokens"
 
 /* M8 (SE-07, SE-10): POST /api/relays/[id]/strip menyerahkan tautan strip dan
@@ -27,8 +28,8 @@ export async function POST(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     return Response.json(UNAVAILABLE, { status: 503 })
   }
   const token = request.headers.get("x-relay-token")
@@ -38,15 +39,7 @@ export async function POST(
   const { id } = await ctx.params
 
   try {
-    const { data, error } = await admin
-      .from("relays")
-      .select(RELAY_COLUMNS)
-      .eq("id", id)
-      .maybeSingle()
-    if (error !== null) {
-      throw new Error(error.message)
-    }
-    const row = data as RelayRow | null
+    const row = await selectRelay(bindings.db, id)
     if (row === null) {
       return Response.json(NOT_FOUND, { status: 404 })
     }
@@ -72,27 +65,19 @@ export async function POST(
        belum punya gerbang. Draf yang kalah balapan (sisa yang belum sempat
        dibuang) tidak boleh membayangi strip pemenangnya (temuan tinjauan
        keamanan M9). */
-    const stripColumn = row.strip_id === null ? "relay_id" : "id"
-    const { data: stripData, error: stripError } = await admin
-      .from("strips")
-      .select(STRIP_COLUMNS)
-      .eq(stripColumn, row.strip_id ?? row.id)
-      .limit(1)
-      .maybeSingle()
-    if (stripError !== null) {
-      throw new Error(stripError.message)
-    }
-    const strip = stripData as StripRow | null
+    const strip = await selectStripForRelay(bindings.db, row)
     const ready = strip !== null && strip.status === "complete"
 
     const slots: { index: number; url: string }[] = []
     if (ready) {
       for (const slot of relaySlotsOf(row)) {
-        const { data: url, error: signError } = await admin.storage
-          .from(STORAGE_BUCKET)
-          .createSignedUrl(slot.path, 3_600)
-        if (signError === null) {
-          slots.push({ index: slot.index, url: url.signedUrl })
+        try {
+          slots.push({
+            index: slot.index,
+            url: await presignGet(bindings.s3, slot.path),
+          })
+        } catch {
+          /* Satu tautan gagal tidak menjatuhkan daftarnya. */
         }
       }
     }

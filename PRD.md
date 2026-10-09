@@ -216,7 +216,7 @@ Saya mengambil keputusan berikut agar dokumen bisa dipakai. Ubah bila tidak sesu
 2. snapme gratis, tanpa akun, tanpa pembayaran.
 3. Masa simpan: strip 7 hari, link estafet 48 jam.
 4. Estafet dibatasi 2 orang pada v1.
-5. Hosting Vercel dan Supabase paket gratis (ARCHITECTURE §3).
+5. Hosting Cloudflare Workers dan D1, KV, R2 paket gratis (ARCHITECTURE §3).
 6. Tema terang saja pada v1 (DESIGN-SYSTEM §0).
 
 ## Sumber pemindaian pembanding

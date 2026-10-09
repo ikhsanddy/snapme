@@ -1,0 +1,15 @@
+# Salin ke `.dev.vars` (tidak di-commit) dan isi nilainya.
+# Rahasia ini dipakai `wrangler dev`; padanan produksinya dipasang lewat
+# `wrangler secret put` (M10). R2_ACCOUNT_ID bukan rahasia: nilainya ada di
+# `wrangler.jsonc` (vars) dan `.env.local` (untuk `next build`).
+#
+# Nilai acak: node -e "console.log(crypto.randomBytes(32).toString('base64url'))"
+
+# Rahasia rute pembersih manual (Authorization: Bearer).
+CRON_SECRET=
+# Garam untuk menyingkat sidang alamat IP pada pembatasan laju.
+RATE_LIMIT_SALT=
+# Token R2 API bertipe Object Read & Write, dibuat dari dasbor Cloudflare
+# (R2 → Manage R2 API Tokens). Dipakai aws4fetch untuk URL presigned.
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=

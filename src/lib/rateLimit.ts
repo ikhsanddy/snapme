@@ -1,19 +1,20 @@
 import { createHash } from "node:crypto"
-import type { SupabaseClient } from "@supabase/supabase-js"
 
-/* ARCHITECTURE §8: pembatasan laju rute POST. Keputusan pengguna untuk M6:
-   hitungannya di Supabase, bukan di memori fungsi serverless (setiap instans
-   punya memorinya sendiri, jadi hitungan di memori tidak mengikat).
+/* ARCHITECTURE §8: pembatasan laju rute POST. M10 memindahkan hitungannya ke
+   dua tempat sesuai sifatnya:
 
-   Yang disimpan pada baris strip adalah sidang SHA-256 terpotong dari alamat
-   IP ditambah garam dari env. Nilainya tidak bisa dipakai mengenali orang dan
-   ikut terhapus bersama stripnya; satu kalimat di halaman Privasi menjelaskan
-   hal ini.
+   - Kuota pembuatan strip dan estafet dihitung PERSIS dari baris di D1
+     (`strips`/`relays`), pola lama dipertahankan: hitung-setelah-sisip.
+   - Anggaran peristiwa analitik dihitung di KV dengan jendela tetap per jam,
+     karena tabel `events` tidak lagi dihitung per permintaan (memindai tabel
+     yang terus tumbuh untuk anggaran telemetri itu boros). Jendela tetap
+     berbeda dari jendela bergulir lama; selisihnya hanya di batas jam dan
+     didokumentasikan di docs/DECISIONS.md M10.
 
-   Perhitungannya dilakukan SETELAH baris disisipkan (hitung-setelah-sisip),
-   bukan sebelumnya: periksa-dulu-lalu-sisip bisa dilewati permintaan serentak,
-   sedangkan cara ini menghitung baris yang benar-benar ada, termasuk baris
-   batu nisan dari penghapusan. */
+   Yang disimpan pada baris adalah sidang SHA-256 terpotong dari alamat IP
+   ditambah garam dari env. Nilainya tidak bisa dipakai mengenali orang dan
+   ikut terhapus bersama barisnya; satu kalimat di halaman Privasi menjelaskan
+   hal ini. */
 
 export const CREATE_LIMIT = 10
 export const CREATE_WINDOW_MS = 3_600_000
@@ -23,11 +24,20 @@ export const CREATE_WINDOW_MS = 3_600_000
  *  200 memberi ruang untuk sesi panjang tanpa membuka pintu penyalahgunaan. */
 export const EVENT_LIMIT = 200
 
-/** Alamat pemanggil. `x-real-ip` diisi platform hosting (Vercel menimpanya),
- *  jadi itu yang dipakai lebih dulu; `x-forwarded-for` hop pertama hanya
- *  cadangan untuk proxy lain. Hop pertama header itu bisa dipalsukan klien
- *  bila proxy hanya menambahkan, dan itu dicatat di docs/DECISIONS.md. */
+/** Satu kunci KV per sidang per jam. TTL dua jam: kunci jam sebelumnya masih
+ *  terbaca pembersih, dan kunci basi hilang sendiri. */
+const EVENT_BUDGET_TTL_SECONDS = 7_200
+
+/** Alamat pemanggil. Di Cloudflare Workers, `cf-connecting-ip` diisi platform
+ *  dan tidak bisa dipalsukan klien; itu yang dipakai lebih dulu. `x-real-ip`
+ *  (warisan penyedia sebelumnya) dan hop pertama `x-forwarded-for` hanya
+ *  cadangan untuk proxy lain; hop pertama header itu bisa dipalsukan klien bila
+ *  proxy hanya menambahkan, dan itu dicatat di docs/DECISIONS.md. */
 export function clientKeyFromRequest(request: Request): string {
+  const connecting = request.headers.get("cf-connecting-ip")?.trim()
+  if (connecting !== undefined && connecting !== "") {
+    return connecting
+  }
   const real = request.headers.get("x-real-ip")?.trim()
   if (real !== undefined && real !== "") {
     return real
@@ -75,22 +85,45 @@ export function isCrossSite(request: Request): boolean {
 
 /** Jumlah baris yang ditulis dalam jendela terakhir untuk sidang ini, dihitung
  *  dari baris yang ada di tabel (termasuk draf dan batu nisan). Tabelnya
- *  dipilih pemanggil: estafet memakai kuota terpisah dari strip (M8), dan
- *  peristiwa analitik memakai anggaran sendiri yang jauh lebih longgar (M9). */
+ *  dipilih pemanggil: estafet memakai kuota terpisah dari strip (M8). */
 export async function countRecentCreations(
-  admin: SupabaseClient,
-  table: "strips" | "relays" | "events",
+  db: D1Database,
+  table: "strips" | "relays",
+  rateKey: string,
+  sinceIso: string
+): Promise<number> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE rate_key = ?1 AND created_at > ?2`)
+    .bind(rateKey, sinceIso)
+    .first<{ n: number }>()
+  return row?.n ?? 0
+}
+
+function eventsBudgetKey(rateKey: string, now: Date): string {
+  return `ev:${rateKey}:${Math.floor(now.getTime() / CREATE_WINDOW_MS)}`
+}
+
+export async function readEventsBudget(
+  kv: KVNamespace,
   rateKey: string,
   now: Date
 ): Promise<number> {
-  const since = new Date(now.getTime() - CREATE_WINDOW_MS).toISOString()
-  const { count, error } = await admin
-    .from(table)
-    .select("id", { count: "exact", head: true })
-    .eq("rate_key", rateKey)
-    .gt("created_at", since)
-  if (error !== null) {
-    throw new Error(error.message)
-  }
-  return count ?? 0
+  const value = await kv.get(eventsBudgetKey(rateKey, now))
+  const count = Number(value)
+  return Number.isFinite(count) ? count : 0
+}
+
+/** Menambah anggaran SETELAH batchnya tersimpan. Tidak ada rollback: selisih
+ *  balapan paling banyak satu batch per permintaan serentak, dan tabel ini
+ *  telemetri tanpa nilai uang (docs/DECISIONS.md M10). */
+export async function bumpEventsBudget(
+  kv: KVNamespace,
+  rateKey: string,
+  add: number,
+  now: Date
+): Promise<void> {
+  const next = (await readEventsBudget(kv, rateKey, now)) + add
+  await kv.put(eventsBudgetKey(rateKey, now), String(next), {
+    expirationTtl: EVENT_BUDGET_TTL_SECONDS,
+  })
 }

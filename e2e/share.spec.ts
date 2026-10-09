@@ -6,16 +6,17 @@ import { masukHias, masukHiasDenganQr, pasangSidangBaru } from "./helpers"
 
 /* M6 (SH-04 sampai SH-06): link strip dan QR.
 
-   Bagian yang bisa dijalankan tanpa proyek Supabase memeriksa sakelar QR, kartu
-   bagikan, jalur "belum tersedia" saat env kosong, dan halaman 404. Alur
-   sungguhan (buat link, buka di konteks lain, hapus) butuh proyek Supabase;
-   jalankan dengan `$env:SUPABASE_E2E="1"; npx playwright test share.spec.ts`. */
+   Bagian yang bisa dijalankan tanpa binding Cloudflare memeriksa sakelar QR,
+   kartu bagikan, jalur "belum tersedia" saat server tanpa binding, dan halaman
+   404. Alur sungguhan (buat link, buka di konteks lain, hapus) butuh binding
+   D1/R2/KV; jalankan dengan
+   `$env:CLOUDFLARE_E2E="1"; npx playwright test share.spec.ts`. */
 
 const PERLU_PROYEK =
-  "Butuh proyek Supabase: jalankan dengan SUPABASE_E2E=1 setelah .env.local diisi."
-/* Uji jalur 503 hanya bermakna saat server belum punya proyek Supabase, dan
-   `.env.local` adalah penanda tunggalnya di mesin ini. */
-const ADA_ENV_LOKAL = existsSync(".env.local")
+  "Butuh binding Cloudflare: jalankan dengan CLOUDFLARE_E2E=1 setelah .dev.vars diisi."
+/* Uji jalur 503 hanya bermakna saat server belum punya binding, dan `.dev.vars`
+   adalah penanda tunggalnya di mesin ini. */
+const ADA_DEV_VARS = existsSync(".dev.vars")
 
 /** Sidik jari kanvas penyunting: cukup untuk membuktikan ada yang berubah. */
 async function sidikJariKanvas(page: Page): Promise<number> {
@@ -38,7 +39,7 @@ async function sidikJariKanvas(page: Page): Promise<number> {
   })
 }
 
-test.describe("QR di strip tanpa proyek Supabase", () => {
+test.describe("QR di strip tanpa binding Cloudflare", () => {
   test("sakelar QR menyalakan kotak QR di kanvas dan pemberitahuan izin", async ({
     page,
   }) => {
@@ -72,7 +73,7 @@ test.describe("QR di strip tanpa proyek Supabase", () => {
   test("persetujuan unggah muncul dan server tanpa env menjawab belum tersedia", async ({
     page,
   }) => {
-    test.skip(ADA_ENV_LOKAL, "Sudah ada .env.local: jalur 503 hanya untuk server tanpa proyek.")
+    test.skip(ADA_DEV_VARS, "Sudah ada .dev.vars: jalur 503 hanya untuk server tanpa binding.")
     await masukHiasDenganQr(page)
     await page.getByRole("link", { name: "Selesai & Unduh" }).click()
     await page.waitForURL("**/booth/result")
@@ -113,8 +114,8 @@ test.describe("QR di strip tanpa proyek Supabase", () => {
   })
 })
 
-test.describe("alur bagikan dengan proyek Supabase", () => {
-  test.skip(process.env.SUPABASE_E2E !== "1", PERLU_PROYEK)
+test.describe("alur bagikan dengan binding Cloudflare", () => {
+  test.skip(process.env.CLOUDFLARE_E2E !== "1", PERLU_PROYEK)
 
   test("buat link, buka dari perangkat lain, lalu hapus pemiliknya", async ({
     page,

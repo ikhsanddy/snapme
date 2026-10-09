@@ -1,13 +1,13 @@
+import { getBindings } from "@/lib/cloudflare"
+import { markStripDeleted, selectStrip } from "@/lib/db/strips"
 import { deletedGraceExpiry, isExpired } from "@/lib/expiry"
-import { STORAGE_BUCKET } from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
-import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
+import { deleteObjects } from "@/lib/r2/storage"
 import { verifyToken } from "@/lib/tokens"
 
-/* ARCHITECTURE §7: DELETE /api/strips/[id] menghapus berkas lalu barisnya.
-   Token hapus datang lewat header dan hanya hash-nya ada di basis data
-   (ARCHITECTURE §8), jadi token yang bocor dari perangkat pengguna tidak bisa
-   dibaca ulang dari server. */
+/* ARCHITECTURE §7: DELETE /api/strips/[id] menghapus berkas lalu menandai
+   barisnya. Token hapus datang lewat header dan hanya hash-nya ada di basis
+   data (ARCHITECTURE §8), jadi token yang bocor dari perangkat pengguna tidak
+   bisa dibaca ulang dari server. */
 
 const UNAVAILABLE = { error: "Penghapusan link belum tersedia." }
 const MISSING_TOKEN = { error: "Token hapus tidak ada." }
@@ -20,8 +20,8 @@ export async function DELETE(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     return Response.json(UNAVAILABLE, { status: 503 })
   }
 
@@ -32,15 +32,7 @@ export async function DELETE(
   const { id } = await ctx.params
 
   try {
-    const { data, error } = await admin
-      .from("strips")
-      .select(STRIP_COLUMNS)
-      .eq("id", id)
-      .maybeSingle()
-    if (error !== null) {
-      throw new Error(error.message)
-    }
-    const row = data as StripRow | null
+    const row = await selectStrip(bindings.db, id)
     if (row === null || row.status === "deleted") {
       return Response.json(NOT_FOUND, { status: 404 })
     }
@@ -52,35 +44,21 @@ export async function DELETE(
       return Response.json(WRONG_TOKEN, { status: 401 })
     }
 
-    const paths = [row.still_path, row.live_path].filter(
-      (path): path is string => path !== null
+    await deleteObjects(
+      bindings.bucket,
+      [row.still_path, row.live_path].filter(
+        (path): path is string => path !== null
+      )
     )
-    if (paths.length > 0) {
-      const { error: removeError } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .remove(paths)
-      if (removeError !== null) {
-        throw new Error(removeError.message)
-      }
-    }
 
     /* Berkasnya hilang sekarang, barisnya tidak: URL unggah bertanda tangan
-       berlaku sekitar 2 jam dan Storage tidak melihat tabel ini, jadi berkas
+       masih berlaku setelah ini dan bucket tidak melihat tabel ini, jadi berkas
        bisa muncul kembali setelah penghapusan. Baris `deleted` menjaga path-nya
        tetap diketahui pembersih sampai token itu kedaluwarsa, dan sekaligus
        menjaga kuota pembatasan laju tidak bisa dikembalikan dengan menghapus
        baris. Halaman /s/[id] hanya menerima status `complete`, jadi strip yang
        dihapus langsung menjawab 404. */
-    const { error: updateError } = await admin
-      .from("strips")
-      .update({
-        status: "deleted",
-        expires_at: deletedGraceExpiry(now).toISOString(),
-      })
-      .eq("id", id)
-    if (updateError !== null) {
-      throw new Error(updateError.message)
-    }
+    await markStripDeleted(bindings.db, id, deletedGraceExpiry(now).toISOString())
 
     return new Response(null, { status: 204 })
   } catch (error) {

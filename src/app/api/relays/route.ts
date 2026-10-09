@@ -1,18 +1,17 @@
+import { getBindings } from "@/lib/cloudflare"
+import { insertRelay } from "@/lib/db/relays"
 import {
   clientKeyFromRequest,
   countRecentCreations,
   CREATE_LIMIT,
+  CREATE_WINDOW_MS,
   isCrossSite,
   rateKeyFor,
 } from "@/lib/rateLimit"
+import { presignPut } from "@/lib/r2/presign"
 import { relayExpiry } from "@/lib/expiry"
 import { relaySlotsFor } from "@/lib/relaySlots"
-import {
-  CREATE_RELAY_SCHEMA,
-  relaySlotPath,
-  STORAGE_BUCKET,
-} from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
+import { CREATE_RELAY_SCHEMA, RELAY_SLOT_MIME, relaySlotPath } from "@/lib/schemas"
 import { hashToken, newDeleteToken, newRelayId } from "@/lib/tokens"
 
 /* M8 (SE-01, SE-02): POST /api/relays membuat baris estafet `waiting` dan URL
@@ -31,8 +30,8 @@ const TOO_MANY = {
 }
 
 export async function POST(request: Request) {
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     return Response.json(UNAVAILABLE, { status: 503 })
   }
   const contentType = request.headers.get("content-type") ?? ""
@@ -65,75 +64,60 @@ export async function POST(request: Request) {
   const id = newRelayId()
   const hostToken = newDeleteToken()
   const layout = parsed.data.layout
+  const expiresAt = relayExpiry(now).toISOString()
   const slots = relaySlotsFor(layout).map((slot) => ({
     ...slot,
     path: relaySlotPath(id, slot.index),
   }))
+  const sinceIso = new Date(now.getTime() - CREATE_WINDOW_MS).toISOString()
 
   try {
     /* Gerbang murah sebelum menulis (temuan security-reviewer M9): jendela
        kuota yang sudah penuh ditolak tanpa INSERT. Pemeriksaan setelah sisip
        tetap jadi gerbang resmi untuk permintaan serentak. */
     if (
-      (await countRecentCreations(admin, "relays", rateKey, now)) >= CREATE_LIMIT
+      (await countRecentCreations(bindings.db, "relays", rateKey, sinceIso)) >=
+      CREATE_LIMIT
     ) {
       return Response.json(TOO_MANY, { status: 429 })
     }
 
-    const { error: insertError } = await admin.from("relays").insert({
+    await insertRelay(bindings.db, {
       id,
       layout,
       slots,
-      host_token_hash: hashToken(hostToken),
-      status: "waiting",
-      rate_key: rateKey,
-      expires_at: relayExpiry(now).toISOString(),
+      hostTokenHash: hashToken(hostToken),
+      rateKey,
+      createdAt: now.toISOString(),
+      expiresAt,
     })
-    if (insertError !== null) {
-      throw new Error(insertError.message)
-    }
 
     if (
-      (await countRecentCreations(admin, "relays", rateKey, now)) > CREATE_LIMIT
+      (await countRecentCreations(bindings.db, "relays", rateKey, sinceIso)) >
+      CREATE_LIMIT
     ) {
       /* Kuota tidak boleh dikembalikan oleh percobaan yang ditolak, jadi baris
          yang baru dibuat dibuang lagi sebelum menjawab 429. */
-      const { error: rollbackError } = await admin
-        .from("relays")
-        .delete()
-        .eq("id", id)
-      if (rollbackError !== null) {
-        throw new Error(rollbackError.message)
-      }
+      await bindings.db.prepare("DELETE FROM relays WHERE id = ?1").bind(id).run()
       return Response.json(TOO_MANY, { status: 429 })
     }
 
     /* Hanya slot pembuat yang mendapat URL unggah; slot teman baru dibuka saat
        gilirannya diambil (claim), dan rute claim yang memeriksa berkas
        pembuatnya dulu. */
-    const uploads: { index: number; path: string; token: string }[] = []
+    const uploads: { index: number; path: string; url: string }[] = []
     for (const slot of slots) {
       if (slot.owner !== "host") {
         continue
       }
-      const { data, error } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUploadUrl(slot.path)
-      if (error !== null || data === null) {
-        throw new Error(error?.message ?? "URL unggah slot gagal dibuat.")
-      }
-      uploads.push({ index: slot.index, path: data.path, token: data.token })
+      uploads.push({
+        index: slot.index,
+        path: slot.path,
+        url: await presignPut(bindings.s3, slot.path, RELAY_SLOT_MIME),
+      })
     }
 
-    return Response.json(
-      {
-        id,
-        hostToken,
-        expiresAt: relayExpiry(now).toISOString(),
-        uploads,
-      },
-      { status: 201 }
-    )
+    return Response.json({ id, hostToken, expiresAt, uploads }, { status: 201 })
   } catch (error) {
     console.error("POST /api/relays gagal:", error)
     return Response.json(

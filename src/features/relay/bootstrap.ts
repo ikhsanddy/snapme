@@ -24,15 +24,23 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   return promise
 }
 
-/** Mengambil tiap foto slot dari URL bertanda tangan. Slot yang gagal diambil
- *  dilewati: sesinya tetap bisa dibuka, dan slot itu akan tampak kosong. */
+/** Mengambil tiap foto slot dari URL presigned (R2). Slot yang gagal diambil
+ *  dilewati: sesinya tetap bisa dibuka, dan slot itu akan tampak kosong.
+ *
+ *  `cache: "no-store"` WAJIB: halaman `/r/[id]` sudah menampilkan foto yang
+ *  sama lewat `<img>`, dan peramban menyimpannya sebagai respons no-cors tanpa
+ *  `Access-Control-Allow-Origin`. Permintaan `fetch` berikutnya ke URL yang
+ *  sama ber-mode cors dan tidak boleh memakai entri cache itu, sehingga tanpa
+ *  `no-store` ia gagal dengan "Failed to fetch" dan foto pembuat tidak pernah
+ *  masuk ke sesi teman (SE-05, bukti di `docs/DECISIONS.md` M10). URL-nya
+ *  berumur pendek, jadi memang tidak layak di-cache. */
 export async function fetchSlotShots(
   slotPhotos: SlotPhoto[]
 ): Promise<{ index: number; shot: Shot }[]> {
   const loaded = await Promise.all(
     slotPhotos.map(async (slotPhoto) => {
       try {
-        const response = await fetch(slotPhoto.url)
+        const response = await fetch(slotPhoto.url, { cache: "no-store" })
         if (!response.ok) {
           return null
         }

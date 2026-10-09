@@ -1,8 +1,9 @@
+import { getBindings } from "@/lib/cloudflare"
+import { cancelRelay, selectRelay } from "@/lib/db/relays"
+import { relaySlotsOf } from "@/lib/db/rows"
+import { markStripDeleted, selectStripForRelay } from "@/lib/db/strips"
 import { deletedGraceExpiry, isExpired } from "@/lib/expiry"
-import { STORAGE_BUCKET } from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
-import { RELAY_COLUMNS, relaySlotsOf, type RelayRow } from "@/lib/supabase/relays"
-import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
+import { deleteObjects } from "@/lib/r2/storage"
 import { verifyToken } from "@/lib/tokens"
 
 /* M8 (SE-09): DELETE /api/relays/[id] membatalkan estafet dan menghapus
@@ -24,8 +25,8 @@ export async function DELETE(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     return Response.json(UNAVAILABLE, { status: 503 })
   }
   const token = request.headers.get("x-relay-token")
@@ -35,15 +36,7 @@ export async function DELETE(
   const { id } = await ctx.params
 
   try {
-    const { data, error } = await admin
-      .from("relays")
-      .select(RELAY_COLUMNS)
-      .eq("id", id)
-      .maybeSingle()
-    if (error !== null) {
-      throw new Error(error.message)
-    }
-    const row = data as RelayRow | null
+    const row = await selectRelay(bindings.db, id)
     if (row === null) {
       return Response.json(NOT_FOUND, { status: 404 })
     }
@@ -60,64 +53,37 @@ export async function DELETE(
       return new Response(null, { status: 204 })
     }
 
-    const paths: (string | null)[] = relaySlotsOf(row).map((slot) => slot.path)
+    const paths: string[] = relaySlotsOf(row).map((slot) => slot.path)
 
     /* Gerbang `strip_id` lebih dulu supaya penghapusan tidak menyasar draf
        sisa yang bukan milik estafet ini; `relay_id` hanya untuk baris lama
        (temuan tinjauan keamanan M9). */
-    const stripColumn = row.strip_id === null ? "relay_id" : "id"
-    const { data: stripData, error: stripError } = await admin
-      .from("strips")
-      .select(STRIP_COLUMNS)
-      .eq(stripColumn, row.strip_id ?? id)
-      .limit(1)
-      .maybeSingle()
-    if (stripError !== null) {
-      throw new Error(stripError.message)
-    }
-    const strip = stripData as StripRow | null
+    const strip = await selectStripForRelay(bindings.db, row)
     let stripId: string | null = null
     if (strip !== null && strip.status !== "deleted") {
       stripId = strip.id
-      paths.push(strip.still_path, strip.live_path)
-    }
-
-    const existing = paths.filter((path): path is string => path !== null)
-    if (existing.length > 0) {
-      const { error: removeError } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .remove(existing)
-      if (removeError !== null) {
-        throw new Error(removeError.message)
+      if (strip.still_path !== null) {
+        paths.push(strip.still_path)
+      }
+      if (strip.live_path !== null) {
+        paths.push(strip.live_path)
       }
     }
+
+    await deleteObjects(bindings.bucket, paths)
 
     /* Stripnya ikut jadi batu nisan: halaman /s/[id] hanya menerima status
        `complete`, jadi linknya langsung berhenti bekerja sementara pembersih
        tetap tahu path berkas yang mungkin diunggah setelah penghapusan. */
     if (stripId !== null) {
-      const { error: tombstoneError } = await admin
-        .from("strips")
-        .update({
-          status: "deleted",
-          expires_at: deletedGraceExpiry(now).toISOString(),
-        })
-        .eq("id", stripId)
-      if (tombstoneError !== null) {
-        throw new Error(tombstoneError.message)
-      }
+      await markStripDeleted(
+        bindings.db,
+        stripId,
+        deletedGraceExpiry(now).toISOString()
+      )
     }
 
-    const { error: updateError } = await admin
-      .from("relays")
-      .update({
-        status: "cancelled",
-        expires_at: deletedGraceExpiry(now).toISOString(),
-      })
-      .eq("id", id)
-    if (updateError !== null) {
-      throw new Error(updateError.message)
-    }
+    await cancelRelay(bindings.db, id, deletedGraceExpiry(now).toISOString())
 
     return new Response(null, { status: 204 })
   } catch (error) {

@@ -9,24 +9,21 @@ import { Button } from "@/components/ui/button"
 import type { SlotPhoto } from "@/features/relay/bootstrap"
 import { RelayCompleteView } from "@/features/relay/RelayCompleteView"
 import { RelayJoinView } from "@/features/relay/RelayJoinView"
+import { getBindings } from "@/lib/cloudflare"
+import { selectRelay } from "@/lib/db/relays"
+import { relaySlotsOf } from "@/lib/db/rows"
 import { isExpired } from "@/lib/expiry"
 import { LAYOUTS, type LayoutId } from "@/lib/layouts"
-import { STORAGE_BUCKET } from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
-import { RELAY_COLUMNS, relaySlotsOf, type RelayRow } from "@/lib/supabase/relays"
+import { presignGet } from "@/lib/r2/presign"
 
 /* M8 (SE-04 sampai SE-07, SE-08): halaman gabung estafet. Komponen server,
-   `noindex` lewat metadata, dan berkas slot diambil lewat URL bertanda tangan
+   `noindex` lewat metadata, dan berkas slot diambil lewat URL presigned R2
    berumur pendek seperti halaman /s/[id].
 
    Penyimpangan yang sama dengan /s/[id] juga berlaku: App Router tidak bisa
    memasang status 410 pada halaman, jadi estafet yang lewat 48 jam atau
    dibatalkan dirender sebagai tampilan pesan; status 410 harfiah dijawab rute
    API. Untuk baris yang tidak ada, halamannya menjawab 404. */
-
-const SIGNED_URL_SECONDS = 3_600
-
-export const instant = false
 
 export const metadata: Metadata = {
   title: "Estafet | snapme",
@@ -76,20 +73,17 @@ export default async function RelayPage({
   await connection()
   const { id } = await params
 
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     notFound()
   }
-  const { data, error } = await admin
-    .from("relays")
-    .select(RELAY_COLUMNS)
-    .eq("id", id)
-    .maybeSingle()
-  if (error !== null) {
-    console.error("Halaman /r/[id] gagal membaca estafet:", error.message)
+  let row
+  try {
+    row = await selectRelay(bindings.db, id)
+  } catch (error) {
+    console.error("Halaman /r/[id] gagal membaca estafet:", error)
     notFound()
   }
-  const row = data as RelayRow | null
   if (row === null || !Object.hasOwn(LAYOUTS, row.layout)) {
     notFound()
   }
@@ -133,13 +127,11 @@ export default async function RelayPage({
   const slotsToSign = relaySlotsOf(row).filter((slot) => slot.owner === "host")
   const signed = await Promise.all(
     slotsToSign.map(async (slot) => {
-      const { data: url, error: signError } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrl(slot.path, SIGNED_URL_SECONDS)
-      if (signError !== null) {
+      try {
+        return { index: slot.index, url: await presignGet(bindings.s3, slot.path) }
+      } catch {
         return null
       }
-      return { index: slot.index, url: url.signedUrl }
     })
   )
   const slotPhotos = signed.filter(
