@@ -135,7 +135,12 @@ export function serializeSession(state: SessionState): SessionRecord {
   return {
     version: SESSION_VERSION,
     layoutId: state.layoutId,
-    shots: state.shots,
+    /* M7: bingkai Strip Hidup (`Shot.clip`) sengaja tidak ikut rekaman. Bentuk
+       fotonya disalin ulang di sini supaya `ImageBitmap` tidak pernah menyentuh
+       IndexedDB dan rekaman lama tetap valid. */
+    shots: state.shots.map((shot) =>
+      shot === null ? null : { still: shot.still, capturedAt: shot.capturedAt }
+    ),
     frameId: state.frameId,
     effectId: state.effectId,
     stickers: state.stickers,

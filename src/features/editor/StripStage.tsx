@@ -41,6 +41,15 @@ const WORDMARK_SIZE = 40
 const DATE_SIZE = 28
 const QR_PLATE_BORDER = 2
 const QR_PLATE_RADIUS = 16
+/* SH-02: lencana "Klip" di sudut kiri bawah slot, hanya saat pratinjau hidup
+   nyala. Angkanya dari acuan customize.html (kiri dan bawah 6 px, 42 x 16 px,
+   Space Mono 700 10 px, jarak huruf 0.06em pada strip 210 px) yang dikalikan
+   skala kanvas 600 px, jadi lencananya sama persis saat dibandingkan. */
+const CLIP_BADGE_INSET = 17
+const CLIP_BADGE_HEIGHT = 46
+const CLIP_BADGE_WIDTH = 120
+const CLIP_BADGE_FONT = 28
+const CLIP_BADGE_SPACING = 1.7
 /* Selama link belum dibuat, kotak QR diisi glif supaya pengguna melihat di mana
    QR akan duduk. Ukurannya 60 persen kotak. */
 const QR_GLYPH_RATIO = 0.6
@@ -77,6 +86,14 @@ export interface StripStageProps {
   /** SH-04: QR di kaki strip. Tidak ada prop ini berarti fitur mati; `imageUrl`
    *  null berarti kotak QR masih menampilkan glif penanda. */
   qr?: { imageUrl: string | null }
+  /** SH-02: pratinjau Strip Hidup. `frames` sejajar slot, `index` bingkai yang
+   *  sedang tampil (-1 berarti diam: pakai foto tetap), `chrome` menyalakan
+   *  lencana "Klip". Tanpa prop ini strip dirender diam, termasuk saat ekspor. */
+  live?: {
+    frames: (ImageBitmap[] | null)[]
+    index: number
+    chrome: boolean
+  }
   /** Skala panggung: `lebar tampilan / lebar strip`. */
   scale: number
   groupRef: RefObject<KonvaGroup | null>
@@ -97,12 +114,16 @@ function SlotPhoto({
   shot,
   rect,
   effect,
+  liveFrame,
 }: {
   shot: Shot | null
   rect: SlotRect
   effect: EffectParams
+  /** SH-02: bingkai klip yang sedang tampil, menggantikan foto tetap. */
+  liveFrame?: ImageBitmap
 }) {
-  const image = useHtmlImage(shot?.still)
+  const still = useHtmlImage(shot?.still)
+  const image = liveFrame ?? still
   const nodeRef = useRef<KonvaImageNode>(null)
 
   useEffect(() => {
@@ -265,6 +286,7 @@ export function StripStage({
   texts,
   showDate,
   qr,
+  live,
   scale,
   groupRef,
   onSelect,
@@ -301,27 +323,71 @@ export function StripStage({
           listening={false}
         />
 
-        {layout.slotRects.map((rect, index) => (
-          <Group
-            key={`slot-${index}`}
-            clipFunc={(ctx) => {
-              ctx.beginPath()
-              ctx.roundRect(rect.x, rect.y, rect.width, rect.height, SLOT_RADIUS)
-            }}
-          >
-            <SlotPhoto shot={shots[index] ?? null} rect={rect} effect={effect} />
-            <Rect
-              x={rect.x}
-              y={rect.y}
-              width={rect.width}
-              height={rect.height}
-              stroke={resolveTokenColor(frame.slotBorder)}
-              strokeWidth={SLOT_BORDER}
-              cornerRadius={SLOT_RADIUS}
-              listening={false}
-            />
-          </Group>
-        ))}
+        {layout.slotRects.map((rect, index) => {
+          /* SH-02: klip parsial di-modulo per slot; slot tanpa klip (mis. dari
+             galeri) tetap memakai fotonya sendiri. */
+          const frames = live === undefined ? null : (live.frames[index] ?? null)
+          const liveFrame =
+            frames !== null &&
+            frames.length > 0 &&
+            live !== undefined &&
+            live.index >= 0
+              ? frames[live.index % frames.length]
+              : undefined
+
+          return (
+            <Group
+              key={`slot-${index}`}
+              clipFunc={(ctx) => {
+                ctx.beginPath()
+                ctx.roundRect(rect.x, rect.y, rect.width, rect.height, SLOT_RADIUS)
+              }}
+            >
+              <SlotPhoto
+                shot={shots[index] ?? null}
+                rect={rect}
+                effect={effect}
+                liveFrame={liveFrame}
+              />
+              <Rect
+                x={rect.x}
+                y={rect.y}
+                width={rect.width}
+                height={rect.height}
+                stroke={resolveTokenColor(frame.slotBorder)}
+                strokeWidth={SLOT_BORDER}
+                cornerRadius={SLOT_RADIUS}
+                listening={false}
+              />
+              {live?.chrome === true && frames !== null ? (
+                <Group
+                  x={rect.x + CLIP_BADGE_INSET}
+                  y={rect.y + rect.height - CLIP_BADGE_INSET - CLIP_BADGE_HEIGHT}
+                  listening={false}
+                >
+                  <Rect
+                    width={CLIP_BADGE_WIDTH}
+                    height={CLIP_BADGE_HEIGHT}
+                    fill={ink}
+                    cornerRadius={999}
+                  />
+                  <Text
+                    width={CLIP_BADGE_WIDTH}
+                    height={CLIP_BADGE_HEIGHT}
+                    verticalAlign="middle"
+                    align="center"
+                    text="Klip"
+                    fontFamily={resolveFontFamily("mono")}
+                    fontStyle="700"
+                    fontSize={CLIP_BADGE_FONT}
+                    letterSpacing={CLIP_BADGE_SPACING}
+                    fill={resolveTokenColor("--color-paper")}
+                  />
+                </Group>
+              ) : null}
+            </Group>
+          )
+        })}
 
         <Text
           x={layout.margin}

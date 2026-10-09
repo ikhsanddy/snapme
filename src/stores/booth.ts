@@ -19,10 +19,13 @@ export interface BoothSettings {
   cameraDeviceId: string | null
 }
 
-/** Satu foto tersimpan di memori sebagai dataURL JPEG (IndexedDB menyusul di M5). */
+/** Satu foto tersimpan di memori sebagai dataURL JPEG (IndexedDB menyusul di M5).
+ *  M7: `clip` adalah bingkai Strip Hidup (SH-01) bila perekam berhasil; hanya
+ *  di memori, tidak ikut rekaman sesi (`features/session/sessionDb.ts`). */
 export interface Shot {
   still: string
   capturedAt: number
+  clip?: ImageBitmap[]
 }
 
 type Shots = (Shot | null)[]
@@ -64,6 +67,12 @@ export interface ShareState {
   strip: { id: string; expiresAt: string | null } | null
 }
 
+/** M7 (SH-02): irisan Strip Hidup. `enabled` adalah sakelar di langkah Hias;
+ *  kesiapannya mengikuti ada tidaknya klip di `shots`. */
+export interface LiveState {
+  enabled: boolean
+}
+
 /** Perubahan yang boleh ditulis balik dari kanvas atau daftar "Isi strip". */
 export type StickerPatch = Partial<
   Pick<StickerInstance, "x" | "y" | "rotation" | "width">
@@ -88,6 +97,7 @@ interface BoothState extends EditorState {
   shots: Shots
   settings: BoothSettings
   share: ShareState
+  live: LiveState
   /** FR-14: `true` setelah SessionSync selesai membaca IndexedDB. Bukan milik
    *  rekaman dan tidak direset, supaya gerbang langkah booth menunggu, bukan
    *  memantul lebih dulu. */
@@ -107,6 +117,7 @@ interface BoothState extends EditorState {
   setShowDate: (shown: boolean) => void
   setQrEnabled: (enabled: boolean) => void
   setShareStrip: (strip: ShareState["strip"]) => void
+  setLiveEnabled: (enabled: boolean) => void
   reset: () => void
 }
 
@@ -146,6 +157,15 @@ function freshState() {
     texts: [] as StripText[],
     showDate: false,
     share: { qrEnabled: false, strip: null },
+    live: { enabled: false },
+  }
+}
+
+/* SH-01: bingkai klip menahan memori sampai `close()` dipanggil. Setiap jalur
+   yang mengganti atau membuang foto harus melepasnya. */
+function closeShotClips(shots: Shots): void {
+  for (const shot of shots) {
+    shot?.clip?.forEach((bitmap) => bitmap.close())
   }
 }
 
@@ -153,11 +173,16 @@ export const useBoothStore = create<BoothState>((set) => ({
   ...freshState(),
   sessionReady: false,
   /* Ganti layout mengosongkan foto, jadi hiasan lama tidak boleh nyangkut:
-     jumlah slot berbeda dan posisinya tidak lagi cocok. */
+     jumlah slot berbeda dan posisinya tidak lagi cocok. Klip lama dilepas
+     lebih dulu supaya bingkainya tidak menahan memori (SH-01). */
   setLayout: (id) =>
-    set({ ...freshState(), layoutId: id, shots: freshShots(id) }),
+    set((state) => {
+      closeShotClips(state.shots)
+      return { ...freshState(), layoutId: id, shots: freshShots(id) }
+    }),
   setShot: (index, shot) =>
     set((state) => {
+      closeShotClips([state.shots[index] ?? null])
       const shots = state.shots.slice()
       shots[index] = shot
       return { shots }
@@ -273,11 +298,21 @@ export const useBoothStore = create<BoothState>((set) => ({
     set((state) => ({ share: { ...state.share, qrEnabled: enabled } })),
   setShareStrip: (strip) =>
     set((state) => ({ share: { ...state.share, strip } })),
-  reset: () => set(freshState()),
+  setLiveEnabled: (enabled) => set({ live: { enabled } }),
+  reset: () =>
+    set((state) => {
+      closeShotClips(state.shots)
+      return freshState()
+    }),
 }))
 
 export function countFilled(shots: Shots): number {
   return shots.reduce((total, shot) => (shot === null ? total : total + 1), 0)
+}
+
+/** SH-02: pratinjau hidup hanya punya bahan bila minimal satu slot berklip. */
+export function hasLiveClips(shots: Shots): boolean {
+  return shots.some((shot) => (shot?.clip?.length ?? 0) > 0)
 }
 
 export function allFilled(shots: Shots): boolean {

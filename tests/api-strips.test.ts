@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { rateKeyFor } from "@/lib/rateLimit"
-import { STILL_BYTE_LIMIT, stripStillPath } from "@/lib/schemas"
+import { STILL_BYTE_LIMIT, stripLivePath, stripStillPath } from "@/lib/schemas"
 import type { StripRow } from "@/lib/supabase/strips"
 import { hashToken } from "@/lib/tokens"
 
@@ -231,6 +231,27 @@ function pasangFetch(status: number, bytes: number, type: string) {
   )
 }
 
+/** M7: rute complete memeriksa dua berkas (still dan klip), jadi stub `fetch`
+ *  memilih respons berdasarkan potongan URL. */
+function pasangFetchUrl(
+  entries: { match: string; status: number; bytes: number; type: string }[]
+) {
+  vi.stubGlobal("fetch", (input: RequestInfo | URL) => {
+    const url = String(input)
+    const entry = entries.find((item) => url.includes(item.match))
+    if (entry === undefined) {
+      throw new Error(`Tidak ada stub fetch untuk ${url}`)
+    }
+    return Promise.resolve({
+      ok: entry.status < 400,
+      headers: new Headers({
+        "content-length": String(entry.bytes),
+        "content-type": entry.type,
+      }),
+    } as Response)
+  })
+}
+
 beforeEach(() => {
   /* Garam wajib ada: tanpa itu rute menolak melayani (sidang alamat IP bisa
      dibalik dengan menebak ruang IPv4). */
@@ -290,6 +311,52 @@ describe("POST /api/strips", () => {
       permintaan('{"layout":"strip-4"}', { "content-type": "text/plain" })
     )
     expect(lintasSitus.status).toBe(400)
+  })
+
+  it("menyertakan URL unggah klip bila klipnya diminta", async () => {
+    const fake = pasangKlien()
+    const response = await buatStrip(
+      permintaan({ layout: "strip-4", live: "webm" })
+    )
+
+    expect(response.status).toBe(201)
+    const body = (await response.json()) as {
+      id: string
+      upload: { path: string }
+      liveUpload?: { path: string; token: string }
+    }
+    expect(body.liveUpload).toEqual({
+      path: stripLivePath(body.id, "webm"),
+      token: "token-unggah",
+    })
+    /* Still lebih dulu, klip kedua. */
+    expect(fake.log.signedUploads).toEqual([
+      stripStillPath(body.id),
+      stripLivePath(body.id, "webm"),
+    ])
+    expect(fake.rows.get(body.id)?.live_path).toBe(
+      stripLivePath(body.id, "webm")
+    )
+    /* MP4 juga diterima: Safari merekamnya. */
+    const mp4 = await buatStrip(permintaan({ layout: "strip-4", live: "mp4" }))
+    const mp4Body = (await mp4.json()) as { id: string }
+    expect(fake.rows.get(mp4Body.id)?.live_path).toBe(
+      stripLivePath(mp4Body.id, "mp4")
+    )
+  })
+
+  it("tidak menawarkan unggah klip bila tidak diminta", async () => {
+    const fake = pasangKlien()
+    const response = await buatStrip(permintaan({ layout: "strip-4" }))
+
+    expect(response.status).toBe(201)
+    const body = (await response.json()) as Record<string, unknown>
+    expect("liveUpload" in body).toBe(false)
+    expect(fake.rows.get(String(body.id))?.live_path).toBeNull()
+
+    /* Jenis klip di luar dua yang dikenal ditolak sebelum baris dibuat. */
+    const avi = await buatStrip(permintaan({ layout: "strip-4", live: "avi" }))
+    expect(avi.status).toBe(400)
   })
 
   it("menolak melayani tanpa garam pembatasan laju", async () => {
@@ -440,6 +507,79 @@ describe("POST /api/strips/[id]/complete", () => {
     expect(kedua.status).toBe(200)
     expect(await kedua.json()).toEqual(satu)
     expect(fake.log.signedUrls).toHaveLength(1)
+  })
+
+  /* M7: klip Strip Hidup best-effort. Yang lolos disimpan, yang tidak dibuang
+     dan dikosongkan; strip diamnya tetap selesai. */
+  it("menyimpan klip yang lolos pemeriksaan", async () => {
+    const id = "berklip12345"
+    const livePath = stripLivePath(id, "webm")
+    const fake = pasangKlien([baris({ id, live_path: livePath })])
+    pasangFetchUrl([
+      { match: "/still.png", status: 200, bytes: 1024, type: "image/png" },
+      { match: "/live.webm", status: 200, bytes: 1_048_576, type: "video/webm" },
+    ])
+
+    const response = await lengkapiStrip(permintaan(), konteks(id))
+    expect(response.status).toBe(200)
+    expect(fake.rows.get(id)?.status).toBe("complete")
+    expect(fake.rows.get(id)?.live_path).toBe(livePath)
+    expect(fake.log.removed).toEqual([])
+  })
+
+  it("menolak klip yang tidak ada atau terlalu besar, berkasnya dibuang", async () => {
+    const id = "berklip67890"
+    const livePath = stripLivePath(id, "mp4")
+    const fake = pasangKlien([baris({ id, live_path: livePath })])
+    const still = {
+      match: "/still.png",
+      status: 200,
+      bytes: 1024,
+      type: "image/png",
+    }
+
+    /* Berkasnya tidak pernah terunggah. */
+    pasangFetchUrl([
+      still,
+      { match: "/live.mp4", status: 404, bytes: 0, type: "video/mp4" },
+    ])
+    const hilang = await lengkapiStrip(permintaan(), konteks(id))
+    expect(hilang.status).toBe(200)
+    expect(fake.rows.get(id)?.status).toBe("complete")
+    expect(fake.rows.get(id)?.live_path).toBeNull()
+    expect(fake.log.removed).toEqual([livePath])
+
+    /* Jenis klip yang tidak dikenal, lalu ukuran di atas 5 MB. */
+    fake.rows.set(id, baris({ id, live_path: livePath }))
+    pasangFetchUrl([
+      still,
+      { match: "/live.mp4", status: 200, bytes: 2048, type: "video/quicktime" },
+    ])
+    const jenis = await lengkapiStrip(permintaan(), konteks(id))
+    expect(jenis.status).toBe(200)
+    expect(fake.rows.get(id)?.live_path).toBeNull()
+
+    fake.rows.set(id, baris({ id, live_path: livePath }))
+    pasangFetchUrl([
+      still,
+      { match: "/live.mp4", status: 200, bytes: 6_291_456, type: "video/mp4" },
+    ])
+    const besar = await lengkapiStrip(permintaan(), konteks(id))
+    expect(besar.status).toBe(200)
+    expect(fake.rows.get(id)?.live_path).toBeNull()
+    expect(fake.log.removed).toEqual([livePath, livePath, livePath])
+    /* Strip diamnya tidak tersentuh. */
+    expect(fake.log.removed).not.toContain(stripStillPath(id))
+  })
+
+  it("tidak memeriksa klip untuk baris tanpa live_path", async () => {
+    const fake = pasangKlien([baris({ id: "tanpaklip123" })])
+    pasangFetch(200, 1024, "image/png")
+
+    const response = await lengkapiStrip(permintaan(), konteks("tanpaklip123"))
+    expect(response.status).toBe(200)
+    expect(fake.log.signedUrls).toEqual([stripStillPath("tanpaklip123")])
+    expect(fake.log.removed).toEqual([])
   })
 })
 

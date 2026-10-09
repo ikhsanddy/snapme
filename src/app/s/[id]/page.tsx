@@ -6,6 +6,7 @@ import { DownloadSimple, Lock, Timer } from "@phosphor-icons/react/ssr"
 
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { Button } from "@/components/ui/button"
+import { LiveStripVideo } from "@/features/live/LiveStripVideo"
 import { StripOwnerActions } from "@/features/share/StripOwnerActions"
 import { isExpired } from "@/lib/expiry"
 import { STORAGE_BUCKET } from "@/lib/schemas"
@@ -110,6 +111,18 @@ export default async function StripPage({
   if (signed === null || signed.error !== null) {
     notFound()
   }
+  /* M7: versi hidup ikut ditampilkan bila stripnya punya klip. Bila tautannya
+     gagal dibuat, halaman tetap utuh dengan versi diamnya saja. */
+  const liveSigned =
+    row.live_path === null
+      ? null
+      : await admin.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(row.live_path, SIGNED_URL_SECONDS)
+  const liveUrl =
+    liveSigned === null || liveSigned.error !== null
+      ? null
+      : liveSigned.data.signedUrl
   const downloadUrl = new URL(signed.data.signedUrl)
   downloadUrl.searchParams.set("download", `snapme-${row.id}.png`)
 
@@ -124,6 +137,9 @@ export default async function StripPage({
         alt="Strip"
         className="h-auto w-full max-w-[420px] border-2 border-ink bg-cream"
       />
+      {liveUrl === null ? null : (
+        <LiveStripVideo src={liveUrl} poster={signed.data.signedUrl} />
+      )}
       <p className="flex items-center gap-2 text-sm text-muted">
         <Timer weight="bold" className="size-5 shrink-0" aria-hidden />
         {row.expires_at === null

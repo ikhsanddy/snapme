@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowClockwise,
@@ -25,6 +25,7 @@ import { captureFrame } from "@/features/camera/captureFrame"
 import { useCamera, type CameraErrorReason } from "@/features/camera/useCamera"
 import { isBusy } from "@/features/capture/machine"
 import { useCaptureMachine } from "@/features/capture/useCaptureMachine"
+import { useClipRecorder } from "@/features/capture/useClipRecorder"
 import { useGestureSnap } from "@/features/gesture/useGestureSnap"
 import { LAYOUTS } from "@/lib/layouts"
 import {
@@ -69,6 +70,17 @@ export default function CaptureStepPage() {
   const setGestureEnabled = useBoothStore((state) => state.setGestureEnabled)
   const { phase, targetSlot, countdownValue, flash: flashOn } = state
 
+  /* SH-01: bingkai klip direkam selama 1,5 detik terakhir hitung mundur, untuk
+     semua jalur masuk `countdown` (tombol, Spasi, gesture, ulang slot). */
+  const slotRatio =
+    layoutId === null
+      ? null
+      : LAYOUTS[layoutId].slot.width / LAYOUTS[layoutId].slot.height
+  const takeClipFrames = useClipRecorder({ webcamRef, slotRatio, phase })
+  /* Satu pengambilan per fase `capturing`: efek bisa berjalan ulang saat
+     promise bingkai masih ditunggu. */
+  const capturingRef = useRef(false)
+
   /* GS-06: pilihan sakelar dibaca dari localStorage setelah hidrasi. */
   useEffect(() => {
     hydrateGesturePreference()
@@ -85,23 +97,43 @@ export default function CaptureStepPage() {
     onProceed: () => router.push("/booth/customize"),
   })
 
-  /* Efek pengambilan: satu kali tiap fase `capturing`, setelah hitung mundur habis. */
+  /* Efek pengambilan: satu kali tiap fase `capturing`, setelah hitung mundur habis.
+     Foto utama diambil sinkron lebih dulu, lalu bingkai klip SH-01 yang masih
+     diproses ditunggu. Fase `capturing` tidak punya timer, jadi menunggu di
+     sini tidak menggeser waktu foto mana pun. */
   useEffect(() => {
-    if (phase !== "capturing" || layoutId === null || !requested) {
+    if (phase !== "capturing") {
+      capturingRef.current = false
       return
     }
-    const layout = LAYOUTS[layoutId]
-    const slotIndex = targetSlot ?? shots.findIndex((shot) => shot === null)
-    const video = webcamRef.current?.video ?? null
-    const still =
-      video === null
-        ? null
-        : captureFrame(video, layout.slot.width / layout.slot.height)
-
-    if (still !== null && slotIndex >= 0) {
-      setShot(slotIndex, { still, capturedAt: Date.now() })
+    if (capturingRef.current || layoutId === null || !requested) {
+      return
     }
-    dispatch({ type: "SHOT_SAVED" })
+    capturingRef.current = true
+
+    void (async () => {
+      const layout = LAYOUTS[layoutId]
+      const slotIndex = targetSlot ?? shots.findIndex((shot) => shot === null)
+      const video = webcamRef.current?.video ?? null
+      const still =
+        video === null
+          ? null
+          : captureFrame(video, layout.slot.width / layout.slot.height)
+      const clip = await takeClipFrames()
+
+      if (still !== null && slotIndex >= 0) {
+        setShot(slotIndex, {
+          still,
+          capturedAt: Date.now(),
+          ...(clip.length > 0 ? { clip } : {}),
+        })
+      } else {
+        for (const frame of clip) {
+          frame.close()
+        }
+      }
+      dispatch({ type: "SHOT_SAVED" })
+    })()
   }, [
     phase,
     targetSlot,
@@ -110,6 +142,7 @@ export default function CaptureStepPage() {
     shots,
     setShot,
     webcamRef,
+    takeClipFrames,
     dispatch,
   ])
 

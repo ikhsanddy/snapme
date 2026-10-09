@@ -31,7 +31,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 - [x] M4 Hias strip
 - [x] M5 Hasil dan cetak
 - [x] M6 Link strip dan QR
-- [ ] M7 Strip Hidup
+- [x] M7 Strip Hidup
 - [ ] M8 Strip Estafet
 - [ ] M9 Pengerasan
 
@@ -262,18 +262,22 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 
 **Pekerjaan**
 
-- [ ] Perekam bingkai di mesin keadaan pemotretan: 10 bingkai 480 px pada 1,5 detik terakhir hitung mundur.
-- [ ] `LiveStripPlayer` dan sakelar Strip Hidup di Hias.
-- [ ] Unggah versi hidup bersama strip, tampilkan di `/s/[id]`.
-- [ ] Hormati `prefers-reduced-motion`: berhenti dengan tombol Putar.
-- [ ] Lepas `ImageBitmap` saat sesi diulang.
-- [ ] **(P1)** Unduh video lewat `MediaRecorder`, tombol tersembunyi bila tidak didukung.
+- [x] Perekam bingkai di mesin keadaan pemotretan: 10 bingkai 480 px pada 1,5 detik terakhir hitung mundur. (`src/features/capture/clipRecorder.ts` + `useClipRecorder.ts`; sampling 1500 sampai 2850 ms, jadi momen jepret di 3000 ms tidak tersentuh)
+- [x] `LiveStripPlayer` dan sakelar Strip Hidup di Hias. (diwujudkan sebagai prop `live` di `StripStage` + `useClipTicker`, dengan lencana "Klip"; alasannya di `DECISIONS.md` M7)
+- [x] Unggah versi hidup bersama strip, tampilkan di `/s/[id]`. (migrasi bucket 5 MB + jenis video diterapkan ke proyek atas persetujuan pengguna 9 Oktober 2026; bukti ber-jaringan di `DECISIONS.md` M7)
+- [x] Hormati `prefers-reduced-motion`: berhenti dengan tombol Putar. (di Hias dan di pemutar `/s/[id]`)
+- [x] Lepas `ImageBitmap` saat sesi diulang. (`setShot`, `setLayout`, dan `reset` memanggil `close()`; dijaga `tests/booth-live.test.ts`)
+- [x] **(P1)** Unduh video lewat `MediaRecorder`, tombol tersembunyi bila tidak didukung. (2 putaran x 10 bingkai = sekitar 3 detik, di bawah 5 MB; dijaga `e2e/live.spec.ts`)
 
 **Selesai bila**
 
-- Perekaman bingkai tidak mengubah waktu pengambilan foto utama (uji unit pada mesin keadaan).
-- `/s/{id}` menampilkan versi hidup untuk strip yang punya klip, dan versi diam untuk yang tidak.
-- Uji manual di Chrome, Firefox, dan Safari dicatat di `docs/DECISIONS.md`.
+- Perekaman bingkai tidak mengubah waktu pengambilan foto utama (uji unit pada mesin keadaan). (hijau: `tests/clip-recorder.test.ts` menjalankan tabel peristiwa yang sama dengan dan tanpa pengamat perekam)
+- `/s/{id}` menampilkan versi hidup untuk strip yang punya klip, dan versi diam untuk yang tidak. (hijau: `SUPABASE_E2E=1 npx playwright test share.spec.ts live.spec.ts` → 8 lolos, 1 dilewati; konteks kedua melihat `<video>` bertanda tangan `/storage/`, sedangkan strip tanpa klip nol `video`)
+- Uji manual di Chrome, Firefox, dan Safari dicatat di `docs/DECISIONS.md`. (tabel disiapkan dengan status menunggu pengguna; perangkat di luar Chromium headless belum tersedia di sesi ini)
+
+**Batas aman.** Migrasi `20261013000000_live_video.sql` (batas bucket 5 MB + `video/webm`, `video/mp4`) sudah diterapkan ke proyek Supabase `snapme` atas persetujuan pengguna 9 Oktober 2026. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau agent setelah disetujui.
+
+**Catatan uji.** `e2e/gesture.spec.ts` "pilihan sakelar diingat setelah halaman dimuat ulang" diperbaiki: navigasinya masih menganggap sesi belum lintas muat ulang (komentar lamanya menyebut "FR-14 menyusul"), sedangkan M5 sudah mempersistensinya, jadi ujinya berlomba dengan tunda simpan 400 ms. Sekarang ujinya menunggu simpanan selesai lalu memastikan halaman tetap di langkah yang sama.
 
 ---
 

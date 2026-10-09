@@ -4,7 +4,12 @@ import {
   CREATE_LIMIT,
   rateKeyFor,
 } from "@/lib/rateLimit"
-import { CREATE_STRIP_SCHEMA, STORAGE_BUCKET, stripStillPath } from "@/lib/schemas"
+import {
+  CREATE_STRIP_SCHEMA,
+  STORAGE_BUCKET,
+  stripLivePath,
+  stripStillPath,
+} from "@/lib/schemas"
 import { getSupabaseAdmin } from "@/lib/supabase/server"
 import { hashToken, newDeleteToken, newStripId } from "@/lib/tokens"
 
@@ -63,12 +68,18 @@ export async function POST(request: Request) {
   const id = newStripId()
   const deleteToken = newDeleteToken()
   const stillPath = stripStillPath(id)
+  /* M7: klip Strip Hidup best-effort. Path-nya ditulis sejak awal supaya
+     pembersih dan penghapusan tahu berkas mana yang jadi milik baris ini,
+     sama seperti still; rute complete yang memutuskan nasibnya. */
+  const liveKind = parsed.data.live
+  const livePath = liveKind === undefined ? null : stripLivePath(id, liveKind)
 
   try {
     const { error: insertError } = await admin.from("strips").insert({
       id,
       layout: parsed.data.layout,
       still_path: stillPath,
+      live_path: livePath,
       delete_token_hash: hashToken(deleteToken),
       rate_key: rateKey,
     })
@@ -96,8 +107,24 @@ export async function POST(request: Request) {
       throw new Error(error?.message ?? "URL unggah gagal dibuat.")
     }
 
+    let liveUpload: { path: string; token: string } | undefined
+    if (livePath !== null) {
+      const { data: liveData, error: liveError } = await admin.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUploadUrl(livePath)
+      if (liveError !== null || liveData === null) {
+        throw new Error(liveError?.message ?? "URL unggah klip gagal dibuat.")
+      }
+      liveUpload = { path: liveData.path, token: liveData.token }
+    }
+
     return Response.json(
-      { id, deleteToken, upload: { path: data.path, token: data.token } },
+      {
+        id,
+        deleteToken,
+        upload: { path: data.path, token: data.token },
+        ...(liveUpload === undefined ? {} : { liveUpload }),
+      },
       { status: 201 }
     )
   } catch (error) {

@@ -157,6 +157,8 @@ test.describe("alur bagikan dengan proyek Supabase", () => {
     const halamanTeman = await teman.newPage()
     await halamanTeman.goto(stripUrl)
     await expect(halamanTeman.getByAltText("Strip")).toBeVisible()
+    /* M7: strip tanpa klip tidak menampilkan pemutar versi hidup. */
+    await expect(halamanTeman.locator("video")).toHaveCount(0)
     await expect(
       halamanTeman.getByRole("button", { name: "Hapus strip" })
     ).toHaveCount(0)

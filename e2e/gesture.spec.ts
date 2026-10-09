@@ -125,12 +125,12 @@ test("pilihan sakelar diingat setelah halaman dimuat ulang", async ({ page }) =>
   await toggle.click()
   await expect(toggle).toHaveAttribute("aria-pressed", "false")
 
-  /* Sesi foto belum lintas muat ulang (FR-14 menyusul), jadi kembali ke langkah
-     yang sama dengan cara yang sama; yang diuji hanya ingatan sakelar. */
+  /* FR-14 menyimpan sesi dengan jeda 400 ms; tunggu tulisannya selesai supaya
+     muat ulang di bawah benar-benar menguji ingatan sakelar. Sesi foto ikut
+     lintas muat ulang, jadi halaman tetap di langkah yang sama. */
+  await page.waitForTimeout(600)
   await page.reload()
-  await page.waitForURL("**/booth/layout")
-  await page.getByRole("radio", { name: "Strip 4 foto" }).check()
-  await page.getByRole("button", { name: "Mulai Foto" }).click()
+  await expect(page).toHaveURL(/\/booth\/capture$/)
 
   await expect(
     page.getByRole("button", { name: /Gesture Snap/ })

@@ -17,16 +17,20 @@ import { clearSession } from "@/features/session/sessionDb"
 import {
   completeStrip,
   requestStrip,
+  uploadStripLive,
   uploadStripStill,
   type StripUpload,
 } from "@/features/share/api"
 import { ShareCard } from "@/features/share/ShareCard"
 import { clearStripToken, saveStripToken } from "@/features/share/stripToken"
 import { useQrImageUrl } from "@/features/share/useQrImage"
+import { LiveStage, type LiveStageHandle } from "@/features/live/LiveStage"
+import { pickLiveKind } from "@/features/live/mediaSupport"
 import { getLayout, type LayoutId } from "@/lib/layouts"
-import { countFilled, useBoothStore } from "@/stores/booth"
+import type { LiveKind } from "@/lib/schemas"
+import { countFilled, hasLiveClips, useBoothStore } from "@/stores/booth"
 import { StripStage } from "./StripStage"
-import { downloadStrip, exportStrip, formatStripFilename } from "./exportStrip"
+import { downloadBlob, downloadStrip, exportStrip, formatStripFilename } from "./exportStrip"
 import { getEffect, getFrame } from "./presets"
 import { composePrintSheet } from "./sheet"
 
@@ -90,19 +94,30 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
 
   const stageRef = useRef<KonvaStage>(null)
   const groupRef = useRef<KonvaGroup>(null)
+  const liveRef = useRef<LiveStageHandle>(null)
   const busyRef = useRef(false)
   const againRef = useRef(false)
   const lastKeyRef = useRef<string | null>(null)
   const runRef = useRef<(() => Promise<void>) | null>(null)
   /* URL unggah sekali pakai dari POST /api/strips, menunggu gambar ber-QR. */
-  const pendingUploadRef = useRef<{ id: string; upload: StripUpload } | null>(
-    null
-  )
+  const pendingUploadRef = useRef<{
+    id: string
+    upload: StripUpload
+    liveUpload?: StripUpload
+  } | null>(null)
 
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const [sheetUrl, setSheetUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [liveBusy, setLiveBusy] = useState(false)
+  const [videoBusy, setVideoBusy] = useState(false)
+
+  /* M7 (SH-02, SH-03): versi hidup ikut diunggah hanya bila sakelarnya nyala di
+     langkah Hias, minimal satu slot berklip, dan browsernya bisa merekam. */
+  const liveEnabled = useBoothStore((state) => state.live.enabled)
+  const liveKind: LiveKind | null = pickLiveKind()
+  const liveWanted = liveEnabled && hasLiveClips(shots) && liveKind !== null
 
   /* QR baru digambar setelah linknya ada; sebelum itu kotak QR tidak ikut
      diekspor supaya strip yang diunduh tidak berisi glif penanda. */
@@ -127,6 +142,22 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
         return
       }
       try {
+        /* M7: versi hidup direkam dari panggung luar layar lalu diunggah lebih
+           dulu. Kegagalannya hanya menghilangkan klip, bukan link. */
+        if (pending.liveUpload !== undefined) {
+          setLiveBusy(true)
+          try {
+            const recorded = await liveRef.current?.record()
+            if (recorded !== undefined && recorded !== null) {
+              await uploadStripLive(pending.liveUpload, recorded.blob, recorded.kind)
+            }
+          } catch {
+            toast.info("Versi hidup tidak ikut terunggah.")
+          } finally {
+            setLiveBusy(false)
+          }
+        }
+
         const blob = await (await fetch(exported)).blob()
         await uploadStripStill(pending.upload, blob)
         const completed = await completeStrip(pending.id)
@@ -212,9 +243,18 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
   async function handleCreateLink() {
     setLinking(true)
     try {
-      const created = await requestStrip(layoutId)
+      const created = await requestStrip(
+        layoutId,
+        liveWanted && liveKind !== null ? liveKind : undefined
+      )
       saveStripToken(created.id, created.deleteToken)
-      pendingUploadRef.current = { id: created.id, upload: created.upload }
+      pendingUploadRef.current = {
+        id: created.id,
+        upload: created.upload,
+        ...(created.liveUpload === undefined
+          ? {}
+          : { liveUpload: created.liveUpload }),
+      }
       setShareStrip({ id: created.id, expiresAt: null })
     } catch (error) {
       toast.error(
@@ -240,6 +280,27 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
     void clearSession()
     reset()
     router.replace("/booth/layout")
+  }
+
+  /** SH-03: unduhan lokal versi hidup, tanpa unggahan. */
+  async function handleDownloadVideo() {
+    if (videoBusy) {
+      return
+    }
+    setVideoBusy(true)
+    try {
+      const recorded = await liveRef.current?.record()
+      if (recorded === undefined || recorded === null) {
+        toast.error("Video belum bisa direkam di browser ini.")
+        return
+      }
+      downloadBlob(recorded.blob, formatStripFilename(new Date(), recorded.kind))
+      toast.success("Video strip tersimpan di perangkatmu.")
+    } catch {
+      toast.error("Video belum bisa direkam di browser ini.")
+    } finally {
+      setVideoBusy(false)
+    }
   }
 
   const preparing = dataUrl === null && !failed
@@ -314,6 +375,8 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
                 strip={shareStrip}
                 busy={linking}
                 onCreate={handleCreateLink}
+                withLive={liveWanted}
+                statusText={liveBusy ? "Merekam versi hidup..." : undefined}
               />
             ) : null}
 
@@ -340,6 +403,23 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
                 <Printer weight="bold" className="size-[22px]" aria-hidden />
                 Cetak 4R
               </Button>
+              {/* SH-03: tombolnya hanya ada saat browsernya bisa merekam dan
+                  sesinya punya klip; unduhan lokal tidak butuh sakelar Hias. */}
+              {liveKind !== null && hasLiveClips(shots) ? (
+                <Button
+                  variant="neutral"
+                  className="w-full"
+                  disabled={videoBusy}
+                  onClick={() => void handleDownloadVideo()}
+                >
+                  <DownloadSimple
+                    weight="bold"
+                    className="size-[22px]"
+                    aria-hidden
+                  />
+                  {videoBusy ? "Merekam..." : "Unduh Video"}
+                </Button>
+              ) : null}
               <Button variant="ghost" className="w-full" onClick={handleRestart}>
                 Mulai dari awal
               </Button>
@@ -379,6 +459,21 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
           />
         </Stage>
       </div>
+
+      {/* SH-03: panggung rekam versi hidup, di luar layar seperti panggung
+          ekspor. Hanya dipakai saat pengguna membuat link berklip atau meminta
+          unduhan video. */}
+      <LiveStage
+        ref={liveRef}
+        layoutId={layoutId}
+        shots={shots}
+        frame={getFrame(frameId)}
+        effect={getEffect(effectId).params}
+        stickers={stickers}
+        texts={texts}
+        showDate={showDate}
+        qr={qr}
+      />
 
       {/* FR-12: satu halaman 4 x 6 inci. Portal ke `body` supaya CSS cetak
           bisa menghilangkan seluruh isi halaman dan menyisakan lembar ini;

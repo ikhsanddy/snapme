@@ -1,5 +1,11 @@
 import { isExpired, stripExpiry } from "@/lib/expiry"
-import { STILL_BYTE_LIMIT, STILL_MIME, STORAGE_BUCKET } from "@/lib/schemas"
+import {
+  LIVE_BYTE_LIMIT,
+  LIVE_MEDIA_TYPES,
+  STILL_BYTE_LIMIT,
+  STILL_MIME,
+  STORAGE_BUCKET,
+} from "@/lib/schemas"
 import { getSupabaseAdmin } from "@/lib/supabase/server"
 import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
 
@@ -83,9 +89,49 @@ export async function POST(
     }
 
     const expiresAt = stripExpiry(now).toISOString()
+
+    /* M7: klip Strip Hidup adalah pelengkap best-effort. Berkas yang tidak ada
+       (mis. rekaman gagal di browser pengguna) atau tidak lolos pemeriksaan
+       dibuang dan `live_path` dikosongkan; strip diamnya tetap selesai. */
+    let liveInvalid = false
+    const livePath = row.live_path
+    if (livePath !== null) {
+      const { data: liveSigned, error: liveSignError } = await admin.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(livePath, 60)
+      if (liveSignError !== null || liveSigned === null) {
+        liveInvalid = true
+      } else {
+        const liveHead = await fetch(liveSigned.signedUrl, { method: "HEAD" })
+        const liveBytes = Number(liveHead.headers.get("content-length") ?? "0")
+        const liveType = (liveHead.headers.get("content-type") ?? "")
+          .split(";")[0]
+          .trim()
+          .toLowerCase()
+        liveInvalid = !(
+          liveHead.ok &&
+          Number.isFinite(liveBytes) &&
+          liveBytes > 0 &&
+          liveBytes <= LIVE_BYTE_LIMIT &&
+          LIVE_MEDIA_TYPES[liveType] === true
+        )
+      }
+      if (liveInvalid) {
+        try {
+          await admin.storage.from(STORAGE_BUCKET).remove([livePath])
+        } catch (removeError) {
+          console.error("Berkas klip gagal dibuang:", removeError)
+        }
+      }
+    }
+
     const { error: updateError } = await admin
       .from("strips")
-      .update({ status: "complete", expires_at: expiresAt })
+      .update({
+        status: "complete",
+        expires_at: expiresAt,
+        ...(liveInvalid ? { live_path: null } : {}),
+      })
       .eq("id", id)
     if (updateError !== null) {
       throw new Error(updateError.message)

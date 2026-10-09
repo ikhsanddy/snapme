@@ -35,6 +35,20 @@ describe("rekaman sesi", () => {
     expect(validateRecord(record)).toEqual(record)
   })
 
+  /* M7: bingkai Strip Hidup hanya di memori. Rekaman harus membuangnya, bukan
+     menyerahkan `ImageBitmap` ke IndexedDB. */
+  it("membuang bingkai klip dari rekaman", () => {
+    const state = validState()
+    const clip = [{ close: () => {} }] as unknown as ImageBitmap[]
+    const record = serializeSession({
+      ...state,
+      shots: [{ ...SHOT, clip }, null, null, null],
+    })
+    expect(record.shots[0]).toEqual(SHOT)
+    expect(record.shots[0]).not.toHaveProperty("clip")
+    expect(validateRecord(record)?.shots).toEqual([SHOT, null, null, null])
+  })
+
   it("menerima rekaman tanpa layout dengan nol foto", () => {
     const record = serializeSession({
       layoutId: null,
