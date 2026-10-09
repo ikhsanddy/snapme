@@ -45,6 +45,14 @@ const HALAMAN: {
   { nama: "ambil foto", siapkan: pilihLayoutLaluMasukFoto },
   { nama: "hias strip", siapkan: masukHias },
   { nama: "hasil", siapkan: masukHasil },
+  {
+    /* M6: panggung yang sama dengan halaman strip, tanpa proyek Supabase
+       halaman /s/[id] merender 404 ini. */
+    nama: "strip tidak ditemukan",
+    siapkan: async (page) => {
+      await page.goto("/s/tidakada1234")
+    },
+  },
 ]
 
 for (const viewport of [

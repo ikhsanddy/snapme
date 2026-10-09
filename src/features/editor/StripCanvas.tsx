@@ -6,6 +6,7 @@ import type { Node as KonvaNode } from "konva/lib/Node"
 import type { Stage as KonvaStage } from "konva/lib/Stage"
 import { Stage, Transformer } from "react-konva"
 
+import { useQrPlate } from "@/features/share/useQrImage"
 import { getLayout, type LayoutId } from "@/lib/layouts"
 import { STICKER_WIDTH_MIN, useBoothStore } from "@/stores/booth"
 import { StripStage, type StripSelection } from "./StripStage"
@@ -45,6 +46,9 @@ export default function StripCanvas({
   const stickers = useBoothStore((state) => state.stickers)
   const texts = useBoothStore((state) => state.texts)
   const showDate = useBoothStore((state) => state.showDate)
+  /* SH-04: kotak QR ikut digambar di kanvas hias supaya pengguna melihat
+     tempatnya sebelum link dibuat. */
+  const qr = useQrPlate(useBoothStore((state) => state.share))
   const updateSticker = useBoothStore((state) => state.updateSticker)
   const updateText = useBoothStore((state) => state.updateText)
   const removeSticker = useBoothStore((state) => state.removeSticker)
@@ -156,6 +160,7 @@ export default function StripCanvas({
             stickers={stickers}
             texts={texts}
             showDate={showDate}
+            qr={qr}
             scale={scale}
             groupRef={groupRef}
             onSelect={setSelection}

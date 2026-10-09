@@ -9,8 +9,8 @@ import { DEFAULT_EFFECT_ID, DEFAULT_FRAME_ID } from "@/features/editor/defaults"
 import { LAYOUTS, FOOTER_WORDMARK_ROW, type LayoutId } from "@/lib/layouts"
 
 /* ARCHITECTURE §5: state sesi booth. Layout terpilih, foto per slot, pengaturan
-   perangkat, dan slice editor (M4). `live`, `share`, dan `relay` ditambahkan
-   milestone pemiliknya.
+   perangkat, dan slice editor (M4) serta bagikan (M6). `live` dan `relay`
+   ditambahkan milestone pemiliknya.
    Invarian bundel: berkas ini tidak boleh mengimpor Konva supaya `/` dan
    `/booth/capture` tidak ikut memuat pustaka kanvas. */
 
@@ -55,6 +55,15 @@ export const TEXT_LENGTH_MAX = 24
 export const TEXT_FONT_MIN = 24
 export const TEXT_FONT_MAX = 96
 
+/** M6 (SH-04 sampai SH-06): irisan bagikan. `qrEnabled` adalah pilihan di
+ *  langkah Hias; `strip` terisi setelah link dibuat dan stripnya selesai
+ *  diunggah. Token hapus tidak masuk state, melainkan penyimpanan perangkat
+ *  (`features/share/stripToken.ts`). */
+export interface ShareState {
+  qrEnabled: boolean
+  strip: { id: string; expiresAt: string | null } | null
+}
+
 /** Perubahan yang boleh ditulis balik dari kanvas atau daftar "Isi strip". */
 export type StickerPatch = Partial<
   Pick<StickerInstance, "x" | "y" | "rotation" | "width">
@@ -78,6 +87,7 @@ interface BoothState extends EditorState {
   layoutId: LayoutId | null
   shots: Shots
   settings: BoothSettings
+  share: ShareState
   /** FR-14: `true` setelah SessionSync selesai membaca IndexedDB. Bukan milik
    *  rekaman dan tidak direset, supaya gerbang langkah booth menunggu, bukan
    *  memantul lebih dulu. */
@@ -95,6 +105,8 @@ interface BoothState extends EditorState {
   updateText: (id: string, patch: TextPatch) => void
   removeText: (id: string) => void
   setShowDate: (shown: boolean) => void
+  setQrEnabled: (enabled: boolean) => void
+  setShareStrip: (strip: ShareState["strip"]) => void
   reset: () => void
 }
 
@@ -133,6 +145,7 @@ function freshState() {
     stickers: [] as StickerInstance[],
     texts: [] as StripText[],
     showDate: false,
+    share: { qrEnabled: false, strip: null },
   }
 }
 
@@ -256,6 +269,10 @@ export const useBoothStore = create<BoothState>((set) => ({
   removeText: (id) =>
     set((state) => ({ texts: state.texts.filter((text) => text.id !== id) })),
   setShowDate: (shown) => set({ showDate: shown }),
+  setQrEnabled: (enabled) =>
+    set((state) => ({ share: { ...state.share, qrEnabled: enabled } })),
+  setShareStrip: (strip) =>
+    set((state) => ({ share: { ...state.share, strip } })),
   reset: () => set(freshState()),
 }))
 

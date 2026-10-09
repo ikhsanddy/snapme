@@ -38,6 +38,31 @@ const SLOT_WIDTH = 528
    bawahnya, di layout mana pun. */
 export const FOOTER_WORDMARK_ROW = 100
 
+/* SH-04: QR 168 x 168 px (sekitar 14 mm pada cetakan 300 dpi) di kanan kaki
+   strip, dengan jarak 16 px ke kotak teks di sebelahnya. Ukurannya di ruang
+   kanvas, jadi ekspor selalu menghasilkan QR sebesar ini. */
+export const QR_SIZE = 168
+export const QR_GAP = 16
+
+export function qrRect(layout: StripLayout): Rect {
+  return {
+    x: layout.footerRect.x + layout.footerRect.width - QR_SIZE,
+    y:
+      layout.footerRect.y +
+      Math.floor((layout.footerRect.height - QR_SIZE) / 2),
+    width: QR_SIZE,
+    height: QR_SIZE,
+  }
+}
+
+/** Lebar baris teks kaki strip: selebar kaki, atau menyempit bila QR aktif
+ *  (tanggal dan teks pengguna tidak boleh tertimpa QR). */
+export function footerTextWidth(layout: StripLayout, withQr: boolean): number {
+  return withQr
+    ? layout.footerRect.width - QR_SIZE - QR_GAP
+    : layout.footerRect.width
+}
+
 interface LayoutSpec {
   id: LayoutId
   label: string

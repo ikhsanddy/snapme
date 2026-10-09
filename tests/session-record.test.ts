@@ -20,6 +20,7 @@ function validState(): SessionState {
     ],
     texts: [{ id: "t1", value: "halo", x: 300, y: 1696, rotation: 0, fontSize: 44 }],
     showDate: true,
+    share: { qrEnabled: true, strip: { id: "stripid12345", expiresAt: null } },
   }
 }
 
@@ -43,6 +44,7 @@ describe("rekaman sesi", () => {
       stickers: [],
       texts: [],
       showDate: false,
+      share: { qrEnabled: false, strip: null },
     })
     expect(validateRecord(record)).toEqual(record)
   })
@@ -74,6 +76,43 @@ describe("rekaman sesi", () => {
     ).toBeNull()
     expect(
       validateRecord({ ...record, texts: [{ id: "t1", value: "halo" }] })
+    ).toBeNull()
+  })
+
+  /* M6: rekaman lama tidak punya `share`, dan bentuk yang rusak harus ditolak
+     sebelum masuk store. */
+  it("menerima rekaman lama tanpa irisan bagikan", () => {
+    const record = serializeSession(validState())
+    const tanpaShare: Record<string, unknown> = { ...record }
+    delete tanpaShare.share
+    expect(validateRecord(tanpaShare)).toEqual({
+      ...record,
+      share: { qrEnabled: false, strip: null },
+    })
+  })
+
+  it("menerima link yang kedaluwarsanya belum diketahui", () => {
+    const record = serializeSession(validState())
+    expect(
+      validateRecord({
+        ...record,
+        share: { qrEnabled: false, strip: { id: "stripid12345", expiresAt: "2026-10-19T09:00:00.000Z" } },
+      })?.share
+    ).toEqual({
+      qrEnabled: false,
+      strip: { id: "stripid12345", expiresAt: "2026-10-19T09:00:00.000Z" },
+    })
+  })
+
+  it("menolak irisan bagikan yang rusak", () => {
+    const record = serializeSession(validState())
+    expect(validateRecord({ ...record, share: "nyala" })).toBeNull()
+    expect(validateRecord({ ...record, share: { qrEnabled: "ya", strip: null } })).toBeNull()
+    expect(
+      validateRecord({ ...record, share: { qrEnabled: true, strip: { id: "pendek", expiresAt: null } } })
+    ).toBeNull()
+    expect(
+      validateRecord({ ...record, share: { qrEnabled: true, strip: { id: "stripid12345", expiresAt: 7 } } })
     ).toBeNull()
   })
 })

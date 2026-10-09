@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button"
 
 /* DESIGN-SYSTEM §10.1: baris atas Welcome dan halaman Privasi.
    Varian CTA: `secondary` saat hero memegang satu-satunya aksi `primary`
-   (§1 dan §14), `primary` di halaman yang tidak punya aksi lain. */
+   (§1 dan §14), `primary` di halaman yang tidak punya aksi lain, dan `none`
+   di halaman yang aksinya sudah dipegang panel (halaman strip dan 404), supaya
+   labelnya tidak muncul dua kali di satu layar. */
 export function SiteHeader({
   ctaVariant = "secondary",
 }: {
-  ctaVariant?: "primary" | "secondary"
+  ctaVariant?: "primary" | "secondary" | "none"
 }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -21,9 +23,11 @@ export function SiteHeader({
         >
           Privasi
         </Link>
-        <Button variant={ctaVariant} size="sm" asChild>
-          <Link href="/booth/layout">Mulai Foto</Link>
-        </Button>
+        {ctaVariant === "none" ? null : (
+          <Button variant={ctaVariant} size="sm" asChild>
+            <Link href="/booth/layout">Mulai Foto</Link>
+          </Button>
+        )}
       </nav>
     </header>
   )
