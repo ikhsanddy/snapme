@@ -2,6 +2,7 @@ import {
   clientKeyFromRequest,
   countRecentCreations,
   CREATE_LIMIT,
+  isCrossSite,
   rateKeyFor,
 } from "@/lib/rateLimit"
 import { relayExpiry } from "@/lib/expiry"
@@ -38,6 +39,11 @@ export async function POST(request: Request) {
   if (!contentType.toLowerCase().startsWith("application/json")) {
     return Response.json(INVALID, { status: 400 })
   }
+  /* M9: permintaan yang jelas datang dari situs lain ditolak tanpa bergantung
+     pada perilaku peramban terhadap jenis isi. */
+  if (isCrossSite(request)) {
+    return Response.json(INVALID, { status: 400 })
+  }
 
   let payload: unknown
   try {
@@ -65,6 +71,15 @@ export async function POST(request: Request) {
   }))
 
   try {
+    /* Gerbang murah sebelum menulis (temuan security-reviewer M9): jendela
+       kuota yang sudah penuh ditolak tanpa INSERT. Pemeriksaan setelah sisip
+       tetap jadi gerbang resmi untuk permintaan serentak. */
+    if (
+      (await countRecentCreations(admin, "relays", rateKey, now)) >= CREATE_LIMIT
+    ) {
+      return Response.json(TOO_MANY, { status: 429 })
+    }
+
     const { error: insertError } = await admin.from("relays").insert({
       id,
       layout,

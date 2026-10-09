@@ -19,13 +19,17 @@ export interface RelayRow {
   host_token_hash: string
   guest_token_hash: string | null
   status: RelayStatus
+  /** Strip hasil estafet. Diisi lewat UPDATE bersyarat `strip_id is null`
+   *  sebagai gerbang pemenang tunggal jalur pemulihan (M9), jadi satu estafet
+   *  tidak pernah punya dua draf strip. */
+  strip_id: string | null
   rate_key: string
   created_at: string
   expires_at: string | null
 }
 
 export const RELAY_COLUMNS =
-  "id, layout, slots, host_token_hash, guest_token_hash, status, rate_key, created_at, expires_at"
+  "id, layout, slots, host_token_hash, guest_token_hash, status, strip_id, rate_key, created_at, expires_at"
 
 function isRelaySlot(value: unknown): value is RelaySlot {
   if (typeof value !== "object" || value === null) {

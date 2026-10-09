@@ -57,9 +57,11 @@ Versi tidak dipaku di dokumen ini. Pasang versi stabil terbaru saat M0, lalu bia
 | Video | `canvas.captureStream()` + `MediaRecorder` | Unduhan Strip Hidup | API browser, tanpa pustaka |
 | Validasi | `zod` | Isi permintaan API | |
 | ID | `nanoid` | ID link dan token | |
-| Data | Supabase (Postgres + Storage) | Link strip dan estafet | Hanya diakses dari server |
+| Data | Supabase (Postgres + Storage) | Link strip, estafet, dan hitungan peristiwa | Hanya diakses dari server |
+| Analitik | Endpoint peristiwa first-party (`POST /api/events`, dikirim `navigator.sendBeacon`) | Ukuran PRD §4 | Tanpa cookie, tanpa pustaka pihak ketiga, daftar peristiwa tertutup di `src/lib/analyticsEvents.ts` |
 | Hosting | Vercel | Aplikasi dan cron pembersih | |
-| Uji | Vitest, Playwright | Unit dan end-to-end | Playwright punya kamera palsu di Chromium |
+| Uji | Vitest, Playwright | Unit dan end-to-end | Playwright punya kamera palsu di Chromium; proyek `firefox` dan `webkit` memuat `crossbrowser.spec.ts` |
+| Ukur kinerja | Lighthouse (devDependency) | LCP Welcome di server produksi | `npm run perf:lcp`; preset bawaan seluler |
 
 ### Evaluasi registry neobrutalism (dikerjakan di M0)
 
@@ -183,7 +185,10 @@ idle ─► meminta-izin ─► siap ─► menahan ─► hitung-mundur ─► 
 | Tabel | Kolom |
 |---|---|
 | `strips` | `id` (teks, nanoid), `layout`, `still_path`, `live_path` (boleh kosong), `status` (`draft`, `complete`), `delete_token_hash`, `relay_id` (boleh kosong), `created_at`, `expires_at` |
-| `relays` | `id`, `layout`, `slots` (jsonb: indeks, pemilik `host` atau `guest`, path, waktu isi), `host_token_hash`, `guest_token_hash` (boleh kosong), `status` (`waiting`, `claimed`, `complete`, `cancelled`), `created_at`, `expires_at` |
+| `relays` | `id`, `layout`, `slots` (jsonb: indeks, pemilik `host` atau `guest`, path), `host_token_hash`, `guest_token_hash` (boleh kosong), `status` (`waiting`, `claimed`, `complete`, `cancelled`), `strip_id` (boleh kosong; gerbang pemenang tunggal jalur pemulihan `complete`), `created_at`, `expires_at` |
+| `events` | `id` (identity), `name` (daftar tertutup), `rate_key`, `created_at`. Retensi 90 hari |
+
+Catatan M9 pada `relays`: `layout` dibatasi daftar tertutup dan `slots` dipastikan array lewat check constraint, sedangkan bentuk tiap elemen slot diperiksa saat dibaca (`relaySlotsOf`). Indeks unik parsial `relays_strip_id_key` menjaga satu estafet hanya menunjuk satu strip; satu estafet bisa menyisakan lebih dari satu baris `strips` kalau baris lamanya adalah batu nisan penghapusan, dan yang dijaga gerbangnya adalah satu strip aktif per estafet.
 
 ### Storage
 
@@ -198,9 +203,11 @@ Satu bucket pribadi `snapme`. Path: `strips/{id}/still.png`, `strips/{id}/live.w
 | `DELETE /api/strips/[id]` | Hapus berkas dan baris. Butuh token hapus |
 | `POST /api/relays` | Buat estafet, kembalikan `id`, token pembuat, URL unggah slot pembuat |
 | `POST /api/relays/[id]/claim` | Ambil giliran: kembalikan token tamu dan URL unggah slot tamu. Hanya berhasil sekali |
-| `POST /api/relays/[id]/complete` | Tandai lengkap, buat strip, kembalikan `/s/{id}` |
+| `POST /api/relays/[id]/complete` | Tandai lengkap, buat strip, kembalikan `/s/{id}`. Dijaga gerbang pemenang tunggal `strip_id` |
+| `POST /api/relays/[id]/strip` | Serahkan tautan strip dan URL baca foto slot hanya ke pemegang token estafet (M8, temuan security-reviewer) |
 | `DELETE /api/relays/[id]` | Batalkan dan hapus. Butuh token pembuat |
-| `GET /api/cron/purge` | Hapus berkas dan baris yang kedaluwarsa. Dijalankan Vercel Cron harian, dilindungi rahasia |
+| `POST /api/events` | Catat 1 sampai 20 peristiwa analitik (nama dari daftar tertutup). Anggaran 200 peristiwa per jam per sidang |
+| `GET /api/cron/purge` | Hapus berkas dan baris yang kedaluwarsa, termasuk peristiwa analitik yang lebih tua dari 90 hari. Dijalankan Vercel Cron harian, dilindungi rahasia |
 
 Unggahan tidak melewati rute server (menghindari batas ukuran isi permintaan fungsi serverless). Kedaluwarsa juga diperiksa saat baca: halaman dan API menjawab 410 walau cron belum berjalan.
 
@@ -212,8 +219,9 @@ Unggahan tidak melewati rute server (menghindari batas ukuran isi permintaan fun
 - **Batas**: jenis berkas PNG, JPEG, WebM, MP4. Ukuran diam 2 MB, klip 5 MB, slot estafet 1 MB. Divalidasi dengan `zod` dan dibatasi pada URL unggah.
 - **Pembatasan laju** pada rute `POST`: pakai fitur platform atau pustaka siap pakai. Pilihannya ditetapkan di M6 dan dicatat di `docs/DECISIONS.md`.
 - **Persetujuan**: dialog sebelum setiap unggahan pertama (PRD SE-02, SH-04).
-- **Tanpa pihak ketiga**: fon di-host sendiri, wasm dan model MediaPipe di-host sendiri, tanpa pelacak.
-- **Header**: `Permissions-Policy: camera=(self)`, CSP yang mengizinkan `wasm-unsafe-eval` hanya bila dibutuhkan MediaPipe.
+- **Tanpa pihak ketiga**: fon di-host sendiri, wasm dan model MediaPipe di-host sendiri, tanpa pelacak. Hitungan peristiwa PRD §4 lewat rute sendiri (`POST /api/events`), tanpa cookie dan tanpa kolom identitas.
+- **Header**: `Permissions-Policy: camera=(self)`, `X-Content-Type-Options: nosniff`, dan CSP penuh untuk semua rute sejak M9 (`next.config.ts`, disusun dari env: host Supabase hanya ditambahkan bila `NEXT_PUBLIC_SUPABASE_URL` ada). `script-src` memuat `'unsafe-inline'` (skrip bootstrap App Router tanpa nonce; nonce memaksa render dinamis) dan `wasm-unsafe-eval` (MediaPipe); `'unsafe-eval'` hanya di pengembangan. Rincian tiap direktif dan temuan verifikasinya di `docs/DECISIONS.md` M9. `htmlLimitedBots: /.*/ ` membuat halaman ber-PPR dirender blocking seperti crawler, supaya `notFound()` pada `/s/[id]` dan `/r/[id]` benar-benar menjawab 404 di produksi
+- **Analitik**: `rate_key` pada tabel `events` memakai hash bergaram yang sama dengan rute POST lain, dan rutenya dibatasi 200 peristiwa per jam per sidang
 - **Metadata**: ekspor lewat kanvas tidak membawa EXIF.
 
 ## 9. Kinerja
@@ -243,18 +251,20 @@ Perintah pemeriksaan sebelum sebuah milestone dianggap selesai: `npm run lint`, 
 
 Disalin dari tangkapan layar model hub (Alt+M, tab Roles) dan dipaku untuk proyek ini di `.omp/config.yml`, yang hanya terbaca bila omp dijalankan dari root repo. Periksa dengan `omp config get modelRoles`. Bila sebuah ID tidak dikenali, cari dengan `omp models find <nama>` lalu perbaiki di berkas itu.
 
+Tabel ini dicocokkan ulang dengan keluaran `omp config get modelRoles` pada 9 Oktober 2026 (M9). Tiga sel berbeda dari tangkapan layar awal dan sudah diperbaiki: `default` tidak memakai thinking eksplisit (mengikuti bawaan), `plan` memakai `max`, dan `advisor` memakai `medium`.
+
 | Role | Model | Thinking | Bekerja saat |
 |---|---|---|---|
-| `default` | `opencode-go/deepseek-v4.1-flash` | max | Permintaan biasa dan pengerjaan setelah rencana disetujui |
+| `default` | `opencode-go/deepseek-v4.1-flash` | bawaan | Permintaan biasa dan pengerjaan setelah rencana disetujui |
 | `smol` | `deepseek/deepseek-flash` | high | Subagent `scout` dan `sonic`, tugas ringan |
 | `slow` | `google-antigravity/gemini-3.8-flash` | high | Subagent `reviewer` |
 | `vision` | `google-antigravity/gemini-3.8-flash` | high | Membaca gambar referensi dan tangkapan layar |
-| `plan` | `zai/glm-5.3` | high | `/plan` |
+| `plan` | `zai/glm-5.3` | max | `/plan` |
 | `commit` | `google-antigravity/gemini-3.7-flash` | auto | `omp commit` |
 | `tiny` | `google-antigravity/gemini-3.7-flash` | auto | Judul sesi dan tugas kecil |
 | `memory` | `deepseek/deepseek-flash` | high | Dukungan memori |
 | `task` | `opencode-go/deepseek-v4.1-flash` | max | Subagent `task` |
-| `advisor` | `google-antigravity/gemini-3.8-flash` | high | Peninjau latar bila advisor dinyalakan |
+| `advisor` | `google-antigravity/gemini-3.8-flash` | medium | Peninjau latar bila advisor dinyalakan |
 | `image` | `google-antigravity/gemini-3-pro-image` | | Membuat stiker dan seni frame |
 | `web`, `speech`, `dictation` | otomatis | | Pencarian web, suara |
 
@@ -326,11 +336,12 @@ Urutan kerja, pekerjaan, dan syarat selesai tiap milestone ada di `MILESTONES.md
 
 ## 13. Yang belum diverifikasi
 
-- Perintah di §3 dan §11.3 disusun dari dokumentasi masing-masing alat dan belum dijalankan di mesin Anda. M0 adalah pengujian pertamanya.
-- CLI `skills` tidak mencantumkan omp sebagai agent tujuan. Tujuan `universal` (`.agents/skills/`) dipilih karena dokumentasi omp menyebut folder itu sebagai salah satu lokasi skill proyek. Periksa di `/extensions` setelah memasang.
-- Pemeliharaan RetroUI dan kecocokannya dengan Tailwind v4 (§3).
-- Kinerja Gesture Recognizer di HP kelas menengah: ambang dan laju di PRD §7.2 adalah nilai awal.
-- Dukungan `MediaRecorder` dan jenis berkasnya berbeda antar browser: periksa di M7.
-- Keterbacaan QR 168 px dari cetakan: uji cetak di M9.
-- `.omp/config.yml`: key `memory`, `image`, dan `defaultThinkingLevel` mengikuti pola config IT Ticket Portal. ID model disalin dari tangkapan layar, jadi cocokkan dengan `omp config get modelRoles` dan tab Roles sebelum M0.
-- Impor `@` di `AGENTS.md` memuat sekitar 71 ribu karakter (kira-kira 18 sampai 24 ribu token) ke setiap sesi dan setiap subagent. Bila konteks terasa sesak, lihat `/context`.
+- Kinerja Gesture Recognizer di HP kelas menengah: ambang dan laju di PRD §7.2 masih nilai awal dan butuh uji pakai di perangkat sungguhan. Langkahnya ada di tabel manual pengguna `docs/DECISIONS.md` (M9).
+- Keterbacaan QR 168 px dari cetakan asli: butuh cetak 4R dan kamera HP. Langkah dan tabelnya di `docs/DECISIONS.md` (M9); ini salah satu butir "Selesai bila" M9.
+- Sentuhan, kamera sungguhan, dan unduhan di Chrome Android, Safari iOS, Edge, serta Firefox sungguhan. Mesin WebKit dan Gecko sudah tercakup otomatis (`npx playwright test --project=firefox --project=webkit`, hijau di M9); sisanya tabel manual pengguna.
+- Pembaca layar (NVDA, VoiceOver, TalkBack): audit axe dan uji keyboard otomatis sudah hijau, verifikasi dengan pembaca layar butuh pengguna.
+- LCP Welcome: median 3,17 detik pada preset seluler Lighthouse terhadap batas 2,5 detik (PRD §8). Selisih 670 ms, hasil satu putaran optimasi terbatas, dan rencana lanjutannya di `docs/DECISIONS.md` (M9). Ekspor strip (median 922 ms) dan FCP (917 ms) sudah di dalam target.
+- Deploy ke Vercel: langkah PowerShell-nya sudah disiapkan di `docs/DECISIONS.md` (M9) dan belum dijalankan; agent tidak men-deploy.
+- Impor `@` di `AGENTS.md` memuat 66.840 karakter (PRD 17.415 + DESIGN-SYSTEM 26.041 + ARCHITECTURE 23.384) ke setiap sesi dan subagent; `MILESTONES.md` (20.635 karakter) tidak diimpor. Angka ini diukur ulang di M9; catatan lama "sekitar 71 ribu karakter" adalah perkiraan.
+
+Yang sudah selesai dan tidak perlu diperiksa lagi: perintah di §3 dan §11.3 sudah dijalankan sejak M0, pemilihan registry neobrutalism diputuskan di M0 (`docs/DECISIONS.md`), ID model di `.omp/config.yml` sudah dicocokkan dengan `omp config get modelRoles` pada 9 Oktober 2026 (§11.1), dan dukungan `MediaRecorder` antar-browser sudah dipetakan di M7 (`pickLiveKind`) dengan proyek WebKit dan Firefox ikut hijau di M9. CLI `skills` tetap tidak mencantumkan omp sebagai agent tujuan; tujuan `universal` dipakai dan foldernya berisi `accessibility`, `design-taste-frontend`, `find-skills`, dan `web-perf`.

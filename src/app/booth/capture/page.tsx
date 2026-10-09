@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { captureFrame } from "@/features/camera/captureFrame"
 import { useCamera, type CameraErrorReason } from "@/features/camera/useCamera"
-import { isBusy } from "@/features/capture/machine"
+import { isBusy, type CaptureEvent } from "@/features/capture/machine"
 import { useCaptureMachine } from "@/features/capture/useCaptureMachine"
 import { useClipRecorder } from "@/features/capture/useClipRecorder"
 import { useGestureSnap } from "@/features/gesture/useGestureSnap"
@@ -38,6 +38,7 @@ import {
 } from "@/features/relay/api"
 import { clearRelayToken, saveRelayToken } from "@/features/relay/relayToken"
 import { shareLink } from "@/features/relay/shareLink"
+import { firstPhotoBucketEvent, track } from "@/lib/analytics"
 import { LAYOUTS } from "@/lib/layouts"
 import { ghostSlotFor, hostSlotIndices } from "@/lib/relaySlots"
 import { cn } from "@/lib/utils"
@@ -76,6 +77,24 @@ export default function CaptureStepPage() {
   const handleDenied = useCallback(
     (reason: CameraErrorReason) => {
       dispatch({ type: "PERMISSION_DENIED", reason })
+    },
+    [dispatch]
+  )
+
+  /* PRD §4: foto mana yang lahir dari Gesture Snap. Mesin keadaan tidak
+     menyimpan asalnya (ARCHITECTURE §5), jadi jejaknya dijaga di sini: HOLD_COMPLETE
+     berarti gesture dua jari, SHOOT berarti tombol, Spasi, atau baki foto.
+     Telapak (ulang foto) juga memakai SHOOT, jadi hitungannya tetap mengikuti
+     "hitung mundur yang dimulai gestur dua jari". */
+  const shotSource = useRef<"button" | "gesture">("button")
+  const dispatchTracked = useCallback(
+    (event: CaptureEvent) => {
+      if (event.type === "HOLD_COMPLETE") {
+        shotSource.current = "gesture"
+      } else if (event.type === "SHOOT") {
+        shotSource.current = "button"
+      }
+      dispatch(event)
     },
     [dispatch]
   )
@@ -124,7 +143,7 @@ export default function CaptureStepPage() {
     webcamRef,
     enabled: gestureEnabled,
     phase,
-    dispatch,
+    dispatch: dispatchTracked,
     retakeTarget: lastFilledIndex < 0 ? null : lastFilledIndex,
     onProceed: () => router.push("/booth/customize"),
   })
@@ -156,17 +175,34 @@ export default function CaptureStepPage() {
       /* Slot terkunci tidak pernah ditulis dari perangkat ini, walau ada
          peristiwa yang menyasar ke sana (SE-04). */
       if (still !== null && slotIndex >= 0 && !isLocked(slotIndex)) {
+        const firstPhoto = shots.every((shot) => shot === null)
         setShot(slotIndex, {
           still,
           capturedAt: Date.now(),
           ...(clip.length > 0 ? { clip } : {}),
         })
+        dispatch({ type: "SHOT_SAVED" })
+        /* Analitik dikirim setelah mesin keadaannya maju: apa pun yang terjadi
+           di sini, baki foto sudah aman (M9, temuan tinjauan keamanan). */
+        track(
+          shotSource.current === "gesture"
+            ? "photo_taken_gesture"
+            : "photo_taken_button"
+        )
+        /* PRD §4: "cepat dipakai" hanya diukur sampai foto pertama, dan hanya
+           bila sesinya bermula di Welcome (ada penanda t0). */
+        if (firstPhoto) {
+          const bucket = firstPhotoBucketEvent()
+          if (bucket !== null) {
+            track(bucket)
+          }
+        }
       } else {
         for (const frame of clip) {
           frame.close()
         }
+        dispatch({ type: "SHOT_SAVED" })
       }
-      dispatch({ type: "SHOT_SAVED" })
     })()
   }, [
     phase,
@@ -251,6 +287,7 @@ export default function CaptureStepPage() {
         throw uploadError
       }
       setRelay({ id: created.id, role: "host", lockedSlots: [], ghostEnabled: false })
+      track("relay_created")
       toast.success("Link estafet dibuat.")
     } catch (error) {
       toast.error(
@@ -314,14 +351,14 @@ export default function CaptureStepPage() {
             slotRatio={layout.slot.width / layout.slot.height}
             busy={busy}
             lockedSlots={lockedSlots}
-            onRetake={(index) => dispatch({ type: "SHOOT", target: index })}
+            onRetake={(index) => dispatchTracked({ type: "SHOOT", target: index })}
           />
           <Button
             variant="neutral"
             size="sm"
             disabled={busy || lastFilledIndex < 0}
             onClick={() =>
-              dispatch({ type: "SHOOT", target: lastFilledIndex })
+              dispatchTracked({ type: "SHOOT", target: lastFilledIndex })
             }
           >
             <ArrowClockwise weight="bold" className="size-[18px]" aria-hidden />
@@ -338,7 +375,7 @@ export default function CaptureStepPage() {
             countdownValue={countdownValue}
             flash={flash}
             onRequestPermission={requestPermissionForUser}
-            onShoot={() => dispatch({ type: "SHOOT" })}
+            onShoot={() => dispatchTracked({ type: "SHOOT" })}
             overlay={
               ghostStill === null ? undefined : (
                 /* DataURL hasil kamera, bukan aset: next/image tidak dipakai. */

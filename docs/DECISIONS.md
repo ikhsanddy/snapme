@@ -699,13 +699,14 @@ Diukur pada tangkapan layar 1280 px (skrip sementara, tidak disimpan di repo).
 
 ### Uji manual yang perlu dilengkapi pengguna
 
-Perangkat dan browser di luar Chromium headless belum pernah menjalankan versi hidup. Isi tabel ini setelah mencoba; hasilnya menggantikan status "menunggu pengguna".
+Perangkat dan browser di luar Chromium headless belum pernah menjalankan versi hidup. Isi tabel ini setelah mencoba; hasilnya menggantikan status "menunggu pengguna". Kolom Chrome diisi di M9 dari jalankan headless (Chromium dengan kamera palsu); kolom Firefox dan Safari sebagian: yang bisa dipastikan agent adalah kemampuan merekamnya, sedangkan pratinjau berputar dan pemutaran `/s/{id}` tetap butuh kamera dan perangkat sungguhan.
 
 |Pemeriksaan|Chrome|Firefox|Safari|
 |---|---|---|---|
-|Pratinjau berputar di Hias|menunggu pengguna|menunggu pengguna|menunggu pengguna|
-|Rekam lalu unduh video (SH-03)|menunggu pengguna|menunggu pengguna|menunggu pengguna|
-|Pemutaran di `/s/{id}` (SH-05)|menunggu pengguna|menunggu pengguna|menunggu pengguna|
+|Kemampuan merekam (M9, headless)|`MediaRecorder` ada, `video/webm` dan `video/mp4` didukung, `canvas.captureStream` ada (Chromium 156)|`MediaRecorder` ada, `video/webm` didukung, `video/mp4` tidak, `canvas.captureStream` ada (Firefox 157) → `pickLiveKind` memilih webm|Build WebKit milik Playwright **tidak** membawa `MediaRecorder` maupun `canvas.captureStream` (WebKit 27.2), jadi tombol SH-03 memang tersembunyi di sana; Safari sungguhan (14.1 ke atas) punya keduanya dan belum diperiksa|
+|Pratinjau berputar di Hias|**Lolos headless** (`e2e/live.spec.ts`, kamera palsu): sakelar menyala, klip berputar, dan saat sakelar mati kanvas kembali ke foto tetap|menunggu pengguna|menunggu pengguna|
+|Rekam lalu unduh video (SH-03)|**Lolos headless** (`e2e/live.spec.ts` "unduh video versi hidup", di bawah 5 MB)|menunggu pengguna|menunggu pengguna|
+|Pemutaran di `/s/{id}` (SH-05)|**Lolos ber-jaringan** (`SUPABASE_E2E=1`, `<video>` bertanda tangan dari Storage)|menunggu pengguna|menunggu pengguna|
 
 Catatan: tombol "Unduh Video" dan pemutar di `/s/[id]` hanya muncul bila `MediaRecorder` mendukung `video/webm` atau `video/mp4`; di Safari yang merekam MP4, jenis berkas unduhannya `.mp4`.
 
@@ -812,3 +813,210 @@ Titik yang dinyatakan benar oleh peninjau: token 32 bita acak + SHA-256 + perban
 ### Batas aman
 
 Migrasi `20261014000000_relays.sql` sudah diterapkan ke proyek Supabase `snapme` (ref `owdjkpzywzljnvuyfiui`) lewat `npx supabase db push` **atas persetujuan pengguna di sesi ini**; `npx supabase migration list` mengonfirmasi `20261014000000` ada di remote. Isinya: tabel `relays` (RLS menyala tanpa policy), dua indeks, dan `image/jpeg` ditambahkan ke daftar jenis bucket. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau agent setelah disetujui.
+
+## M9 Pengerasan (9 Oktober 2026)
+
+Satu milestone, satu sesi. Urutan kerjanya: pengerasan data (sisa M8), analitik, CSP penuh, audit aksesibilitas, kinerja, uji lintas peramban, dokumen.
+
+### Hasil `/skill:find-skills` untuk kata kunci M9
+
+`npx skills find` untuk `accessibility audit`, `web vitals`, dan `security review`. Kandidat teratas dan keputusannya (**pengguna tidak memasang skill baru**; repo sudah punya `accessibility` dan `web-perf` di `.agents/skills/`):
+
+|Kandidat|Sumber|Pemasang|Keputusan|
+|---|---|---|---|
+|`web-quality-guidelines`|vercel-labs/agent-skills|713 ribu|Tidak dipasang: desain umum, bukan audit|
+|`web-perf`|cloudflare/skills|93,8 ribu|Sudah terpasang sejak M3|
+|`accessibility`|addyosmani/web-quality-skills|59,6 ribu|Setara skill `accessibility` yang sudah terpasang|
+|`core-web-vitals`|addyosmani/web-quality-skills|29,5 ribu|Tidak dipasang: panduan LCP sudah dibaca dari dokumentasi Lighthouse|
+|`security-review`|getsentry/skills|19,3 ribu|Tidak dipasang: agent `security-reviewer` sudah ada (ARCHITECTURE §11.2)|
+|`accessibility-review`|anthropics/knowledge-work-plugins|3,8 ribu|Tidak dipasang: cakupannya lebih sempit dari `accessibility`|
+
+### Pengerasan tabel `relays` (sisa temuan M8)
+
+Migrasi `20261015000000_relays_hardening.sql`: kolom `strip_id` pada `relays`, constraint `relays_layout_check` (daftar layout tertutup, sejalan `LayoutId` di `src/lib/layouts.ts`), constraint `relays_slots_array_check` (`jsonb_typeof(slots) = 'array'`), dan indeks unik parsial `relays_strip_id_key`.
+
+|Butir|Keputusan dan bukti|
+|---|---|
+|Bentuk tiap elemen slot|Tetap di `relaySlotsOf` (runtime), bukan check constraint: satu elemen cacat tidak boleh menjatuhkan seluruh baris|
+|Balapan jalur pemulihan (temuan minor M8)|Rute `POST /api/relays/[id]/complete` memakai `relays.strip_id` sebagai gerbang pemenang tunggal: UPDATE bersyarat `strip_id is null` yang hanya boleh berhasil sekali. Yang kalah membuang draf yatimnya (barisnya saja, belum ada berkas terunggah) lalu menjawab draf pemenang. Jalur utama (claimed → complete) kini lewat jalur yang sama, jadi penuntasan dan pemulihan yang berbarengan tetap satu draf|
+|Bukti|`tests/api-relays.test.ts` (27 lolos) menambah kasus: gerbang dibuka lagi bila strip pemenang dihapus, dua penuntasan pemulihan berbarengan → tepat satu baris `strips`, `stripId` kedua jawaban sama, dan draf yang kalah benar-benar terhapus (dilacak `fake.log.droppedStrips`); strip yang dipakai selalu yang ditunjuk gerbang, bukan draf sisa ber-`relay_id` sama, di tiga rute (`complete`, `strip`, dan `DELETE`)|
+
+### Analitik first-party (PRD §4)
+
+Keputusan pengguna: **endpoint peristiwa first-party**, bukan alat pihak ketiga. Migrasi `20261016000000_events.sql` membuat tabel `events` (`id` identity, `name`, `rate_key`, `created_at`; RLS menyala tanpa policy; dua indeks). Yang tersimpan hanya nama peristiwa, sidang pembatasan laju (SHA-256 alamat IP + `RATE_LIMIT_SALT`, sama seperti tabel lain), dan waktu: tidak ada cookie, kolom sesi, perangkat, atau jalur. Retensi 90 hari, dibuang `GET /api/cron/purge`.
+
+|Bagian|Keputusan|
+|---|---|
+|Daftar peristiwa|Tertutup di `src/lib/analyticsEvents.ts` (16 nama), dipakai klien dan server. Rute `POST /api/events` menolak nama di luar daftar (400), badan bukan JSON (400), dan batch di luar 1 sampai 20 butir|
+|Pembatasan laju|Anggaran 200 peristiwa per jam per sidang (`EVENT_LIMIT`), pola hitung-setelah-sisip yang sama dengan rute POST lain: batch yang melewati batas dibuang lagi sebelum menjawab 429|
+|Tanpa env Supabase|Rute menjawab 503 diam-diam dan aplikasinya tetap jalan (pola M6 temuan 8)|
+|Pengiriman klien|`src/lib/analytics.ts`: antrean di memori, dikirim `navigator.sendBeacon` saat mencapai 8 peristiwa, saat halaman disembunyikan, dan saat `pagehide`. Best-effort: tanpa retry, tanpa cookie, tidak pernah melempar|
+|Bucket "cepat dipakai"|`snapme:t0` di sessionStorage diisi `SessionStartPing` di Welcome; ambang 15/30/60 detik ada di `src/lib/analyticsEvents.ts`|
+|Bukti unit|`tests/api-events.test.ts` (7 lolos) dan `tests/analytics-queue.test.ts` (6 lolos): ambang batch, kirim saat disembunyikan dan `pagehide`, jatuh ke `fetch` bila beacon tidak ada atau menolak, batas bucket, pembatalan batch yang melewati anggaran, dan penolakan permintaan lintas situs. Pembersih: `tests/api-events.test.ts` juga menguji kelompok `events` di cron|
+|Bukti ber-jaringan|Setelah migrasi diterapkan, `welcome_loaded` dari kunjungan sungguhan muncul di `events` (diperiksa lewat REST dengan kunci service role)|
+
+Kueri rasio ukuran PRD §4 (dijalankan manual; dashboard tidak dibuat):
+
+```sql
+-- 1. Alur dasar selesai tanpa bantuan (target >= 60%)
+select (select count(*) from events where name = 'download_png')::float
+     / nullif((select count(*) from events where name = 'camera_granted'), 0);
+
+-- 2. Gesture Snap benar-benar dipakai (target >= 50%)
+select (select count(*) from events where name = 'photo_taken_gesture')::float
+     / nullif((select count(*) from events
+               where name in ('photo_taken_gesture', 'photo_taken_button')), 0);
+
+-- 3. Estafet tuntas (target >= 40%)
+select (select count(*) from events where name = 'relay_completed')::float
+     / nullif((select count(*) from events where name = 'relay_created'), 0);
+
+-- 4. Strip Hidup menambah nilai (target >= 30%)
+select (select count(*) from events where name = 'live_enabled')::float
+     / nullif((select count(*) from events where name = 'customize_reached'), 0);
+
+-- 5. Cepat dipakai (median < 30 detik): sebaran bucket sebagai ganti durasi
+select name, count(*) from events
+where name like 'first\_photo\_%' group by name order by name;
+```
+
+Catatan kejujuran angka: rasio dihitung dari hitungan peristiwa, bukan sesi. `welcome_loaded`, `camera_granted`/`camera_denied`, `live_enabled`, `relay_created`, dan `download_png` dijaga agar hanya tercatat sekali per kunjungan halaman (temuan tinjauan M9: tombol unduh tetap hidup setelah unduhan pertama, jadi tanpa penjaga itu rasio #1 bisa melewati 100%), dan `photo_taken_*` memang dihitung per foto. `relay_completed` tercatat sekali per penuntasan; rasio #2 memakai semua foto, sedangkan PRD membatasinya pada sesi dengan gesture menyala, sehingga nilainya adalah batas bawah. Rasio-rasio ini juga baru bermakna untuk lalu lintas setelah rilis: jalankan pengembangan dan suite ber-jaringan (`SUPABASE_E2E=1`) menulis ke tabel yang sama.
+
+### CSP penuh dan status halaman `/s` serta `/r`
+
+`next.config.ts` memasang satu CSP untuk `/:path*` (menggantikan `Content-Security-Policy: frame-ancestors 'none'` yang dulu hanya di `/s` dan `/r`), disusun dari env: host Supabase ditambahkan hanya bila `NEXT_PUBLIC_SUPABASE_URL` ada.
+
+```text
+default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';
+style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: {SUPABASE};
+media-src 'self' blob: data: {SUPABASE}; connect-src 'self' blob: data: {SUPABASE};
+font-src 'self' data:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+|Direktif|Alasan|
+|---|---|
+|`script-src 'unsafe-inline'`|Skrip bootstrap App Router ditulis inline tanpa nonce. Nonce memaksa render dinamis setiap permintaan, bertabrakan dengan `cacheComponents` dan target LCP Welcome (PRD §8)|
+|`script-src 'wasm-unsafe-eval'`|Gesture Snap menjalankan model MediaPipe yang di-host sendiri (ARCHITECTURE §6)|
+|`'unsafe-eval'` hanya di pengembangan|React memakainya untuk menyusun ulang jejak galat di peramban; produksi tidak membutuhkannya. CSP produksi tidak memuat `'unsafe-eval'`|
+|`img-src`/`media-src` `blob:` dan `data:`|Ekspor kanvas (`toDataURL`), bingkai klip sebagai ImageBitmap, dan hasil `MediaRecorder` sebagai URL blob|
+|`connect-src` `blob:` dan `data:`|Konversi hasil ekspor menjadi Blob lewat `fetch(dataUrl)`; keduanya lokal, tidak keluar jaringan|
+|`worker-src 'self' blob:`|MediaPipe membuat worker dari berkasnya sendiri dan dari blob|
+|`font-src 'self' data:`|Fon di-host sendiri lewat `next/font`|
+|`{SUPABASE}`|Unggahan langsung ke Storage dan URL bertanda tangan saat membaca|
+
+Temuan selama verifikasi, semuanya dicatat:
+
+|Temuan|Tindakan|
+|---|---|
+|`next dev` sudah memakai CSP ini sejak M9; seluruh suite chromium tetap hijau di server produksi (`npm run build && npm start`): **57 lolos, 11 dilewati, 0 gagal** (yang dilewati: uji ber-jaringan ber-gerbang `SUPABASE_E2E`, dan dua audit galeri `/dev/ui` yang memang tidak dirender di produksi). Suite kanonik di server pengembangan (semua proyek, `npx playwright test`) **64 lolos, 8 dilewati, 0 gagal**|Tidak ada perubahan direktif|
+|`curl -I /` dan `/s/x` memperlihatkan satu CSP, tanpa `'unsafe-eval'`|Bukti di laporan sesi|
+|Zod (lewat `src/lib/schemas.ts` yang ikut bundel klien) menjalankan uji kemampuan `Function("")` di dalam `try/catch`; di bawah CSP tanpa `'unsafe-eval'` uji itu memicu satu laporan `securitypolicyviolation` di konsol|**Dibiarkan.** Zod menangkapnya dan turun ke jalur validasi non-JIT: tidak ada perilaku yang berubah. Menambahkan `'unsafe-eval'` ke produksi demi menghilangkan satu laporan konsol bukan pertukaran yang sepadan|
+|Halaman `/s/[id]` dan `/r/[id]` menjawab **200** di server produksi untuk id yang tidak ada (di server pengembangan 404). Cangkang PPR dikirim lebih dulu, jadi `notFound()` tidak bisa lagi mengubah status|**Diperbaiki** dengan `htmlLimitedBots: /.*/` di `next.config.ts`: semua permintaan dirender blocking seperti crawler, sehingga `notFound()` benar-benar menjawab 404 di produksi (`curl` membuktikan 404 + "Halaman tidak ditemukan."). Biayanya: metadata tidak lagi dialirkan, dan halaman `/s` serta `/r` menunggu satu baris basis data sebelum HTML pertama (memang begitu maksud `instant = false`)|
+|Tiga uji e2e gagal di server produksi karena membandingkan piksel kanvas tepat setelah klik (penggambaran ulang Konva tidak sinkron dengan klik); di server pengembangan kebetulan lolos|Uji diperbaiki dengan `expect.poll`/`expect.poll(...).not.toBe(...)` di `customize.spec.ts`, `live.spec.ts` (dua tempat), dan `share.spec.ts`|
+|`e2e/result.spec.ts` mengaudit "tanpa permintaan non-statis" pada alur dasar; analitik M9 memang sengaja memanggil `/api/events`|Daftar rute yang diizinkan ditambah `/api/events` dengan komentar: isinya hanya nama peristiwa, tanpa gambar|
+
+### Hasil tinjauan reviewer dan security-reviewer
+
+Keduanya dijalankan baca-saja atas seluruh perubahan M9 setelah semua pemeriksaan hijau (`reviewer` dan `security-reviewer`, ARCHITECTURE §11.2). Tidak ada blocker. Temuan yang bisa dikerjakan di ruang lingkup M9 langsung diperbaiki; sisa yang bukan lingkup M9 dicatat apa adanya.
+
+|Tingkat|Temuan|Tindakan|
+|---|---|---|
+|major|`firstPhotoBucketEvent()` membaca sessionStorage tanpa penjaga; di peramban yang memblokir penyimpanan, galatnya melempar di dalam efek jepret setidaknya sebelum `SHOT_SAVED`, sehingga fase `capturing` tidak pernah maju dan bingkai klipnya tidak pernah dilepas. `markSessionStart()` juga melempar dari effect halaman Welcome|**Diperbaiki.** Keduanya dibungkus `try/catch` (pola yang sama dengan `track()` dan `relayToken.ts`), dan pemanggilan analitik di halaman Ambil Foto dipindah ke SETELAH `dispatch({ type: "SHOT_SAVED" })` supaya mesin keadaan selalu maju lebih dulu|
+|medium|`POST /api/events` memakai pola hitung-setelah-sisip, jadi setelah anggaran habis setiap permintaan tetap melakukan INSERT 20 baris + COUNT + DELETE sebelum menjawab 429: yang dibatasi hanya baris tersimpan, bukan kerja tulis basis datanya|**Diperbaiki.** Gerbang murah sebelum sisip ditambahkan di `events`, `strips`, dan `relays` (tolak tanpa menulis bila jendela kuotanya sudah penuh), sementara pemeriksaan setelah sisip tetap jadi gerbang resmi untuk permintaan serentak|
+|low|Rute `POST /api/events` hanya bergantung gate jenis isi untuk menutup permintaan lintas situs|**Diperbaiki.** Helper `isCrossSite()` (`src/lib/rateLimit.ts`) menolak permintaan yang membawa `Sec-Fetch-Site: cross-site` atau `Origin` yang bukan origin sendiri, dipakai di `events`, `strips`, dan `relays`|
+|low|`rate_key` peristiwa memakai garam dan bentuk hash yang sama dengan `strips`/`relays`, sehingga pemegang akses basis data bisa menyambungkan timeline peristiwa ke baris strip berisi foto lewat kunci pseudonim yang stabil; teks halaman Privasi tidak menyebut konsekuensi itu|**Diperbaiki.** `rateKeyFor()` menerima `scope`; rute peristiwa memakai scope `events` sehingga hashnya berbeda untuk alamat yang sama (nilai lama tidak berubah karena scope bawaannya kosong). Halaman Privasi mendapat bagian "Hitungan peristiwa": apa yang dicatat, tanpa cookie, dan retensi 90 hari sidang terpisah|
+|low|Peramban/permintaan ketiga yang bersamaan pada estafet `complete` bisa menerima draf yang kalah balapan (id + URL unggah) sebelum draf itu dibuang; berkas yang diunggah ke path itu menjadi yatim permanen karena pembersih hanya menghapus path yang dirujuk baris|**Diperbaiki.** Gerbang `relays.strip_id` dibaca lebih dulu daripada pencarian lewat `relay_id` di `complete`, `strip`, dan `DELETE`; baris yang belum terlihat dibaca ulang beberapa kali sebelum gerbangnya dibuka (pemenang menulis gerbang sebelum barisnya), dan pembuangan draf yang kalah jadi best-effort supaya jawabannya tidak jatuh jadi 500. Konsekuensinya dicatat: satu estafet boleh punya lebih dari satu baris `strips` bila baris lamanya batu nisan, yang dijaga adalah satu strip aktif per estafet|
+|low|Tiga uji ber-link (`share`, `live`, `a11y`) memakai sidang pembatasan laju bawaan yang sama, sehingga 3 baris per jalankan terhadap kuota 10 per jam bisa habis setelah empat jalankan dalam satu jam|**Diperbaiki.** Ketiganya memanggil `pasangSidangBaru()` seperti uji estafet|
+|note|CSP, `noindex`, dan `no-referrer` tidak punya asersi otomatis: satu suntingan bisa menghapusnya tanpa ada uji yang gagal|**Diperbaiki.** Uji baru di `e2e/crossbrowser.spec.ts` memeriksa CSP di `/` (memuat `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`, `wasm-unsafe-eval`, dan tanpa `'unsafe-eval'` di server produksi) serta `X-Robots-Tag` dan `Referrer-Policy` di `/s/[id]`. Uji ini berjalan di chromium, firefox, dan webkit|
+|note|Komentar dan dokumen mengklaim "satu estafet hanya punya satu strip", padahal batu nisan penghapusan memang boleh menyisakan baris kedua|**Diperbaiki.** Komentar rute dan kalimat `docs/DECISIONS.md`/`ARCHITECTURE.md` diubah menjadi "satu strip aktif per estafet"|
+|note|Angka rasio PRD §4 lebih longgar daripada yang disiratkan: `download_png` dan `relay_completed` dihitung per klik (bukan per sesi), jadi rasio #1 dan #3 bisa melewati 100%; rasio #2 memakai semua foto, sedangkan PRD menyebut sesi dengan gesture menyala|**Diperbaiki sebagian.** `download_png` kini dijaga sekali per kunjungan halaman Result (seperti `live_enabled`); rasio #2 tetap batas bawah dan itu dicatat di kalimat "Catatan kejujuran angka", bersama catatan bahwa jalankan pengembangan dan pengujian gated menulis ke tabel yang sama sehingga rasio baru bermakna setelah rilis|
+|note|Siklus `POST complete` → `DELETE /api/strips/[id]` → `POST complete` mencetak baris `strips` baru tanpa menyentuh kuota, karena draf relay memakai `rate_key: ""`|**Diterima, dicatat.** Sama dengan penerimaan M8: barisnya tetap dibersihkan (batu nisan 3 jam, draf basi 24 jam) dan untuk berputar tetap dibutuhkan token estafet plus token hapus. Bila kelak perlu, tambahkan hitungan baris per `relay_id` di rute `complete`|
+|note|Larangan lintas situs pada rute lama belum menutup permintaan tanpa header (`Origin`/`Sec-Fetch-Site` tidak ada) dan pembatasan laju tetap per alamat, bukan global|**Diterima, dicatat.** Pola yang sama sudah dicatat sejak M6 (`x-forwarded-for` hop pertama bisa dipalsukan bila proxy hanya menambahkan); di Vercel `x-real-ip` ditimpa platform|
+
+Titik yang dinyatakan benar oleh peninjau: gerbang pemenang tunggal tidak bisa macet dan tidak bisa dipakai mengambil alih strip estafet lain; indeks unik parsial mencegah dua relay berbagi strip; bentuk balasan `claimed → complete` tidak berubah; token diverifikasi sebelum semua pembacaan; CSP memuat setiap origin dan jenis sumber yang benar-benar dipakai aplikasi dan gagal-tertutup bila env Supabase cacat; `'unsafe-eval'` hanya ada di pengembangan; `frame-ancestors` kini berlaku di seluruh rute tanpa menimpa header halaman pribadi; tabel `events` tidak menyimpan identitas langsung dan anggaran baris tersimpannya tidak bisa dilewati permintaan serentak; satu-satunya host luar adalah Supabase milik aplikasi sendiri; dan kode klien baru tidak pernah mengirim foto, klip, teks, atau isi strip.
+
+
+
+### Audit aksesibilitas (axe, keyboard, zoom)
+
+|Pemeriksaan|Hasil|
+|---|---|
+|axe otomatis|`npx playwright test e2e/a11y.spec.ts` → **18 lolos, 2 dilewati** di server produksi. Cakupannya 9 halaman × 2 viewport (360 dan 1280 px): welcome, privasi, pilih layout, ambil foto, hias, hasil, `/s` 404, `/r` 404, dan galeri `/dev/ui` (dua uji itu dilewati di produksi karena galerinya memang tidak dirender). Batasnya nol pelanggaran, lebih ketat daripada syarat "tanpa tingkat serius atau kritis"|
+|axe pada halaman ber-link|Dua uji baru di bawah gerbang `SUPABASE_E2E=1`: `/s/{id}` strip lengkap dan `/r/{id}` status menunggu teman, memakai alur pembantu yang sama dengan `share.spec.ts` dan `relay.spec.ts` (dipindah ke `e2e/helpers.ts` supaya tidak diduplikasi). Hasil: **20 lolos, 0 gagal** di server pengembangan. Halaman estafet diaudit dari konteks browser kedua tanpa token, karena konteks pembuat menampilkan keadaan "menunggu teman"|
+|Temuan axe di galeri `/dev/ui`|Galeri komponen hanya dirender di server pengembangan, dan di sanalah auditnya menemukan pelanggaran **kritis** `button-name`: dua sakelar contoh tanpa nama aksesibel (`#gesture` dan satu sakelar nonaktif). **Diperbaiki**: keduanya diberi `aria-label` ("Gesture Snap", "Strip Hidup"), sejalan DESIGN-SYSTEM §9 yang mewajibkan sakelar punya teks keadaan dan kontrol punya nama. Dua uji audit galeri (360 dan 1280 px) hijau setelahnya, dan di server produksi keduanya dilewati karena galerinya memang tidak dirender|
+|Keyboard seluruh alur|`e2e/keyboard-flow.spec.ts` (baru): Welcome → pilih layout → izin kamera → 4 foto lewat Spasi → hias → hasil → dialog persetujuan QR ditutup dengan Esc → unduh PNG, **tanpa satu pun `page.mouse`**. Fokus dipindah dengan Tab; radio layout dan pil pilihan hiasan digerakkan panah|
+|Temuan keyboard|Grup pil `ToggleGroup` Radix hanya menjadikan pil terpilih sebagai tab stop, dan panahnya bergerak dengan satu tekanan tersendat. Uji karena itu memakai panah sampai fokus benar-benar pindah (loop berbatas) dan kembali ke pil lain dengan fokus terprogram, pola yang sama dengan uji keyboard lama di `customize.spec.ts`. Tidak ada masalah aksesibilitas yang ditemukan: pil bisa dicapai dan diaktifkan dengan keyboard|
+|Zoom 200%|Diperiksa dengan CDP `Emulation.setPageScaleFactor(2)` (browser tool) pada `/`, lalu setara zoom desktop (jendela 1280 px melihat ruang CSS 640 px) dan pembesaran teks 200% pada `/`, `/booth/capture`, `/booth/customize`. Hasil: `scrollWidth == clientWidth` di semua kombinasi (tidak ada luber horizontal) dan aksi utama tetap di dalam layar. Tangkapan layar: `test-results/zoom-*.png`|
+|Pembaca layar|Belum diverifikasi agent (tidak ada pembaca layar di mesin ini); langkahnya masuk tabel manual pengguna di bawah|
+
+### Kinerja (PRD §8)
+
+Alat: Lighthouse 13 dengan preset bawaan seluler (CPU 4× lebih lambat, jaringan 4G lambat tersimulasi) di server produksi. Skrip baru: `npm run perf:lcp`.
+
+|Ukuran|Target PRD §8|Hasil|Selisih|
+|---|---|---|---|
+|LCP Welcome|di bawah 2,5 detik|**3,17 detik** (median tujuh jalankan di server produksi: 3028 sampai 3188 ms; angka terakhir 3062 ms)|**+670 ms, belum tercapai**|
+|Skor kinerja Lighthouse|—|92 sampai 94|—|
+|FCP / TBT / CLS|—|917 ms / 76 sampai 116 ms / 0|—|
+|Ekspor strip sampai siap unduh|di bawah 2 detik|**895 sampai 971 ms** (median 922 ms dari enam jalankan `e2e/perf.spec.ts` di server produksi; jalankan di server pengembangan 1135 ms)|Tercapai|
+|Unduh setelah klik|—|22 sampai 43 ms|—|
+
+Satu putaran optimasi terbatas sudah dijalankan sesuai rencana: `font-display` keluarga display diubah ke `optional` (LCP elemennya judul hero `display-xl` dari Unbounded). Hasilnya **tidak berbeda** (median 3,17 detik), karena yang menahan LCP bukan penggantian fon melainkan biaya gambar judul hero (1170 ms `element render delay` di jejak dengan CPU 4× lebih lambat) plus rebutan lebar pita dengan bundel JS. Pengaturannya dikembalikan ke `swap` supaya tipografi merek tidak jatuh ke fon cadangan di kunjungan pertama yang lambat.
+
+Rencana untuk selisih 670 ms (dipilih pengguna sebelum dianggap selesai):
+
+1. **Kurangi JS Welcome.** Terukur: 182 KB dari 304 KB total. Dua potongan terbesar 71 KB (runtime React/Next) dan 45 KB (kerangka + UI bersama). Kandidat: pindahkan `<Toaster />` dari root layout ke layout booth (sonner tidak dipakai Welcome), dan muat `GalleryPicker` di belakang interaksi seperti `CustomizeEditor`.
+2. **Uji di perangkat sungguhan** (HP Android kelas menengah + 4G) sebelum mengubah desain. Preset seluler Lighthouse mensimulasikan 4G *lambat* (1,6 Mbps, RTT 150 ms), lebih pesimistis daripada definisi "4G" di PRD; median di perangkat sungguhan bisa saja sudah di bawah 2,5 detik.
+3. **Bila masih lewat:** hero `display-xl` memakai `-webkit-text-stroke` dan `text-shadow` keras yang mahal digambar. Menggantinya adalah perubahan DESIGN-SYSTEM, jadi harus diusulkan ke pengguna dulu, bukan dikerjakan diam-diam.
+
+Ukuran bundel per rute (transfer terkompresi, cache dimatikan, server produksi):
+
+|Rute|JS|CSS|Fon|Lain|Total|
+|---|---|---|---|---|---|
+|`/`|182 KB|14 KB|91 KB|17 KB|304 KB|
+|`/privasi`|182 KB|14 KB|91 KB|24 KB|312 KB|
+|`/booth/layout`|178 KB|14 KB|91 KB|17 KB|301 KB|
+|`/booth/capture`|301 KB|14 KB|91 KB|24 KB|431 KB|
+|`/booth/customize`|307 KB|14 KB|91 KB|44 KB|457 KB|
+|`/booth/result`|307 KB|14 KB|91 KB|27 KB|439 KB|
+|`/s/{id}` (404)|233 KB|14 KB|91 KB|27 KB|366 KB|
+|`/r/{id}` (404)|238 KB|14 KB|91 KB|27 KB|371 KB|
+
+Catatan: Next.js 16 **menghapus metrik `size` dan `First Load JS`** dari keluaran `next build` (dokumentasinya menyebut keduanya tidak akurat untuk arsitektur server-driven). Karena itu tabel di atas diukur dari peramban sungguhan (`performance.getEntriesByType("resource")` dengan `Network.setCacheDisabled`), bukan disalin dari keluaran build. Yang tetap terjaga: modul kamera/gesture (301 KB) dan Konva (307 KB) hanya muncul di rutenya sendiri, dan uji "konva tidak ikut termuat di `/` dan `/booth/capture`" tetap hijau.
+
+### Uji lintas peramban
+
+Proyek Playwright baru: `firefox` dan `webkit` (keduanya `testMatch: **/crossbrowser.spec.ts`). Berkas `e2e/crossbrowser.spec.ts` sengaja tidak menyentuh kamera (perangkat media palsu adalah bendera Chromium): alurnya lewat foto galeri sampai unduh PNG, plus pemeriksaan judul halaman statis dan dua panggung 404.
+
+|Peramban|Hasil|
+|---|---|
+|Chromium (Desktop Chrome)|Lolos: berkas ini ikut proyek `chromium` yang memuat semua spec|
+|Firefox|**2 lolos**|
+|WebKit (Safari)|**2 lolos** (unduhan lewat `waitForEvent("download")` bekerja; `MediaRecorder` tidak diperlukan karena alur galeri tidak punya klip). Kemampuan merekamnya diperiksa terpisah: build WebKit milik Playwright **tidak** membawa `MediaRecorder` maupun `canvas.captureStream`, jadi tombol SH-03 di sana tersembunyi sesuai rancangan; Safari sungguhan belum diperiksa dan masuk tabel manual pengguna|
+|Edge|**Dilepas dari suite**: `npx playwright install msedge` gagal di mesin ini ("insufficient privileges") dan Edge tidak terpasang. Mesinnya sama dengan Chromium (tercakup proyek `chromium`); verifikasi di Edge sungguhan masuk tabel manual pengguna|
+
+### Daftar periksa DESIGN-SYSTEM §14
+
+|Butir|Hasil|
+|---|---|
+|Komponen dari dasar §9|Lolos: tidak ada komponen baru di M9; halaman yang disentuh (`/`, `/booth/capture`, `/booth/customize`, `/booth/result`) memakai komponen yang sudah ada|
+|Tidak ada nilai mentah di luar `globals.css`|Lolos: penjaga token lama tetap hijau, dan perubahan M9 tidak menambah nilai mentah (CSP dan `htmlLimitedBots` di `next.config.ts` bukan token tampilan)|
+|Tepat satu aksi `primary` per layar|Lolos: tidak ada tombol baru; `/dev/ui` tetap galeri komponen di server pengembangan|
+|Pasangan warna dari §2|Lolos: tidak ada warna baru; audit axe nol pelanggaran termasuk kontras|
+|Keadaan memuat, kosong, galat, nonaktif|Lolos: kartu bagikan, dialog, dan halaman strip tetap punya keempatnya (diuji M6 sampai M8, suite tetap hijau)|
+|Keyboard dan cincin fokus|Lolos: `e2e/keyboard-flow.spec.ts` menuntaskan seluruh alur tanpa mouse, ringkasan temuan panah ada di atas|
+|`prefers-reduced-motion`|Lolos: uji `e2e/live.spec.ts` dan `e2e/capture.spec.ts` tetap hijau; tiga asersinya kini menunggu penggambaran ulang, bukan membandingkan tepat setelah klik|
+|Rapi pada 360, 768, 1280 px|Lolos: audit axe pada 360 dan 1280 px nol pelanggaran; 768 px tercakup uji lembar bawah `customize.spec.ts` dan pemeriksaan zoom 200% (640 px setara). Perbandingan berdampingan dengan berkas acuan di `docs/ui-reference/` tidak diulang di M9 karena perubahan M9 memang tidak menyentuh tampilan: seluruh diff bekerja di `git diff --stat` tidak memuat berkas CSS atau token, dan suntingan JSX hanya berupa penangan peristiwa, atribut `aria-label`, serta pemanggilan analitik. Perbandingan berdampingan terakhir ada di M6 untuk halaman ber-acuan dan hasilnya tidak berubah|
+|Label §12, tanpa emoji dan em dash|Lolos: label baru tidak ditambahkan; teks yang disentuh M9 hanya komentar kode|
+|Pre-Flight Check taste-skill untuk Welcome dan `/s/{id}`|Dijalankan di M6 dan tetap berlaku: M9 tidak mengubah hero, susunan, atau teksnya (perubahan hanya CSP, analitik, dan judul dokumen)|
+
+### Tabel manual pengguna (belum bisa diverifikasi agent)
+
+|Butir|Langkah|Status|
+|---|---|---|
+|Gesture Snap (M3)|Buka `npm run dev`, pilih layout, izinkan kamera, angkat dua jari dan tahan 0,8 detik → hitung mundur mulai; telapak untuk ulang foto terakhir; jempol setelah semua slot terisi untuk lanjut ke hias. Uji di cahaya redup dan terang|Menunggu pengguna (tabel M3 di atas masih kosong)|
+|Chrome Android / Safari iOS / Edge dan Firefox sungguhan|Buka `/`, jalankan alur galeri sampai unduh di tiap peramban, catat yang gagal. Mesin WebKit dan Gecko sudah tercakup otomatis oleh proyek `webkit` dan `firefox`; yang belum diperiksa adalah sentuhan, kamera sungguhan, dan unduhan di perangkat|Menunggu pengguna|
+|QR pada cetakan asli (M9 "Selesai bila")|`npm run dev`, buat strip dengan "QR di strip" menyala, tekan "Cetak 4R" pada kertas 4R, lalu pindai QR-nya dengan kamera HP → harus membuka `/s/{id}` dan menampilkan stripnya. Ulangi sekali di kertas biasa untuk membandingkan|Menunggu pengguna|
+|Pembaca layar|NVDA (Windows) atau VoiceOver (macOS) atau TalkBack (Android): jalankan alur dasar, periksa hitung mundur dan penghitung foto terumumkan (`aria-live`), HUD gesture terbaca (`role="status"`), dan padanan daftar stiker bisa dipakai tanpa kanvas|Menunggu pengguna|
+|Deploy ke Vercel|PowerShell: `npm i -g vercel`, `vercel login`, `vercel link`, `vercel env add NEXT_PUBLIC_SUPABASE_URL`, `vercel env add SUPABASE_SERVICE_ROLE_KEY`, `vercel env add CRON_SECRET`, `vercel env add RATE_LIMIT_SALT`, lalu `vercel deploy --prod`. `vercel.json` sudah memuat cron pembersih harian. Setelah live: jalankan sekali alur dasar dan sekali buat link, periksa `/api/cron/purge` dijalankan cron, dan catat LCP produksi|Menunggu pengguna (agent tidak men-deploy)|

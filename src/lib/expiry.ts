@@ -15,6 +15,9 @@ export const STALE_DRAFT_HOURS = 24
    nisan menjaga path-nya tetap diketahui pembersih, dan sekaligus menjaga
    kuota pembatasan laju tidak bisa dikembalikan dengan menghapus baris. */
 export const DELETED_GRACE_HOURS = 3
+/* M9 (PRD §4): peristiwa analitik disimpan 90 hari supaya rasio antar kuartal
+   masih bisa dihitung tanpa menyimpan hitungannya selamanya. */
+export const EVENT_RETENTION_DAYS = 90
 
 const HOUR_MS = 3_600_000
 const DAY_MS = 24 * HOUR_MS
@@ -56,4 +59,9 @@ export function isStaleDraft(
     return false
   }
   return at <= now.getTime() - STALE_DRAFT_HOURS * HOUR_MS
+}
+
+/** M9: batas umur peristiwa analitik; pembersih membuang yang lebih tua. */
+export function eventRetentionCutoff(from: Date): Date {
+  return new Date(from.getTime() - EVENT_RETENTION_DAYS * DAY_MS)
 }

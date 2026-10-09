@@ -1,10 +1,12 @@
 "use client"
 
+import { useEffect } from "react"
 import dynamic from "next/dynamic"
 import { Check } from "@phosphor-icons/react"
 
 import { BoothPanel } from "@/components/booth/BoothPanel"
 import { Badge } from "@/components/ui/badge"
+import { track } from "@/lib/analytics"
 import { countFilled, useBoothStore, useRequireShots } from "@/stores/booth"
 
 /* Prasyarat FR-07 tetap di sini: tanpa semua slot terisi, langkah Hias dialihkan
@@ -43,6 +45,16 @@ function EditorSkeleton() {
 export default function CustomizeStepPage() {
   const ready = useRequireShots()
   const layoutId = useBoothStore((state) => state.layoutId)
+
+  /* PRD §4: penyebut ukuran "Strip Hidup menambah nilai" adalah sesi yang
+     mencapai langkah Hias. Sesi yang dialihkan balik ke Ambil Foto bukan
+     sesi yang mencapai halaman ini, jadi peristiwanya hanya dikirim saat
+     prasyaratnya terpenuhi. */
+  useEffect(() => {
+    if (ready && layoutId !== null) {
+      track("customize_reached")
+    }
+  }, [ready, layoutId])
 
   if (!ready || layoutId === null) {
     return null

@@ -20,6 +20,10 @@ const BAGIAN = [
     isi: "Link strip pribadi aktif 7 hari. Link estafet aktif 48 jam, dan strip estafet terhapus 7 hari setelah selesai. Lewat dari itu, berkas terhapus otomatis.",
   },
   {
+    judul: "Hitungan peristiwa",
+    isi: "snapme mencatat hitungan peristiwa tanpa cookie dan tanpa data pribadi: berapa kali halaman dibuka, izin kamera diberikan atau ditolak, foto diambil lewat tombol atau gesture, langkah hias dicapai, Strip Hidup dinyalakan, link dan estafet dibuat, lalu unduhan dan cetakan dipakai. Peristiwanya tidak memuat foto, teks, maupun isi strip. Untuk mencegah penyalahgunaan, sidang pembatasan laju disimpan terpisah dari sidang link strip (enam belas digit hash, tidak bisa dipakai mengenali kamu, dan tetap tersimpan sampai 90 hari).",
+  },
+  {
     judul: "Cara menghapus",
     isi: "Pembuat strip bisa menghapus dari halaman stripnya kapan saja. Estafet bisa dibatalkan dan dihapus pembuatnya. Foto yang belum dibagikan hilang begitu sesi ditutup.",
   },

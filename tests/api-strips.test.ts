@@ -136,6 +136,16 @@ function buatKlienPalsu(seed: Row[] = []) {
           }),
         }
       }
+      /* M9: pembersih juga menyapu peristiwa analitik lama; berkas uji ini
+         tidak menguji peristiwa (itu di tests/api-events.test.ts), jadi
+         tabelnya dijawab kosong. */
+      if (table === "events") {
+        return {
+          select: () => ({
+            lte: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
       return {
         insert: (values: Row | Row[]) => {
           for (const item of Array.isArray(values) ? values : [values]) {
@@ -322,6 +332,17 @@ describe("POST /api/strips", () => {
       permintaan('{"layout":"strip-4"}', { "content-type": "text/plain" })
     )
     expect(lintasSitus.status).toBe(400)
+
+    /* M9: gate Origin/Sec-Fetch-Site, tidak bergantung perilaku peramban. */
+    const originLain = await buatStrip(
+      permintaan({ layout: "strip-4" }, { origin: "https://jahat.example" })
+    )
+    expect(originLain.status).toBe(400)
+
+    const fetchLintasSitus = await buatStrip(
+      permintaan({ layout: "strip-4" }, { "sec-fetch-site": "cross-site" })
+    )
+    expect(fetchLintasSitus.status).toBe(400)
   })
 
   it("menyertakan URL unggah klip bila klipnya diminta", async () => {

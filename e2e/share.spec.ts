@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 
 import { expect, test, type Page } from "@playwright/test"
 
-import { masukHias } from "./helpers"
+import { masukHias, masukHiasDenganQr, pasangSidangBaru } from "./helpers"
 
 /* M6 (SH-04 sampai SH-06): link strip dan QR.
 
@@ -16,14 +16,6 @@ const PERLU_PROYEK =
 /* Uji jalur 503 hanya bermakna saat server belum punya proyek Supabase, dan
    `.env.local` adalah penanda tunggalnya di mesin ini. */
 const ADA_ENV_LOKAL = existsSync(".env.local")
-
-async function masukHiasDenganQr(page: Page): Promise<void> {
-  await masukHias(page)
-  await page.getByRole("switch", { name: "QR di strip" }).click()
-  await expect(
-    page.getByText("Kamu akan dimintai izin unggah saat mengunduh.")
-  ).toBeVisible()
-}
 
 /** Sidik jari kanvas penyunting: cukup untuk membuktikan ada yang berubah. */
 async function sidikJariKanvas(page: Page): Promise<number> {
@@ -60,7 +52,9 @@ test.describe("QR di strip tanpa proyek Supabase", () => {
     await expect(
       page.getByText("Kamu akan dimintai izin unggah saat mengunduh.")
     ).toBeVisible()
-    expect(await sidikJariKanvas(page)).not.toBe(sebelum)
+    /* Kanvas digambar ulang setelah state berubah, jadi kotak QR-nya ditunggu
+       (M9: penggambaran ulang tidak sinkron dengan klik di server produksi). */
+    await expect.poll(() => sidikJariKanvas(page)).not.toBe(sebelum)
 
     /* Ledakan kartu mengikuti teks acuan customize.html. */
     await expect(
@@ -129,6 +123,9 @@ test.describe("alur bagikan dengan proyek Supabase", () => {
     /* Alur ini menembus jaringan sungguhan (unggah ke Storage, rute complete,
        dua konteks browser), jadi batas bawaan 30 detik terlalu ketat. */
     test.setTimeout(180_000)
+    /* Sidang pembatasan laju sendiri: kuota 10 link per jam dihitung per
+       sidang, jadi uji ber-link lain tidak boleh memakai kuncinya bersama. */
+    await pasangSidangBaru(page)
     await masukHiasDenganQr(page)
     await page.getByRole("link", { name: "Selesai & Unduh" }).click()
     await page.waitForURL("**/booth/result")

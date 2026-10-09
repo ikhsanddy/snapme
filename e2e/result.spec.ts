@@ -30,6 +30,10 @@ const AWALAN_STATIS = [
   "/stickers/",
   "/favicon.ico",
 ]
+/* M9 (PRD §4): satu-satunya rute server yang boleh disentuh alur dasar adalah
+   analitik first-party. Isinya hanya nama peristiwa, tanpa gambar dan tanpa
+   data pribadi, jadi uji privasi di bawah tetap berlaku untuk fotonya. */
+const RUTE_DIIZINKAN = ["/api/events"]
 
 test.beforeEach(async ({ page }) => {
   await matikanGesture(page)
@@ -101,7 +105,7 @@ test("alur penuh Welcome sampai unduh tanpa permintaan non-statis", async ({
       return true
     }
     if (parsed.pathname.startsWith("/api/")) {
-      return true
+      return !RUTE_DIIZINKAN.includes(parsed.pathname)
     }
     return !(
       HALAMAN_APP.includes(parsed.pathname) ||

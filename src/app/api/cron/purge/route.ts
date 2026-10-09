@@ -1,4 +1,9 @@
-import { isExpired, isStaleDraft, STALE_DRAFT_HOURS } from "@/lib/expiry"
+import {
+  eventRetentionCutoff,
+  isExpired,
+  isStaleDraft,
+  STALE_DRAFT_HOURS,
+} from "@/lib/expiry"
 import { STORAGE_BUCKET } from "@/lib/schemas"
 import { RELAY_COLUMNS, relaySlotsOf, type RelayRow } from "@/lib/supabase/relays"
 import { getSupabaseAdmin } from "@/lib/supabase/server"
@@ -12,6 +17,9 @@ import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
    M8 menambahkan kelompok yang sama untuk `relays`: link estafet 48 jam dan
    baris yang dibatalkan (masa tenggang batu nisannya sendiri) dibuang beserta
    berkas slotnya.
+   M9 menambahkan kelompok `events`: peristiwa analitik yang lebih tua dari 90
+   hari dibuang (PRD §4), tanpa berkas Storage karena tabelnya hanya berisi
+   hitungan.
    Kedaluwarsa tetap juga diperiksa saat baca (complete/DELETE dan halaman
    /s/[id] serta /r/[id]), jadi pembersih ini menjaga penyimpanan, bukan
    kebenaran status. */
@@ -131,6 +139,27 @@ export async function GET(request: Request) {
         throw new Error(relayDeleteError.message)
       }
       purged += relayIds.length
+    }
+
+    /* M9 (PRD §4): peristiwa analitik disimpan 90 hari. Tabelnya hanya berisi
+       hitungan, jadi tidak ada berkas Storage yang perlu dibersihkan. */
+    const { data: eventRows, error: eventError } = await admin
+      .from("events")
+      .select("id")
+      .lte("created_at", eventRetentionCutoff(now).toISOString())
+    if (eventError !== null) {
+      throw new Error(eventError.message)
+    }
+    const eventIds = ((eventRows ?? []) as { id: number }[]).map((row) => row.id)
+    if (eventIds.length > 0) {
+      const { error: eventDeleteError } = await admin
+        .from("events")
+        .delete()
+        .in("id", eventIds)
+      if (eventDeleteError !== null) {
+        throw new Error(eventDeleteError.message)
+      }
+      purged += eventIds.length
     }
 
     return Response.json({ purged })

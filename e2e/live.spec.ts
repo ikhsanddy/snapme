@@ -2,7 +2,7 @@ import { statSync } from "node:fs"
 import path from "node:path"
 import { expect, test, type Page } from "@playwright/test"
 
-import { masukHias, masukHasil, matikanGesture } from "./helpers"
+import { masukHias, masukHasil, matikanGesture, pasangSidangBaru } from "./helpers"
 
 /* M7 (SH-01 sampai SH-03): Strip Hidup. Uji ini memakai kamera palsu Chromium,
    jadi klip benar-benar terekam selama hitung mundur. Bagian ber-jaringan
@@ -56,14 +56,15 @@ test("sakelar Strip Hidup memutar klip di kanvas", async ({ page }) => {
     page.getByText("Versi hidup ikut diunggah saat kamu membuat link.")
   ).toBeVisible()
 
-  /* SH-02: pratinjau benar-benar berputar, bukan hanya lencananya muncul. */
-  const pertama = await sidikJariKanvas(page)
-  await page.waitForTimeout(500)
-  const kedua = await sidikJariKanvas(page)
-  expect(kedua).not.toBe(pertama)
+  /* SH-02: pratinjau benar-benar berputar, bukan hanya lencananya muncul.
+     Penggambaran ulang kanvas tidak sinkron dengan klik, jadi hasilnya
+     ditunggu, bukan dibandingkan tepat setelah sakelar dinyalakan (M9). */
+  await expect.poll(() => sidikJariKanvas(page)).not.toBe(diamSatu)
 
   await sakelar.click()
   await expect(sakelar).not.toBeChecked()
+  /* Kembali ke foto tetap: nilainya sama dengan sebelum dinyalakan. */
+  await expect.poll(() => sidikJariKanvas(page)).toBe(diamSatu)
   const matiSatu = await sidikJariKanvas(page)
   await page.waitForTimeout(500)
   expect(await sidikJariKanvas(page)).toBe(matiSatu)
@@ -79,9 +80,10 @@ test("prefers-reduced-motion: pratinjau berhenti dengan tombol Putar", async ({
   await page.getByRole("switch", { name: "Strip Hidup" }).click()
 
   /* Berhenti: bingkai klip tidak berjalan, tetapi lencana "Klip" membuktikan
-     bingkainya memang terekam (tampilannya berbeda dari saat sakelar mati). */
+     bingkainya memang terekam (tampilannya berbeda dari saat sakelar mati).
+     Penggambaran ulangnya ditunggu karena tidak sinkron dengan klik (M9). */
+  await expect.poll(() => sidikJariKanvas(page)).not.toBe(tanpaHidup)
   const berhentiSatu = await sidikJariKanvas(page)
-  expect(berhentiSatu).not.toBe(tanpaHidup)
   await page.waitForTimeout(500)
   expect(await sidikJariKanvas(page)).toBe(berhentiSatu)
 
@@ -91,10 +93,14 @@ test("prefers-reduced-motion: pratinjau berhenti dengan tombol Putar", async ({
   await expect(page.getByRole("button", { name: "Jeda" })).toBeVisible()
 
   const jalanSatu = await sidikJariKanvas(page)
+  await expect.poll(() => sidikJariKanvas(page)).not.toBe(jalanSatu)
   await page.waitForTimeout(500)
   expect(await sidikJariKanvas(page)).not.toBe(jalanSatu)
 
   await page.getByRole("button", { name: "Jeda" }).click()
+  /* Berhenti lagi pada bingkai pertama, jadi tampilannya kembali ke keadaan
+     sebelum diputar. */
+  await expect.poll(() => sidikJariKanvas(page)).toBe(berhentiSatu)
   const jedaSatu = await sidikJariKanvas(page)
   await page.waitForTimeout(500)
   expect(await sidikJariKanvas(page)).toBe(jedaSatu)
@@ -158,6 +164,10 @@ test.describe("versi hidup dengan proyek Supabase", () => {
     browser,
   }) => {
     test.setTimeout(180_000)
+    /* Sidang pembatasan laju sendiri: kuota 10 link per jam dihitung per
+       sidang, jadi uji ini tidak boleh berbagi kunci dengan uji ber-link lain
+       (M9, temuan tinjauan). */
+    await pasangSidangBaru(page)
     await masukHias(page)
     await page.getByRole("switch", { name: "QR di strip" }).click()
     await page.getByRole("switch", { name: "Strip Hidup" }).click()

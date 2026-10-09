@@ -192,7 +192,10 @@ test("pilihan hias di lembar bawah pada 360 px", async ({ page }) => {
 
   await lembar.getByRole("radio", { name: "Frame" }).click()
   await lembar.getByRole("button", { name: "Malam", exact: true }).click()
-  expect(await stripBackgroundPixel(page)).toEqual([20, 20, 20, 255])
+  /* Kanvas digambar ulang setelah state berubah, jadi pikselnya ditunggu:
+     di server produksi, penggambaran ulang itu baru mendarat di bingkai
+     berikutnya (M9). */
+  await expect.poll(() => stripBackgroundPixel(page)).toEqual([20, 20, 20, 255])
 })
 
 test("konva tidak ikut termuat di / dan /booth/capture", async ({ page }) => {

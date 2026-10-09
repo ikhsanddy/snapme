@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/drawer"
 import { CLIP_FRAME_COUNT } from "@/features/capture/clipRecorder"
 import { useClipTicker } from "@/features/live/useClipTicker"
+import { track } from "@/lib/analytics"
 import { getLayout, type LayoutId } from "@/lib/layouts"
 import { cn } from "@/lib/utils"
 import { countFilled, hasLiveClips, useBoothStore } from "@/stores/booth"
@@ -59,6 +60,18 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
   const stageRef = useRef<KonvaStage>(null)
   const groupRef = useRef<KonvaGroup>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  /* PRD §4: "Strip Hidup menambah nilai" dihitung dari sesi yang benar-benar
+     menyalakannya, jadi menyalakan-mematikan-menyalakan lagi tetap satu
+     peristiwa per kunjungan halaman Hias. */
+  const liveTracked = useRef(false)
+
+  const handleLiveToggle = (enabled: boolean) => {
+    setLiveEnabled(enabled)
+    if (enabled && !liveTracked.current) {
+      liveTracked.current = true
+      track("live_enabled")
+    }
+  }
 
   /* SH-02: pratinjau berputar selama sakelarnya nyala, kecuali pengguna
      meminta gerak dikurangi. Di situ klip ditampilkan diam dengan tombol
@@ -144,7 +157,7 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
                   <Switch
                     checked={liveEnabled}
                     disabled={!hasClips || shareStrip !== null}
-                    onCheckedChange={setLiveEnabled}
+                    onCheckedChange={handleLiveToggle}
                     aria-label="Strip Hidup"
                   />
                 </div>

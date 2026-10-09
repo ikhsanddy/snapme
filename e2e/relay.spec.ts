@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 
-import { izinkanKamera, jepret, masukAmbilFoto, matikanGesture } from "./helpers"
+import { izinkanKamera, jepret, matikanGesture, undangEstafet } from "./helpers"
 
 /* M8 (SE-01 sampai SE-09): Strip Estafet.
 
@@ -18,43 +18,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 /** Setiap uji memakai sidang pembatasan laju sendiri supaya kuota 10 link per
- *  jam tidak dipakai bersama antar-uji maupun antar-jalankan. `x-real-ip`
- *  memang header yang dibaca rute; di produksi diisi platform hosting. */
-async function pasangSidangBaru(page: Page): Promise<void> {
-  const oktet = 20 + Math.floor(Math.random() * 200)
-  await page.setExtraHTTPHeaders({ "x-real-ip": `198.51.100.${oktet}` })
-}
-
-/** Pembuat mengisi dua foto lalu membuat link estafet; hasilnya URL /r/{id}. */
-async function undangEstafet(page: Page): Promise<string> {
-  await pasangSidangBaru(page)
-  await masukAmbilFoto(page)
-  await izinkanKamera(page)
-  await jepret(page)
-  await jepret(page)
-  await expect(page.getByText("2/4")).toBeVisible()
-
-  await page.getByRole("button", { name: "Estafet ke Teman" }).click()
-  const dialog = page.getByRole("dialog")
-  /* SE-02: apa yang diunggah, siapa yang bisa melihat, kapan terhapus. */
-  await expect(
-    dialog.getByText("Unggah foto estafet?", { exact: true })
-  ).toBeVisible()
-  await expect(
-    dialog.getByText(/Hanya orang yang kamu kirimi link yang bisa melengkapi/)
-  ).toBeVisible()
-  await dialog.getByRole("button", { name: "Buat Link Estafet" }).click()
-
-  await expect(page.getByText("Link estafet dibuat.")).toBeVisible({
-    timeout: 30_000,
-  })
-  const alamat = page.getByTestId("relay-url")
-  await expect(alamat).toContainText("/r/")
-  const url = (await alamat.textContent())?.trim() ?? ""
-  expect(url).toMatch(/\/r\/[A-Za-z0-9_-]{12,}$/)
-  return url
-}
-
+ *  jam tidak dipakai bersama antar-uji maupun antar-jalankan. */
 function idDari(url: string): string {
   return new URL(url).pathname.split("/").pop() ?? ""
 }

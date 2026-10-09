@@ -68,10 +68,15 @@ export async function POST(
       return Response.json(WRONG_TOKEN, { status: 401 })
     }
 
+    /* Gerbang `strip_id` lebih dulu; `relay_id` hanya untuk baris lama yang
+       belum punya gerbang. Draf yang kalah balapan (sisa yang belum sempat
+       dibuang) tidak boleh membayangi strip pemenangnya (temuan tinjauan
+       keamanan M9). */
+    const stripColumn = row.strip_id === null ? "relay_id" : "id"
     const { data: stripData, error: stripError } = await admin
       .from("strips")
       .select(STRIP_COLUMNS)
-      .eq("relay_id", row.id)
+      .eq(stripColumn, row.strip_id ?? row.id)
       .limit(1)
       .maybeSingle()
     if (stripError !== null) {

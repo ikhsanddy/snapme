@@ -51,6 +51,7 @@ function barisRelay(overrides: Row): Row {
     host_token_hash: hashToken(TOKEN_PEMBUAT),
     guest_token_hash: null,
     status: "waiting",
+    strip_id: null,
     rate_key: "",
     created_at: new Date().toISOString(),
     expires_at: new Date(
@@ -91,6 +92,7 @@ function buatKlienPalsu(options: FakeOptions = {}) {
     removed: [] as string[],
     signedUploads: [] as string[],
     signedUrls: [] as string[],
+    droppedStrips: [] as string[],
   }
 
   function pembangun(
@@ -113,6 +115,15 @@ function buatKlienPalsu(options: FakeOptions = {}) {
     const builder = {
       eq(column: string, value: unknown) {
         filters.push((row) => row[column] === value)
+        return builder
+      },
+      is(column: string, value: unknown) {
+        /* PostgREST `is` menyamakan null dengan kolom yang kosong. */
+        filters.push((row) =>
+          value === null
+            ? row[column] === null || row[column] === undefined
+            : row[column] === value
+        )
         return builder
       },
       gt(column: string, value: unknown) {
@@ -163,6 +174,9 @@ function buatKlienPalsu(options: FakeOptions = {}) {
         }
         if (mode === "delete") {
           for (const row of found) {
+            if (table === "strips") {
+              log.droppedStrips.push(row.id)
+            }
             tables[table].delete(row.id)
           }
           return Promise.resolve({ data: null, error: null }).then(resolve)
@@ -178,7 +192,17 @@ function buatKlienPalsu(options: FakeOptions = {}) {
   }
 
   const client = {
-    from(table: Table) {
+    from(table: Table | "events") {
+      /* M9: pembersih juga menyapu peristiwa analitik lama (retensi 90 hari).
+         Berkas uji ini tidak menguji peristiwa (itu di tests/api-events.test.ts),
+         jadi tabelnya dijawab kosong. */
+      if (table === "events") {
+        return {
+          select: () => ({
+            lte: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
       const defaults: Record<string, unknown> =
         table === "strips"
           ? {
@@ -197,6 +221,7 @@ function buatKlienPalsu(options: FakeOptions = {}) {
               host_token_hash: "",
               guest_token_hash: null,
               status: "waiting",
+              strip_id: null,
               rate_key: "",
               created_at: new Date().toISOString(),
               expires_at: null,
@@ -363,6 +388,17 @@ describe("POST /api/relays", () => {
       permintaan('{"layout":"strip-4"}', { "content-type": "text/plain" })
     )
     expect(lintasSitus.status).toBe(400)
+
+    /* M9: gate Origin/Sec-Fetch-Site, tidak bergantung perilaku peramban. */
+    const originLain = await buatRelay(
+      permintaan({ layout: "strip-4" }, { origin: "https://jahat.example" })
+    )
+    expect(originLain.status).toBe(400)
+
+    const fetchLintasSitus = await buatRelay(
+      permintaan({ layout: "strip-4" }, { "sec-fetch-site": "cross-site" })
+    )
+    expect(fetchLintasSitus.status).toBe(400)
   })
 
   it("menolak melayani tanpa garam pembatasan laju dan tanpa basis data", async () => {
@@ -589,6 +625,91 @@ describe("POST /api/relays/[id]/complete", () => {
     expect(body.stripId).not.toBe("striplama123")
   })
 
+  it("membuka gerbang strip_id bila strip pemenangnya sudah dihapus", async () => {
+    const fake = pasangKlien({
+      relays: [
+        {
+          id: "relaytuntas9",
+          status: "complete",
+          guest_token_hash: hashToken(TOKEN_TAMU),
+          strip_id: "striplama456",
+        },
+      ],
+      strips: [
+        { id: "striplama456", status: "deleted", relay_id: "relaytuntas9" },
+      ],
+    })
+    const response = await lengkapi("relaytuntas9")
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { stripId: string }
+    expect(body.stripId).not.toBe("striplama456")
+    expect(fake.tables.relays.get("relaytuntas9")?.strip_id).toBe(body.stripId)
+  })
+
+  it("hanya melahirkan satu draf strip saat dua penuntasan pemulihan berbarengan", async () => {
+    const fake = pasangKlien({
+      relays: [
+        {
+          id: "relaytuntas10",
+          status: "complete",
+          guest_token_hash: hashToken(TOKEN_TAMU),
+        },
+      ],
+    })
+    const [pertama, kedua] = await Promise.all([
+      lengkapi("relaytuntas10"),
+      lengkapi("relaytuntas10"),
+    ])
+
+    expect(pertama.status).toBe(200)
+    expect(kedua.status).toBe(200)
+    const a = (await pertama.json()) as { stripId: string }
+    const b = (await kedua.json()) as { stripId: string }
+    expect(b.stripId).toBe(a.stripId)
+
+    const draf = [...fake.tables.strips.values()].filter(
+      (row) => row.relay_id === "relaytuntas10"
+    )
+    expect(draf).toHaveLength(1)
+    expect(fake.tables.relays.get("relaytuntas10")?.strip_id).toBe(a.stripId)
+    /* Yang kalah balapan benar-benar membuang drafnya, bukan menyisakannya. */
+    expect(fake.log.droppedStrips).toHaveLength(1)
+    expect(fake.log.droppedStrips).not.toContain(a.stripId)
+  })
+
+  it("memakai strip di gerbang, bukan draf sisa yang menunjuk relay yang sama", async () => {
+    const selesai = new Date(Date.now() + 86_400_000).toISOString()
+    const fake = pasangKlien({
+      relays: [
+        {
+          id: "relaytuntas11",
+          status: "complete",
+          guest_token_hash: hashToken(TOKEN_TAMU),
+          strip_id: "pemenang01",
+        },
+      ],
+      strips: [
+        {
+          id: "pemenang01",
+          status: "complete",
+          relay_id: "relaytuntas11",
+          expires_at: selesai,
+        },
+        { id: "sisa01", status: "draft", relay_id: "relaytuntas11" },
+      ],
+    })
+
+    const response = await lengkapi("relaytuntas11")
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      stripId: "pemenang01",
+      expiresAt: selesai,
+    })
+    /* Tidak ada unggahan baru yang diterbitkan untuk draf sisa itu. */
+    expect(fake.log.signedUploads).toEqual([])
+  })
+
   it("menolak token yang hilang atau salah, dan estafet yang belum diambil", async () => {
     pasangKlien({
       relays: [
@@ -733,6 +854,35 @@ describe("DELETE /api/relays/[id]", () => {
     expect(fake.log.removed).toHaveLength(6)
   })
 
+  it("menghapus berkas strip di gerbang, bukan draf sisa ber-relay_id sama", async () => {
+    const fake = pasangKlien({
+      relays: [{ id: "relaybatal4", status: "complete", strip_id: "stripgate01" }],
+      strips: [
+        { id: "stripgate01", status: "complete", relay_id: "relaybatal4" },
+        { id: "stripsisa02", status: "draft", relay_id: "relaybatal4" },
+      ],
+    })
+    const response = await hapus("relaybatal4")
+
+    expect(response.status).toBe(204)
+    /* Hanya berkas strip pemenang yang dibuang, dan batu nisannya hanya
+       dikenakan pada baris itu. */
+    expect(fake.log.removed.sort()).toEqual(
+      [
+        relaySlotPath("relaybatal4", 0),
+        relaySlotPath("relaybatal4", 1),
+        relaySlotPath("relaybatal4", 2),
+        relaySlotPath("relaybatal4", 3),
+        "strips/stripgate01/still.png",
+      ].sort()
+    )
+    expect(fake.tables.strips.get("stripgate01")?.status).toBe("deleted")
+    expect(fake.tables.strips.get("stripsisa02")).toMatchObject({
+      status: "draft",
+      relay_id: "relaybatal4",
+    })
+  })
+
   it("menolak token yang hilang, salah, dan estafet yang kedaluwarsa", async () => {
     pasangKlien({
       relays: [
@@ -808,6 +958,37 @@ describe("POST /api/relays/[id]/strip", () => {
     expect(teman.status).toBe(200)
     const temanBody = (await teman.json()) as { role: string }
     expect(temanBody.role).toBe("guest")
+  })
+
+  it("memakai strip di gerbang, bukan draf sisa yang menunjuk relay yang sama", async () => {
+    /* M9: draf yang kalah balapan (sisa yang belum sempat dibuang) tidak boleh
+       membayangi strip pemenangnya saat tautan atau foto slot diminta. */
+    const selesai = new Date(Date.now() + 86_400_000).toISOString()
+    pasangKlien({
+      relays: [
+        {
+          id: "relaystrip05",
+          status: "complete",
+          strip_id: "stripgerbang",
+          guest_token_hash: hashToken(TOKEN_TAMU),
+        },
+      ],
+      strips: [
+        {
+          id: "stripgerbang",
+          status: "complete",
+          relay_id: "relaystrip05",
+          expires_at: selesai,
+        },
+        { id: "stripsisa", status: "draft", relay_id: "relaystrip05" },
+      ],
+    })
+
+    const response = await mintaStrip("relaystrip05", TOKEN_PEMBUAT)
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { stripId: string; expiresAt: string }
+    expect(body.stripId).toBe("stripgerbang")
+    expect(body.expiresAt).toBe(selesai)
   })
 
   it("menolak token yang hilang atau salah, dan estafet yang belum selesai", async () => {

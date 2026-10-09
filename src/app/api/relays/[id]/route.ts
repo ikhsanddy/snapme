@@ -62,10 +62,14 @@ export async function DELETE(
 
     const paths: (string | null)[] = relaySlotsOf(row).map((slot) => slot.path)
 
+    /* Gerbang `strip_id` lebih dulu supaya penghapusan tidak menyasar draf
+       sisa yang bukan milik estafet ini; `relay_id` hanya untuk baris lama
+       (temuan tinjauan keamanan M9). */
+    const stripColumn = row.strip_id === null ? "relay_id" : "id"
     const { data: stripData, error: stripError } = await admin
       .from("strips")
       .select(STRIP_COLUMNS)
-      .eq("relay_id", id)
+      .eq(stripColumn, row.strip_id ?? id)
       .limit(1)
       .maybeSingle()
     if (stripError !== null) {
