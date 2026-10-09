@@ -26,7 +26,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 
 - [x] M0 Fondasi
 - [x] M1 Welcome dan kerangka booth
-- [ ] M2 Kamera
+- [x] M2 Kamera
 - [ ] M3 Gesture Snap
 - [ ] M4 Hias strip
 - [ ] M5 Hasil dan cetak
@@ -119,14 +119,14 @@ Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai be
 
 **Pekerjaan**
 
-- [ ] Layar penjelas izin kamera dan penanganan izin ditolak.
-- [ ] `features/camera`: pratinjau dicerminkan, crop sesuai rasio slot.
-- [ ] `features/capture`: mesin keadaan sebagai fungsi murni dengan uji unit.
-- [ ] `CameraStage`, `CountdownOverlay`, `ShutterButton`, `ShotTray`.
-- [ ] Hitung mundur 3 detik, kilat tunggal, pengumuman `aria-live`.
-- [ ] Ulang foto terakhir dan ulang foto tertentu.
-- [ ] Spasi mengambil foto saat fokus di area kamera.
-- [ ] **(P1)** Pilih kamera.
+- [x] Layar penjelas izin kamera dan penanganan izin ditolak.
+- [x] `features/camera`: pratinjau dicerminkan, crop sesuai rasio slot.
+- [x] `features/capture`: mesin keadaan sebagai fungsi murni dengan uji unit.
+- [x] `CameraStage`, `CountdownOverlay`, `ShutterButton`, `ShotTray`.
+- [x] Hitung mundur 3 detik, kilat tunggal, pengumuman `aria-live`.
+- [x] Ulang foto terakhir dan ulang foto tertentu.
+- [x] Spasi mengambil foto saat fokus di area kamera.
+- [x] **(P1)** Pilih kamera.
 
 **Selesai bila**
 
