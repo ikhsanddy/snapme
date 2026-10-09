@@ -5,17 +5,23 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "postinstall": "node scripts/patch-opennext.mjs",
+    "cf:patch": "node scripts/patch-opennext.mjs",
+    "preview": "npm run cf:patch && opennextjs-cloudflare build && wrangler d1 migrations apply snapme-db --local && wrangler dev",
+    "preview:e2e": "npm run cf:patch && opennextjs-cloudflare build && wrangler d1 migrations apply snapme-db --local && wrangler dev --env e2e",
+    "deploy": "npm run cf:patch && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "perf:lcp": "lighthouse http://localhost:3000 --output=json --output-path=test-results/lighthouse-welcome.json --only-categories=performance --chrome-flags=\"--headless=new\""
+    "test:e2e:cf": "playwright test -c playwright.cf.config.ts",
+    "perf:lcp": "lighthouse http://localhost:8787 --output=json --output-path=test-results/lighthouse-welcome.json --only-categories=performance --chrome-flags=\"--headless=new\""
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.1.0",
+    "@opennextjs/cloudflare": "^1.20.10",
     "@phosphor-icons/react": "^2.1.10",
-    "@supabase/storage-js": "^2.117.3",
-    "@supabase/supabase-js": "^2.117.3",
+    "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "embla-carousel-react": "^8.6.0",
@@ -52,6 +58,7 @@
     "lighthouse": "^13.5.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "wrangler": "^4.149.0"
   }
 }

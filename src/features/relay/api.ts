@@ -1,27 +1,21 @@
 "use client"
 
-import { StorageClient } from "@supabase/storage-js"
-
 import type { LayoutId } from "@/lib/layouts"
-import {
-  RELAY_SLOT_BYTE_LIMIT,
-  RELAY_SLOT_MIME,
-  STORAGE_BUCKET,
-} from "@/lib/schemas"
+import { RELAY_SLOT_BYTE_LIMIT, RELAY_SLOT_MIME } from "@/lib/schemas"
 import type { RelayRole } from "@/lib/relaySlots"
 
 /* M8 (SE-01 sampai SE-09): panggilan jaringan alur estafet. Hanya berkas ini
-   yang berbicara dengan rute estafet dan Storage dari sisi klien, sama seperti
+   yang berbicara dengan rute estafet dan bucket dari sisi klien, sama seperti
    features/share/api.ts untuk strip.
 
-   Slot diunggah lewat URL bertanda tangan (badan berkas tidak melewati rute
+   Slot diunggah lewat URL presigned R2 (M10; badan berkas tidak melewati rute
    server). Unggahan slot teman diminta ulang saat penuntasan bila berkasnya
    belum ada: rute complete menjawab 422 beserta URL unggah untuk slot yang
    kurang, dan RelaySlotsNeededError membawa daftar itu ke pemanggil. */
 
 export interface RelayUploadTarget {
   path: string
-  token: string
+  url: string
 }
 
 export interface RelaySlotUpload extends RelayUploadTarget {
@@ -108,18 +102,13 @@ export async function uploadRelaySlot(
   if (blob.size > RELAY_SLOT_BYTE_LIMIT) {
     throw new Error("Fotonya terlalu besar. Ambil ulang fotonya.")
   }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (url === undefined || url === "") {
-    throw new Error(CREATE_FAILED)
-  }
-  const client = new StorageClient(`${url}/storage/v1`)
-  const { error } = await client
-    .from(STORAGE_BUCKET)
-    .uploadToSignedUrl(upload.path, upload.token, blob, {
-      contentType: RELAY_SLOT_MIME,
-    })
-  if (error !== null) {
-    throw new Error(error.message)
+  const response = await fetch(upload.url, {
+    method: "PUT",
+    headers: { "Content-Type": RELAY_SLOT_MIME },
+    body: blob,
+  })
+  if (!response.ok) {
+    throw new Error("Fotonya belum bisa diunggah. Coba lagi sebentar lagi.")
   }
 }
 

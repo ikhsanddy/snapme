@@ -1,23 +1,28 @@
+import { getBindings } from "@/lib/cloudflare"
+import { insertStrip } from "@/lib/db/strips"
 import {
   clientKeyFromRequest,
   countRecentCreations,
   CREATE_LIMIT,
+  CREATE_WINDOW_MS,
   isCrossSite,
   rateKeyFor,
 } from "@/lib/rateLimit"
+import { presignPut } from "@/lib/r2/presign"
 import {
   CREATE_STRIP_SCHEMA,
-  STORAGE_BUCKET,
+  LIVE_MIME_TYPES,
+  STILL_MIME,
   stripLivePath,
   stripStillPath,
 } from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
 import { hashToken, newDeleteToken, newStripId } from "@/lib/tokens"
 
 /* ARCHITECTURE §7: POST /api/strips membuat baris `draft` dan satu URL unggah
-   bertanda tangan. Berkasnya tidak melewati rute server: batas ukuran isi
-   permintaan fungsi serverless tidak bisa menampung PNG 2 MB, jadi klien
-   mengunggah langsung ke Storage dan rute complete yang memeriksa hasilnya.
+   bertanda tangan (M10: presigned PUT ke R2). Berkasnya tidak melewati rute
+   server: batas ukuran isi permintaan fungsi serverless tidak bisa menampung
+   PNG 2 MB, jadi klien mengunggah langsung ke bucket dan rute complete yang
+   memeriksa hasilnya.
 
    `still_path` ditulis sejak awal, bukan saat complete: kalau klien menutup
    halaman sebelum mengunggah, pembersih tetap tahu berkas mana yang harus
@@ -34,8 +39,8 @@ const TOO_MANY = {
 }
 
 export async function POST(request: Request) {
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     return Response.json(UNAVAILABLE, { status: 503 })
   }
   /* Tanpa jenis isi JSON, permintaan lintas situs tanpa preflight (form atau
@@ -79,6 +84,7 @@ export async function POST(request: Request) {
      sama seperti still; rute complete yang memutuskan nasibnya. */
   const liveKind = parsed.data.live
   const livePath = liveKind === undefined ? null : stripLivePath(id, liveKind)
+  const sinceIso = new Date(now.getTime() - CREATE_WINDOW_MS).toISOString()
 
   try {
     /* Gerbang murah sebelum menulis (temuan security-reviewer M9): kalau
@@ -86,61 +92,53 @@ export async function POST(request: Request) {
        sekali. Pemeriksaan setelah sisip tetap jadi gerbang resmi untuk
        permintaan serentak. */
     if (
-      (await countRecentCreations(admin, "strips", rateKey, now)) >= CREATE_LIMIT
+      (await countRecentCreations(bindings.db, "strips", rateKey, sinceIso)) >=
+      CREATE_LIMIT
     ) {
       return Response.json(TOO_MANY, { status: 429 })
     }
 
-    const { error: insertError } = await admin.from("strips").insert({
+    await insertStrip(bindings.db, {
       id,
       layout: parsed.data.layout,
-      still_path: stillPath,
-      live_path: livePath,
-      delete_token_hash: hashToken(deleteToken),
-      rate_key: rateKey,
+      stillPath,
+      livePath,
+      deleteTokenHash: hashToken(deleteToken),
+      rateKey,
+      createdAt: now.toISOString(),
     })
-    if (insertError !== null) {
-      throw new Error(insertError.message)
-    }
 
     if (
-      (await countRecentCreations(admin, "strips", rateKey, now)) > CREATE_LIMIT
+      (await countRecentCreations(bindings.db, "strips", rateKey, sinceIso)) >
+      CREATE_LIMIT
     ) {
       /* Batalkan baris yang baru saja dibuat: kuota tidak boleh dikembalikan
          oleh percobaan yang ditolak. */
-      const { error: rollbackError } = await admin
-        .from("strips")
-        .delete()
-        .eq("id", id)
-      if (rollbackError !== null) {
-        throw new Error(rollbackError.message)
-      }
+      await bindings.db
+        .prepare("DELETE FROM strips WHERE id = ?1")
+        .bind(id)
+        .run()
       return Response.json(TOO_MANY, { status: 429 })
     }
 
-    const { data, error } = await admin.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUploadUrl(stillPath)
-    if (error !== null || data === null) {
-      throw new Error(error?.message ?? "URL unggah gagal dibuat.")
-    }
-
-    let liveUpload: { path: string; token: string } | undefined
-    if (livePath !== null) {
-      const { data: liveData, error: liveError } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUploadUrl(livePath)
-      if (liveError !== null || liveData === null) {
-        throw new Error(liveError?.message ?? "URL unggah klip gagal dibuat.")
-      }
-      liveUpload = { path: liveData.path, token: liveData.token }
-    }
+    const stillUrl = await presignPut(bindings.s3, stillPath, STILL_MIME)
+    const liveUpload =
+      livePath === null
+        ? undefined
+        : {
+            path: livePath,
+            url: await presignPut(
+              bindings.s3,
+              livePath,
+              LIVE_MIME_TYPES[liveKind as keyof typeof LIVE_MIME_TYPES]
+            ),
+          }
 
     return Response.json(
       {
         id,
         deleteToken,
-        upload: { path: data.path, token: data.token },
+        upload: { path: stillPath, url: stillUrl },
         ...(liveUpload === undefined ? {} : { liveUpload }),
       },
       { status: 201 }

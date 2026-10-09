@@ -8,10 +8,10 @@ import { izinkanKamera, jepret, matikanGesture, undangEstafet } from "./helpers"
    tidak ada. Alur sungguhan (undang lewat dialog, ambil giliran di konteks
    kedua, giliran kedua ditolak, dua permintaan klaim bersamaan) menembus
    jaringan, jadi dijalankan dengan
-   `$env:SUPABASE_E2E="1"; npx playwright test relay.spec.ts`. */
+   `$env:CLOUDFLARE_E2E="1"; npx playwright test relay.spec.ts`. */
 
 const PERLU_PROYEK =
-  "Butuh proyek Supabase: jalankan dengan SUPABASE_E2E=1 setelah .env.local diisi."
+  "Butuh binding Cloudflare: jalankan dengan CLOUDFLARE_E2E=1 setelah .dev.vars diisi."
 
 test.beforeEach(async ({ page }) => {
   await matikanGesture(page)
@@ -38,8 +38,8 @@ test("halaman estafet yang tidak ada menjawab 404 dan tidak diindeks", async ({
   }).toPass({ timeout: 60_000 })
 })
 
-test.describe("alur estafet dengan proyek Supabase", () => {
-  test.skip(process.env.SUPABASE_E2E !== "1", PERLU_PROYEK)
+test.describe("alur estafet dengan binding Cloudflare", () => {
+  test.skip(process.env.CLOUDFLARE_E2E !== "1", PERLU_PROYEK)
 
   test("pembuat mengisi slot 1 dan 3, teman slot 2 dan 4, keduanya ke strip yang sama", async ({
     page,
@@ -119,7 +119,7 @@ test.describe("alur estafet dengan proyek Supabase", () => {
        maupun URL bertanda tangan. */
     const htmlOrangLain = await orangLain.content()
     expect(htmlOrangLain).not.toContain(stripPath)
-    expect(htmlOrangLain).not.toContain("storage/v1/object/sign")
+    expect(htmlOrangLain).not.toContain("r2.cloudflarestorage.com")
     await orangLainCtx.close()
 
     /* SE-07: pembuat melihat status selesai dan tautan strip yang sama. */
@@ -151,7 +151,7 @@ test.describe("alur estafet dengan proyek Supabase", () => {
     await expect(
       page.getByText("Estafet sudah dibatalkan pembuatnya.")
     ).toBeVisible()
-    await teman.goto(`http://localhost:3000${stripPath}`)
+    await teman.goto(stripPath)
     await expect(teman.getByText("Halaman tidak ditemukan.")).toBeVisible()
     await temanCtx.close()
   })

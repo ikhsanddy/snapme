@@ -6,11 +6,11 @@ import { masukHias, masukHasil, matikanGesture, pasangSidangBaru } from "./helpe
 
 /* M7 (SH-01 sampai SH-03): Strip Hidup. Uji ini memakai kamera palsu Chromium,
    jadi klip benar-benar terekam selama hitung mundur. Bagian ber-jaringan
-   (unggah klip lalu pemutarannya di /s/[id]) digerbang SUPABASE_E2E seperti
+   (unggah klip lalu pemutarannya di /s/[id]) digerbang CLOUDFLARE_E2E seperti
    share.spec.ts. */
 
 const PERLU_PROYEK =
-  "Butuh proyek Supabase: jalankan dengan SUPABASE_E2E=1 setelah .env.local diisi."
+  "Butuh binding Cloudflare: jalankan dengan CLOUDFLARE_E2E=1 setelah .dev.vars diisi."
 const FIXTURE_DIR = path.join(process.cwd(), "e2e", "fixtures")
 
 test.beforeEach(async ({ page }) => {
@@ -156,8 +156,8 @@ test("unduh video versi hidup di langkah Hasil", async ({ page }) => {
   expect(ukuran).toBeLessThan(5_242_880)
 })
 
-test.describe("versi hidup dengan proyek Supabase", () => {
-  test.skip(process.env.SUPABASE_E2E !== "1", PERLU_PROYEK)
+test.describe("versi hidup dengan binding Cloudflare", () => {
+  test.skip(process.env.CLOUDFLARE_E2E !== "1", PERLU_PROYEK)
 
   test("link menyertakan klip dan halaman strip memutarnya", async ({
     page,
@@ -201,7 +201,7 @@ test.describe("versi hidup dengan proyek Supabase", () => {
     await expect(halamanTeman.getByAltText("Strip")).toBeVisible()
     const video = halamanTeman.locator("video")
     await expect(video).toBeVisible()
-    await expect(video).toHaveAttribute("src", /\/storage\//)
+    await expect(video).toHaveAttribute("src", /r2\.cloudflarestorage\.com/)
     await expect(halamanTeman.getByText("Strip Hidup")).toBeVisible()
     await teman.close()
 

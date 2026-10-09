@@ -42,8 +42,8 @@ Berkas acuan menulis gaya inline dengan nilai mentah dan memakai mesin templat k
 ## Batas aman
 
 - Jangan `git commit` dan jangan `git push`. Pengguna yang menjalankan `omp commit` setelah meninjau.
-- Jangan men-deploy, dan jangan menjalankan perintah yang mengubah proyek Supabase atau Vercel, kecuali diminta di milestone itu.
-- Jangan menulis rahasia ke repo. Variabel lingkungan masuk `.env.local` (tidak di-commit) dan dicontohkan di `.env.example`. Kunci service role Supabase tidak pernah diberi awalan `NEXT_PUBLIC_`.
+- Jangan men-deploy dan jangan menjalankan perintah yang mengubah sumber daya Cloudflare di akun pengguna (`wrangler d1/r2/kv ... --remote`, `wrangler secret put`), kecuali diminta di milestone itu atau pengguna memintanya. `npm run deploy` dan pembongkaran akun Supabase/Vercel adalah tindakan pengguna.
+- Jangan menulis rahasia ke repo. Rahasia runtime masuk `.dev.vars` (tidak di-commit, dicontohkan di `.dev.vars.example`) dan `wrangler secret put`; `R2_ACCOUNT_ID` masuk `.env.local` (dicontohkan di `.env.example`).
 - Jangan mengubah `PRD.md`, `DESIGN-SYSTEM.md`, `ARCHITECTURE.md`, atau `.omp/config.yml` diam-diam. Usulkan perubahannya dulu.
 - Jangan memakai nama, logo, atau aset Fujifilm dari gambar referensi.
 - Jangan memakai foto wajah orang sebagai aset contoh tanpa izin.
@@ -54,12 +54,18 @@ Tersedia setelah M0. Jalankan dari root repo.
 
 | Perintah | Fungsi |
 |---|---|
-| `npm run dev` | Server pengembangan |
+| `npm run dev` | Server pengembangan Next.js (tanpa binding; rute data menjawab 503) |
+| `npm run preview` | Pratinjau produksi-fidelitas: build OpenNext lalu `wrangler dev` di 8787 |
+| `npm run preview:e2e` | Sama, dengan binding env `e2e` (R2 remote) untuk uji ber-jaringan |
+| `npm run cf-typegen` | Regenerasi `cloudflare-env.d.ts` dari `wrangler.jsonc` |
+| `npm run deploy` | Build OpenNext lalu deploy Worker (tindakan pengguna) |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest |
+| `npm test` | Vitest (unit, komponen, dan uji D1/R2/KV di `tests/db/`) |
 | `npm run build` | Build produksi |
-| `npx playwright test` | Uji end-to-end |
+| `npx playwright test` | Uji end-to-end terhadap dev server |
+| `npm run test:e2e:cf` | Uji end-to-end ber-binding terhadap pratinjau Cloudflare |
+| `npm run perf:lcp` | Lighthouse preset seluler terhadap pratinjau |
 
 Pengguna bekerja di Windows. Perintah yang ditunjukkan kepada pengguna ditulis untuk PowerShell.
 

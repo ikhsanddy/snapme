@@ -6,26 +6,25 @@ import type { NextConfig } from "next";
    memakai satu kebijakan yang sama, termasuk `frame-ancestors 'none'` yang
    sebelumnya hanya dipasang di `/s` dan `/r`. */
 
-/* Satu-satunya host luar yang dipakai snapme adalah Supabase: unggahan
-   langsung ke Storage dan URL bertanda tangan saat membaca. Nilainya datang
-   dari env publik yang sama dengan yang dipakai klien, jadi CSP-nya mengikuti
-   proyek yang sedang dipakai, dan tanpa env (mode lokal tanpa backend)
+/* Satu-satunya host luar yang dipakai snapme adalah endpoint S3 R2: unggahan
+   langsung ke bucket (PUT presigned) dan URL baca bertanda tangan. Account ID
+   datang dari env yang sama dengan `vars` wrangler, jadi CSP-nya mengikuti
+   akun yang sedang dipakai, dan tanpa env (mode lokal tanpa backend)
    direktifnya menyusut ke origin sendiri. */
-function supabaseOrigin(): string | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (url === undefined || url === "") {
+function r2S3Origin(): string | null {
+  /* Anotasi `string | undefined` disengaja: tipe hasil `wrangler types` untuk
+     `vars` adalah literal nilainya, sehingga perbandingan dengan string kosong
+     akan dianggap mustahil oleh TypeScript. */
+  const accountId: string | undefined = process.env.R2_ACCOUNT_ID;
+  if (accountId === undefined || accountId === "") {
     return null;
   }
-  try {
-    return new URL(url).origin;
-  } catch {
-    return null;
-  }
+  return `https://${accountId}.r2.cloudflarestorage.com`;
 }
 
-const SUPABASE = supabaseOrigin();
-/** Ruang untuk host Supabase di direktif yang membutuhkannya. */
-const EXTERNAL = SUPABASE === null ? "" : ` ${SUPABASE}`;
+const R2_ORIGIN = r2S3Origin();
+/** Ruang untuk host R2 di direktif yang membutuhkannya. */
+const EXTERNAL = R2_ORIGIN === null ? "" : ` ${R2_ORIGIN}`;
 
 /* Alasan tiap direktif (rinciannya di docs/DECISIONS.md, M9):
 
@@ -78,17 +77,17 @@ const PRIVATE_HEADERS = [
 
 const nextConfig: NextConfig = {
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
-  /* M9: semua permintaan ke halaman ber-PPR dirender blocking, bukan menerima
-     cangkang statis lebih dulu. Alasannya status HTTP: `/s/[id]` dan `/r/[id]`
-     memanggil `notFound()` untuk id yang tidak ada, dan cangkang PPR sudah
-     mengirim 200 sebelum hasilnya diketahui, sehingga di server produksi
-     halamannya menjawab 200 (di server pengembangan 404). `X-Robots-Tag:
-     noindex` membuat dampak mesin pencarinya nihil, tetapi statusnya tetap
-     dibetulkan. Halaman statis tidak terpengaruh: tidak ada metadata yang
-     dialirkan di sana. */
-  htmlLimitedBots: /.*/,
+  /* M10: `cacheComponents`, `partialPrefetching`, dan `htmlLimitedBots`
+     DILEPAS. Ketiganya semula dipakai untuk PPR dan status 404 yang benar di
+     `/s/[id]` dan `/r/[id]`, tetapi runtime Worker menolak mesin Cache
+     Components: di bawah permintaan bersamaan, `CacheSignal` melempar
+     "Cannot perform I/O on behalf of a different request" (penanda waktu yang
+     dibuat di konteks permintaan lain) dan server menjawab 500 untuk semua
+     permintaan berikutnya. Terbukti di putaran e2e M10: 30 uji gagal setelah
+     galat itu muncul di log `wrangler dev`. Tanpa PPR, kedua halaman itu
+     dirender dinamis dan `notFound()` tetap menjawab 404 sungguhan, jadi
+     `htmlLimitedBots` tidak lagi diperlukan. Rinciannya di
+     `docs/DECISIONS.md` M10. */
   turbopack: {
     rules: {
       "*.css": {

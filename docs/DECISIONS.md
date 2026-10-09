@@ -1020,3 +1020,206 @@ Proyek Playwright baru: `firefox` dan `webkit` (keduanya `testMatch: **/crossbro
 |QR pada cetakan asli (M9 "Selesai bila")|`npm run dev`, buat strip dengan "QR di strip" menyala, tekan "Cetak 4R" pada kertas 4R, lalu pindai QR-nya dengan kamera HP → harus membuka `/s/{id}` dan menampilkan stripnya. Ulangi sekali di kertas biasa untuk membandingkan|Menunggu pengguna|
 |Pembaca layar|NVDA (Windows) atau VoiceOver (macOS) atau TalkBack (Android): jalankan alur dasar, periksa hitung mundur dan penghitung foto terumumkan (`aria-live`), HUD gesture terbaca (`role="status"`), dan padanan daftar stiker bisa dipakai tanpa kanvas|Menunggu pengguna|
 |Deploy ke Vercel|PowerShell: `npm i -g vercel`, `vercel login`, `vercel link`, `vercel env add NEXT_PUBLIC_SUPABASE_URL`, `vercel env add SUPABASE_SERVICE_ROLE_KEY`, `vercel env add CRON_SECRET`, `vercel env add RATE_LIMIT_SALT`, lalu `vercel deploy --prod`. `vercel.json` sudah memuat cron pembersih harian. Setelah live: jalankan sekali alur dasar dan sekali buat link, periksa `/api/cron/purge` dijalankan cron, dan catat LCP produksi|Menunggu pengguna (agent tidak men-deploy)|
+
+## M10 Migrasi Cloudflare (9 Oktober 2026)
+
+Perintah pengguna: pindahkan seluruh backend snapme dari Supabase/Vercel ke Cloudflare (D1, KV, R2) dan deploy ke Workers. Repo ini belum pernah dideploy (baris "Deploy ke Vercel" M9 masih "menunggu pengguna"), jadi tidak ada data produksi yang dimigrasikan: skema D1 dibuat segar dari `migrations/0001_init.sql`.
+
+### Runtime: OpenNext, bukan `next-on-pages` atau vinext
+
+|Kandidat|Kenapa tidak dipakai|
+|---|---|
+|Cloudflare Pages + `next-on-pages`|Adapter itu **deprecated**: Cloudflare memensiunkan alur Pages untuk Next.js SSR dan mengarahkan ke Workers|
+|vinext (Vite + Next di Workers)|Masih beta; fon lewat CDN pihak ketiga (melanggar syarat "fon di-host sendiri" ARCHITECTURE §8) dan dukungan `cacheComponents`/PPR belum lengkap, padahal halaman `/s` dan `/r` bergantung padanya|
+|**`@opennextjs/cloudflare` + `wrangler`** (dipakai)|Adapter matang milik tim OpenNext, mendukung `cacheComponents`/PPR dan `next/font` self-hosted, dikonfigurasi manual lewat `wrangler.jsonc` dan `open-next.config.ts`|
+
+Worker-nya kustom (`worker.ts`) mengikuti panduan resmi OpenNext: `fetch` dari keluaran build, `scheduled` untuk Cron Trigger. Tidak ada cache tambahan di `open-next.config.ts` karena tidak ada ISR (Welcome statis, `/s` dan `/r` dinamis). Catatan penting: `cacheComponents`/PPR semula dipertahankan, tetapi runtime Worker menolaknya di bawah permintaan bersamaan sehingga opsi itu dilepas (lihat bagian "Cache Components/PPR dilepas" di bawah).
+
+### Pemetaan Supabase/Vercel → Cloudflare
+
+|Supabase/Vercel|Cloudflare|Catatan|
+|---|---|---|
+|Postgres + RLS (`service role` saja)|D1 (`binding DB`)|D1 hanya bisa dijangkau lewat binding Worker; RLS tidak dipindahkan karena tidak ada jalur anon. Seam-nya `src/lib/cloudflare.ts` dengan perilaku lama: env kosong → null → rute menjawab 503|
+|Storage bucket `snapme`|Bucket R2 `snapme`|Akses hanya lewat URL presigned; CORS bucket dari `r2-cors.json` (origin 3000, 8787, produksi)|
+|Signed upload / signed URL Supabase|`presignPut`/`presignGet` (aws4fetch, Signature V4 di query string)|Content-Type **ikut ditandatangani** pada PUT, jadi R2 menolak unggahan jenis lain; rute complete tetap memverifikasi hasilnya dengan `bucket.head` (pengganti "URL bertanda tangan lalu HEAD" yang dulu memakai jaringan)|
+|RPC/kueri builder|Prepared statement D1 (`src/lib/db/*`)|Tiga gerbang atomik tetap: `claimRelayOnce`, `completeRelayOnce`, `setRelayStripOnce`, kebenarannya dibaca dari `meta.changes === 1`|
+|Vercel Cron|Cron Trigger Workers (`triggers.crons` di `wrangler.jsonc`, `scheduled` di `worker.ts`)|Tanpa HTTP dan tanpa rahasia bersama; rute `GET /api/cron/purge` dipertahankan untuk pemicu manual dengan `Authorization: Bearer CRON_SECRET`|
+|Env Vercel + `.env.local`|`vars`/`secrets` wrangler + `.dev.vars` + `R2_ACCOUNT_ID` di `.env.local`|`R2_ACCOUNT_ID` harus ada saat `next build` (CSP) **dan** saat runtime (`vars` wrangler) supaya direktif CSP produksi identik dengan hasil build|
+
+### Dialek SQL dan skema
+
+- Timestamp disimpan sebagai TEXT ISO-8601 UTC yang selalu diisi aplikasi (`new Date().toISOString()`), bukan default DB: perbandingan leksikografis pada format itu sama dengan kronologis, jadi indeks kedaluwarsa tetap bekerja tanpa fungsi.
+- Lima migrasi Postgres digantikan satu `migrations/0001_init.sql`; DDL lamanya tetap ada di riwayat git. Perbedaan yang disengaja: `status` `strips` ikut memuat `deleted` (batu nisan M6), `relays.layout` dibatasi daftar tertutup, dan `slots` dijaga check `json_valid(slots) AND json_type(slots) = 'array'` (padanan jsonb).
+- `relaySlotsOf` kini mem-parse teks JSON selain menyaring elemen cacat; perilakunya sama bagi pemanggil (baris cacat tidak menjatuhkan halaman atau menyandera pembersih).
+- `rate_key` ditambahkan sebagai kolom penuh di `strips` dan `relays` (di Postgres pun ada sejak M6/M8) dengan indeks `(rate_key, created_at)` supaya hitungan kuota tidak memindai tabel.
+
+### Kuota: tetap persis di D1 untuk strip/estafet, pindah ke KV untuk peristiwa
+
+- `strips` dan `relays` tetap memakai pola M6/M9: hitung-setelah-sisip, pra-cek murah, lalu rollback baris bila kuota terlampaui. Hasilnya identik dengan versi Supabase, termasuk baris batu nisan yang tetap dihitung.
+- Peristiwa analitik pindah ke KV dengan **jendela tetap per jam** (kunci `ev:{rateKey}:{floor(now/3600000)}`, TTL 2 jam). Alasan: tabel `events` terus tumbuh, sedangkan anggarannya telemetri; memindai tabel itu setiap beacon adalah biaya yang tidak sebanding. Konsekuensi yang diterima: (a) batasnya bergeser dari jendela bergulir ke batas jam, dan (b) dua permintaan serentak bisa melewati batas paling banyak satu batch (maksimal 20 peristiwa) karena penambahan dilakukan setelah INSERT tanpa rollback. Keduanya tidak menyentuh data pengguna dan tidak mengubah kuota strip/estafet.
+- `rate_key` untuk peristiwa tetap memakai scope `events` (temuan M9), jadi nilai yang tersimpan tidak bisa disambungkan ke sidang `strips`/`relays`.
+
+### Uji basis data: `getPlatformProxy`, bukan `@cloudflare/vitest-pool-workers`
+
+Rencana awal memakai `@cloudflare/vitest-pool-workers`. Paket itu (0.23.0) masih mensyaratkan peer `vitest ^4.1.0` sementara proyek ini vitest 5.0.3, dan ia memaku `wrangler 4.124.0` sebagai dependensi sendiri. Memaksanya lewat `--legacy-peer-deps` berarti menjalankan pool yang tidak didukung vitest 5, jadi pool-nya dilepas.
+
+Gantinya: harness `tests/db/harness.ts` memakai `getPlatformProxy` dari wrangler, API resmi untuk mengakses binding dari Node. Hasilnya real miniflare/workerd tanpa mock SQL: `tests/db/{strips,relays,events}.test.ts` menguji rute sungguhan di atas D1/R2/KV sungguhan, dengan migrasi yang sama (`migrations/0001_init.sql`) diterapkan di awal berkas uji. Berkas lama yang memakai klien Supabase palsu dihapus, bukan dipinjamkan.
+
+Catatan teknis: `D1Database.exec()` memecah masukan per baris, jadi harness merapatkan pernyataan (dan membuang komentar penuh-baris) sebelum menjalankan migrasi.
+
+### Penghapusan jalur lama
+
+`vercel.json`, `supabase/` (config + lima migrasi), `src/lib/supabase/`, dan dependensi `@supabase/supabase-js` serta `@supabase/storage-js` dihapus, tanpa shim atau alias. Klien unggah (`features/share/api.ts`, `features/relay/api.ts`) sekarang `PUT` ke URL presigned; kontrak respons rute berubah dari `{ path, token }` menjadi `{ path, url }`. `next.config.ts` menyusun CSP dari `R2_ACCOUNT_ID` (bukan `NEXT_PUBLIC_SUPABASE_URL`), dan uji rahasia (`tests/client-bundle-secrecy.test.ts`) menjaga dua hal baru: tidak ada berkas `"use client"` yang mengimpor `@/lib/cloudflare`, `@/lib/db/`, `@/lib/r2/`, `@/lib/purge`, atau `@/lib/tokens`; dan tidak ada lagi `process.env.NEXT_PUBLIC_` di `src/`.
+
+Proyek Supabase (ref `owdjkpzywzljnvuyfiui`) dan kaitan Vercel di dasbor dibongkar pengguna pada 10 Oktober 2026 setelah semua pemeriksaan hijau; tidak ada lagi layanan lama yang menagih atau menyimpan data. `.env.local` di mesin ini dibersihkan mengikuti itu: hanya `R2_ACCOUNT_ID` yang tersisa, karena kata sandi basis data Supabase sudah tidak ada gunanya (rahasia runtime ada di `.dev.vars` dan `wrangler secret`).
+
+### Skill Cloudflare: ditawarkan, ditolak pengguna
+
+`npx skills find cloudflare` diusulkan di awal milestone; pengguna menolak semua kandidat. Tidak ada skill baru yang dipasang, jadi tidak ada berkas di `.agents/skills/` yang berubah. Riset konfigurasi dikerjakan sesi utama (dokumentasi OpenNext, Cloudflare, dan aws4fetch).
+
+### Celah upstream OpenNext: manifest `preview-props.json` (tambalan kecil)
+
+`@opennextjs/cloudflare` 1.20.10 (dan `@opennextjs/aws` 4.1.9) menyisipkan isi manifest Next ke dalam bundel Worker, karena workerd tidak punya `readFileSync`. Daftar manifestnya dibaca dari pola glob `**/{*-manifest,required-server-files,prefetch-hints}.json`. Next 16.4 menambah manifest baru, `preview-props.json`, yang dimuat saat `NextNodeServer` disusun: tanpa tambalan, setiap permintaan di Worker gagal dengan `Unexpected loadManifest(/.next/server/preview-props.json) call!` (terbukti saat putaran pratinjau pertama; seluruh rute menjawab 500).
+
+Yang dipilih: `scripts/patch-opennext.mjs`, dijalankan dari `postinstall` dan dari setiap skrip build Cloudflare (`preview`, `preview:e2e`, `deploy` lewat `cf:patch`). Sifatnya idempoten, gagal berisik bila polanya berubah (tanda versi paket berganti), dan boleh dihapus begitu upstream memuat `preview-props` di polanya. Alternatif yang ditolak: memakai `patch-package` (menambah dependensi untuk satu baris) atau memakukan Next ke versi lama (belum tentu bebas masalah yang sama).
+
+### Catatan operasional Windows
+
+- `wrangler dev` memegang berkas di `.open-next`. `opennextjs-cloudflare build` menghapus folder itu di awal (`initOutputDir`) sehingga build **selalu** gagal dengan `EPERM: rmSync .open-next` bila ada pratinjau yang sedang jalan. Karena itu: hentikan `npm run preview`/`preview:e2e` (Ctrl+C) sebelum menjalankan `npm run test:e2e:cf` atau `npm run deploy`, dan jangan menjalankan dua proses pratinjau bersamaan.
+- Jangan menyunting berkas atau menjalankan `next build`/`wrangler types` selama build OpenNext atau pratinjau berjalan. Satu putaran verifikasi pernah rusak karena build lain menghapus `.open-next` di bawah server yang sedang melayani: seluruh rute menjawab hang/500 dengan `Could not resolve ./.build/durable-objects/...` sampai server dihentikan dan dibangun ulang.
+- `wrangler dev` bind ke `127.0.0.1`, bukan `::1`, jadi `playwright.cf.config.ts` memakai `http://127.0.0.1:8787` (alamat `localhost` bisa menembak IPv6 yang tidak ada isinya).
+
+### Cache Components/PPR dilepas: runtime Worker menolaknya di bawah beban
+
+Rencana M10 mempertahankan `cacheComponents: true`, `partialPrefetching: true`, `htmlLimitedBots: /.*/ `, dan dua `export const instant = false` (keputusan M6/M9), lalu menguji jalur PPR itu di `wrangler dev`. Putaran e2e Cloudflare membuktikan kombinasi itu tidak layak di runtime Worker:
+
+- `next build` dan `opennextjs-cloudflare build` hijau, `/s/[id]` dan `/r/[id]` keluar sebagai PPR, dan permintaan tunggal dilayani normal (putaran pratinjau 31 pemeriksaan lulus dengan konfigurasi itu).
+- Begitu beberapa permintaan berjalan bersamaan (4 worker Playwright), log `wrangler dev` mencatat galat dari mesin Cache Components Next (nama `CacheSignal` ada di jejaknya), yang memakai penanda waktu lintas permintaan sementara workerd melarangnya:
+
+```
+Error: Cannot perform I/O on behalf of a different request. I/O objects (such as
+streams, request/response bodies, and others) created in the context of one request
+handler cannot be accessed from a different request's handler. (I/O type: IoContext)
+  at patchedClearImmediate
+  at CacheSignal.pendingTimeoutCleanup
+  at CacheSignal.beginRead
+  at CacheSignal.trackRead
+  at trackPendingImport
+```
+
+- Setelah galat pertama, Worker menjawab 500 `Internal Server Error` untuk permintaan berikutnya (snapshot halaman Playwright menunjukkannya) atau menggantung: 30 dari 33 uji e2e gagal. Jadi ini bukan satu permintaan yang tersendat, melainkan Worker yang rusak setelah galat itu. Peringatan Next sendiri sudah menyebutkannya: "Next.js cannot guarantee that Cache Components will run as expected due to the current runtime's implementation of `setTimeout()`".
+
+Tindakan (persis kontingensi yang disiapkan di rencana M10): `cacheComponents`, `partialPrefetching`, dan `htmlLimitedBots` dilepas dari `next.config.ts`, dua `export const instant = false` dihapus, dan `await connection()` di `/s/[id]` serta `/r/[id]` dipertahankan supaya keduanya dirender dinamis per permintaan. Tanpa cangkang PPR, `notFound()` menjawab 404 sungguhan tanpa trik crawler, jadi `htmlLimitedBots` tidak lagi diperlukan. Konsekuensi yang diterima: tidak ada PPR/streaming metadata. Keputusan yang digantikan (tetap tercatat sebagai riwayat di M6 dan M9): `instant = false` dan `htmlLimitedBots: /.*/ `.
+
+### Kesiapan uji e2e: TCP, bukan permintaan HTTP
+
+`playwright.cf.config.ts` menunggu port TCP (`webServer.port`), bukan permintaan HTTP ke `/`. Sebabnya temuan berikut di `wrangler dev --env e2e`:
+
+|Permintaan ke `/` di pratinjau|Hasil|
+|---|---|
+|`curl` (mengirim `User-Agent` dan `Accept`)|200|
+|Node `http` dengan `User-Agent`|200|
+|Node `http` tanpa header apa pun|500 atau menggantung|
+|Node `http` hanya `Accept: */*`|menggantung|
+|Node `http` hanya `Connection: close`|menggantung|
+
+Artinya permintaan tanpa header `User-Agent` (persis yang dikirim pemeriksaan kesiapan Playwright) tidak dilayani dengan benar oleh proksi pratinjau, sedangkan peramban dan `curl` selalu mengirim UA. `/` dilayani dari aset tanpa kode snapme, jadi ini bukan jalur kode aplikasi. Pemeriksaan UA-less terhadap Worker produksi ditambahkan di putaran verifikasi produksi (hasilnya di tabel di bawah) supaya klaimnya tidak bergantung pada simulasi lokal.
+
+### Sesi pembatasan laju: `cf-connecting-ip` lebih dulu
+
+`clientKeyFromRequest` di `src/lib/rateLimit.ts` sekarang membaca `cf-connecting-ip` sebelum `x-real-ip`/`x-forwarded-for`, karena header itulah yang diisi Cloudflare di tepi dan tidak bisa dipalsukan klien (warisan `x-real-ip` dari penyedia sebelumnya tetap dibaca sebagai cadangan). Dampaknya pada uji: `wrangler dev` mengisi `cf-connecting-ip` untuk semua pemanggil, jadi helper `pasangSidangBaru` yang semula hanya memalsukan `x-real-ip` kehilangan efeknya dan seluruh uji berbagi satu kuota. Gejalanya: setelah 10 pembuatan link dalam satu jam, `POST /api/strips` menjawab **429** dan tujuh uji ber-jaringan gagal dengan pesan yang tidak menyebut kuota ("Link strip dibuat." tidak pernah muncul). Helper sekarang mengirim kedua header (`cf-connecting-ip` dan `x-real-ip`) supaya tiap uji punya sidang sendiri di pratinjau maupun di `next dev`; di produksi Cloudflare menimpa `cf-connecting-ip` di tepi, jadi pengiriman header itu oleh klien tidak bisa dipakai menipu pembatasan laju. Baris uji di D1 lokal dihapus sekali untuk mengembalikan kuota.
+
+### Origin peramban versus host pratinjau (`isCrossSite`)
+
+Rute POST menolak permintaan yang jelas datang dari situs lain dengan membandingkan `Origin` peramban terhadap origin `request.url`. Di `wrangler dev`, URL permintaan dinormalkan ke host `localhost`, jadi uji yang memakai `http://127.0.0.1:8787` membuat peramban mengirim `Origin: http://127.0.0.1:8787` sementara Worker melihat `http://localhost:8787`, dan setiap POST dijawab 400 (`Permintaan tidak valid`). Gejalanya menyesatkan: tombol "Buat Link dan Unggah" hanya tidak pernah selesai, tanpa pesan yang menyebut sebabnya (tujuh uji ber-jaringan gagal begitu).
+
+Bukti terukur dari `POST /api/strips`: tanpa header `Origin` → 201; `Origin: http://localhost:8787` → 201; `Origin: http://127.0.0.1:8787` → 400; `Origin: https://snapme.example.workers.dev` → 400. `playwright.cf.config.ts` karena itu memakai `http://localhost:8787`. Kode produk tidak diubah: di produksi `request.url` adalah URL publik yang sama dengan yang dipakai peramban, dan itu diuji ulang di putaran produksi (POST dengan Origin `workers.dev` → 201, dengan Origin situs lain → 400).
+
+### Unggahan R2 diblokir: header sidang ikut terbawa ke preflight CORS
+
+Gejala: tujuh uji ber-jaringan gagal dengan pesan yang tidak menyebut CORS ("Link strip dibuat." dan "Link estafet dibuat." tidak pernah muncul), padahal `POST /api/strips` sendiri sudah dijawab 201. Konsol peramban akhirnya menyebut sebabnya:
+
+```
+Access to fetch at 'https://<account>.r2.cloudflarestorage.com/snapme/strips/<id>/still.png?...'
+from origin 'http://localhost:8787' has been blocked by CORS policy: Response to preflight request
+doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the
+requested resource.
+```
+
+Sebabnya bukan daftar origin (preflight dari `curl`/`node` dengan `Origin: http://localhost:8787` dijawab 204 + ACAO), melainkan **header sidang uji**: helper `pasangSidangBaru` memakai `page.setExtraHTTPHeaders`, yang berlaku untuk *semua* permintaan halaman, termasuk PUT lintas origin ke R2. Preflight-nya jadi meminta `content-type, cf-connecting-ip, x-real-ip`, sedangkan `r2-cors.json` hanya mengizinkan `Content-Type`; R2 menolak preflight, dan peramban memblokir PUT. Terbukti dari header permintaan yang dicatat Playwright: `{"content-type":"image/png","cf-connecting-ip":"198.51.100.42","x-real-ip":"198.51.100.42"}`.
+
+Perbaikan: helper menyisipkan header sidang hanya ke panggilan `/api/**` milik aplikasi (`page.route`), bukan ke semua permintaan. Daftar origin `r2-cors.json` tetap harus memuat origin aplikasi yang dipakai (`http://localhost:3000`, `http://localhost:8787`, `http://127.0.0.1:8787`, dan origin produksi setelah deploy pertama).
+
+### Foto slot teman tidak termuat: respons `<img>` yang ter-cache menghalangi `fetch` CORS
+
+Gejala: uji estafet gagal di `stage-overlay` (SE-05) dan tray teman kosong (`0/4`, "Butuh 4 foto lagi"), padahal halaman `/r/[id]` menampilkan foto pembuat dengan normal (permintaan `<img>` ke R2 dijawab 200) dan `POST /api/relays`/`claim`/`complete` semuanya berhasil.
+
+Isolasi memakai satu URL presigned yang sama di satu peramban:
+
+|Dari mana `fetch(url)` dijalankan|Hasil|
+|---|---|
+|Konteks teman, halaman `/r/[id]` (foto sudah tampil sebagai `<img>`)|`TypeError: Failed to fetch`|
+|Konteks teman, halaman `/booth/capture`|`TypeError: Failed to fetch`|
+|Konteks teman, halaman lain di konteks yang sama|`TypeError: Failed to fetch`|
+|Konteks pembuat yang belum pernah memuat URL itu|**200**|
+
+Sebabnya cache HTTP, bukan CORS bucket: `/r/[id]` memuat foto slot lewat `<img>` (mode no-cors, respons tanpa `Access-Control-Allow-Origin`), peramban menyimpannya, dan `fetch()` berikutnya ber-mode cors tidak boleh memakai entri cache itu sehingga gagal tanpa mencoba ulang ke jaringan. Permintaan sungguhan di konteks yang bersih dijawab 200, jadi preflight dan `Access-Control-Allow-Origin` R2 memang benar. Ini jalur yang nyata dialami pengguna (foto pembuat selalu tampil dulu di `/r/[id]` sebelum teman menekan "Ambil Giliran"), bukan gejala uji.
+
+Perbaikan: `fetchSlotShots` di `src/features/relay/bootstrap.ts` memakai `fetch(url, { cache: "no-store" })`, jadi foto slot selalu diambil dengan permintaan cors yang sungguhan. URL-nya presigned dan berumur pendek, jadi tidak ada yang rugi dengan tidak di-cache.
+
+### Bukti verifikasi M10
+
+Statis dan uji:
+
+|Pemeriksaan|Hasil|
+|---|---|
+|`npm run cf-typegen`|`cloudflare-env.d.ts` dibuat ulang dari `wrangler.jsonc` (termasuk binding `DB`, `BUCKET`, `RATE_LIMIT_KV`, `ASSETS`)|
+|`npm run lint`|Hijau (berkas jadi `.open-next/` dan `cloudflare-env.d.ts` masuk daftar abaikan; `worker.ts` memakai satu komentar izin eksplisit untuk `@ts-ignore` yang memang disyaratkan adapter)|
+|`npm run typecheck`|Hijau|
+|`npm test`|23 berkas, **179 uji hijau**, termasuk 63 uji basis data baru di `tests/db/` (strips 23, relays 30, events 10) yang berjalan di atas D1/R2/KV miniflare sungguhan|
+|`npm run build`|Hijau; `/s/[id]` dan `/r/[id]` keluar sebagai rute dinamis (ƒ) karena PPR dilepas di bagian di atas|
+|`opennextjs-cloudflare build`|Hijau; bundel Worker tersimpan di `.open-next/worker.js`|
+|`npm run test:e2e:cf`|**30 lolos, 3 dilewati, 0 gagal** terhadap `wrangler dev --env e2e` (D1/KV lokal, R2 remote). Tiga yang dilewati adalah jalur "server tanpa binding" yang memang tidak berlaku saat binding ada. Perbaikan yang menyertainya: assertion Supabase-era di `e2e/live.spec.ts` (`/\/storage\//` menjadi host R2), URL dev yang di-hardcode di `e2e/relay.spec.ts` (`http://localhost:3000` menjadi relatif terhadap baseURL), dan helper `pasangSidangBaru` yang kini menyisipkan header sidang hanya ke `/api/**`|
+|`npm run perf:lcp` (Lighthouse preset seluler, 5 jalankan)|Median **LCP 3,745 detik**, FCP 1,11 detik, TBT 44 ms, CLS 0, skor 0,87. Pembanding M9 di `next start`: LCP 3,17 detik. Angka ini diukur terhadap `wrangler dev` (workerd lokal dan koneksi R2 jarak jauh), bukan CDN produksi, jadi selisihnya indikatif dan bukan regresi yang terbukti. Tidak ada syarat target baru di milestone ini|
+
+Putaran pratinjau (`wrangler dev --env e2e`: D1/KV lokal, R2 **remote** sungguhan) memakai skrip buang yang menjalankan 31 pemeriksaan, semuanya lulus:
+
+|Pemeriksaan|Hasil|
+|---|---|
+|`POST /api/strips` 201 + `upload.url`/`liveUpload.url` presigned (R2 + `X-Amz-Signature`)|Lulus|
+|`PUT` presigned still (PNG) dan klip (WebM) ke R2 sungguhan|200 / 200|
+|`POST complete` 200 + `expiresAt`; `GET /s/{id}` 200 memuat `<img>` dan `<video>`|Lulus|
+|Tautan unduh ber-`response-content-disposition`: GET 200, `attachment; filename="snapme-<id>.png"`, isi bita identik dengan yang diunggah|Lulus|
+|`DELETE` 204; `GET /s/{id}` ulang 404; objek R2 sudah tidak ada (GET presigned 404)|Lulus|
+|Estafet: `POST /api/relays` 201 + URL presigned hanya slot pembuat; PUT slot 0/2|Lulus|
+|Dua `claim` serentak → tepat satu 200 dan satu 409|Lulus|
+|`complete` pertama 422 + URL segar slot tamu; PUT slot 1/3; `complete` kedua 200 + `stripId` + URL PNG; strip hasil diunggah dan dilengkapi; `GET /s/{stripId}` 200|Lulus|
+|`POST /api/relays/{id}/strip` 200 untuk token pembuat, `role: host`, empat slot ber-URL presigned|Lulus|
+|`POST /api/events` 25 batch × 8 = 200 peristiwa → 204 semua, batch ke-26 → 429|Lulus|
+|`GET /api/cron/purge` tanpa bearer 401, dengan bearer 200 `{"purged":0}`|Lulus|
+|Cron Trigger lokal (`/cdn-cgi/local/scheduled`) menjalankan `scheduled` di `worker.ts` → 200|Lulus|
+|Bit identik setelah unggah: PUT presigned 200, objek dibaca kembali lewat S3 API, 68 bita sama, `content-type: image/png` (Content-Type yang ditandatangani tersimpan)|Lulus|
+|Bucket dibersihkan setelah verifikasi (17 objek uji dihapus, sisa 0)|Lulus|
+
+Putaran produksi setelah `npm run deploy` (Worker `snapme`, URL `https://snapme.ikhsandyy-dev.workers.dev`, Version ID `26c7f70b-1280-4066-aaca-826f9e8f7c0c`, cron `0 3 * * *` terdaftar di keluaran deploy): 15 pemeriksaan, 14 lulus pada jalankan pertama. Satu yang gagal adalah **kesalahan skrip verifikasi** (objek yang dibaca memang belum pernah diunggah), bukan temuan aplikasi; bukti bit-identiknya diambil ulang dan lulus.
+
+|Pemeriksaan produksi|Hasil|
+|---|---|
+|`GET /` 200 dengan isi|47.206 bita|
+|`GET /s/{id-acak}` 404 + halaman "Halaman tidak ditemukan."|Lulus (404 sungguhan dari Worker)|
+|`POST /api/strips` dengan `Origin` situs lain|400|
+|`POST /api/strips` dengan `Origin` workers.dev|201|
+|`PUT` presigned lalu `complete` lalu `GET /s/{id}` dengan `<img>`|200 / 200 / 200|
+|Preflight R2 dari origin produksi|204 dengan `Access-Control-Allow-Origin: https://snapme.ikhsandyy-dev.workers.dev`|
+|`POST /api/relays` lalu dua `claim` serentak|201, lalu 200 dan 409|
+|`POST /api/events`|204|
+|`GET /api/cron/purge` tanpa bearer lalu dengan bearer|401 lalu 200 `{"purged":0}`|
+|`GET /` **tanpa** header `User-Agent`|**200**, jadi hambatan UA-less sebelumnya memang hanya proksi `wrangler dev`, bukan Worker produksi|
+|`DELETE /api/strips/{id}`|204|
+|`PUT` presigned lalu dibaca kembali lewat S3 API|200 dan **bit identik** (68 bita, `image/png`)|
+|`npx wrangler d1 execute snapme-db --remote`|`strips` 3, `relays` 1, `events` 1 (baris uji nyata dari Worker produksi)|
+|cron harian|Terdaftar saat deploy (`schedule: 0 3 * * *`); jalur `scheduled`-nya sudah dibuktikan di pratinjau lewat `/cdn-cgi/local/scheduled`|
+
+Daftar periksa DESIGN-SYSTEM §14: M10 tidak menambah atau mengubah tampilan apa pun (pekerjaannya backend, konfigurasi deploy, dan dua perbaikan perilaku klien: `cache: "no-store"` pada pengambilan foto slot serta penyempitan header sesi uji). Tidak ada komponen, token, warna, label, atau teks baru, jadi daftar periksa M9 tetap berlaku dan tidak ada butir baru untuk diperiksa.
+
+Catatan alat: `npx wrangler r2 object get snapme/<kunci-ber-garis-miring>` melaporkan `The specified key does not exist` di wrangler 4.149.0 walau objeknya ada dan terbaca lewat S3 API maupun URL presigned (kunci tanpa `/` tidak diuji). Karena itu bukti bit identik memakai S3 API (`aws4fetch`) dengan kredensial yang sama; ini celah CLI, bukan celah R2, dan tidak memengaruhi aplikasi.

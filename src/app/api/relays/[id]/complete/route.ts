@@ -1,16 +1,27 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-
+import { getBindings, type Bindings } from "@/lib/cloudflare"
+import {
+  completeRelayOnce,
+  releaseRelayStrip,
+  selectRelay,
+  setRelayStripOnce,
+} from "@/lib/db/relays"
+import { relaySlotsOf, type RelayRow, type StripRow } from "@/lib/db/rows"
+import {
+  deleteDraftStrip,
+  insertStrip,
+  selectStrip,
+  selectStripByRelayId,
+  updateStripDeleteToken,
+} from "@/lib/db/strips"
 import { isExpired } from "@/lib/expiry"
+import { presignPut } from "@/lib/r2/presign"
+import { verifyStoredFile } from "@/lib/r2/storage"
 import {
   RELAY_SLOT_BYTE_LIMIT,
   RELAY_SLOT_MIME,
-  STORAGE_BUCKET,
+  STILL_MIME,
   stripStillPath,
 } from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
-import { verifyStoredFile } from "@/lib/supabase/storage"
-import { RELAY_COLUMNS, relaySlotsOf, type RelayRow } from "@/lib/supabase/relays"
-import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
 import { hashToken, newDeleteToken, newStripId, verifyToken } from "@/lib/tokens"
 
 /* M8 (SE-07): POST /api/relays/[id]/complete ditutup teman setelah semua slot
@@ -52,85 +63,53 @@ const FAILED = { error: "Estafet belum bisa diselesaikan. Coba lagi sebentar lag
 interface SlotUpload {
   index: number
   path: string
-  token: string
+  url: string
 }
 
 /** Membuat baris strip draf untuk estafet ini dan URL unggah PNG-nya. */
 async function createDraftStrip(
-  admin: SupabaseClient,
+  bindings: Bindings,
   relayId: string,
   layout: string
 ) {
   const stripId = newStripId()
   const deleteToken = newDeleteToken()
   const stillPath = stripStillPath(stripId)
-  const { error: insertError } = await admin.from("strips").insert({
+  await insertStrip(bindings.db, {
     id: stripId,
     layout,
-    still_path: stillPath,
-    status: "draft",
-    delete_token_hash: hashToken(deleteToken),
-    relay_id: relayId,
-    rate_key: "",
+    stillPath,
+    deleteTokenHash: hashToken(deleteToken),
+    relayId,
+    rateKey: "",
+    createdAt: new Date().toISOString(),
   })
-  if (insertError !== null) {
-    throw new Error(insertError.message)
-  }
-  const { data, error } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUploadUrl(stillPath)
-  if (error !== null || data === null) {
-    throw new Error(error?.message ?? "URL unggah strip gagal dibuat.")
-  }
   return {
     stripId,
     deleteToken,
-    upload: { path: data.path, token: data.token },
+    upload: {
+      path: stillPath,
+      url: await presignPut(bindings.s3, stillPath, STILL_MIME),
+    },
   }
 }
 
 /** Token hapus baru untuk draf yang sudah ada; dipakai bila penuntasan
  *  sebelumnya terputus sebelum PNG-nya terunggah. */
-async function reissueDraftStrip(
-  admin: SupabaseClient,
-  strip: StripRow
-) {
+async function reissueDraftStrip(bindings: Bindings, strip: StripRow) {
   if (strip.still_path === null) {
     throw new Error("Draf strip estafet tidak punya path berkas.")
   }
   const deleteToken = newDeleteToken()
-  const { error: updateError } = await admin
-    .from("strips")
-    .update({ delete_token_hash: hashToken(deleteToken) })
-    .eq("id", strip.id)
-  if (updateError !== null) {
-    throw new Error(updateError.message)
-  }
-  const { data, error } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUploadUrl(strip.still_path)
-  if (error !== null || data === null) {
-    throw new Error(error?.message ?? "URL unggah strip gagal dibuat.")
-  }
+  await updateStripDeleteToken(bindings.db, strip.id, hashToken(deleteToken))
   return {
     stripId: strip.id,
     deleteToken,
-    upload: { path: data.path, token: data.token },
+    upload: {
+      path: strip.still_path,
+      url: await presignPut(bindings.s3, strip.still_path, STILL_MIME),
+    },
   }
-}
-
-/** Baris strip yang menunjuk balik ke estafet ini. */
-async function findRelayStrip(admin: SupabaseClient, relayId: string) {
-  const { data, error } = await admin
-    .from("strips")
-    .select(STRIP_COLUMNS)
-    .eq("relay_id", relayId)
-    .limit(1)
-    .maybeSingle()
-  if (error !== null) {
-    throw new Error(error.message)
-  }
-  return data as StripRow | null
 }
 
 /** Jeda singkat antar-percobaan pembacaan baris strip pemenang. */
@@ -148,85 +127,32 @@ function pauseBeforeReread(): Promise<void> {
  *  belum ada dibaca ulang beberapa kali dulu: pembacaan yang terlalu cepat
  *  tidak boleh disalahartikan sebagai strip yang hilang, karena gerbang yang
  *  dibuka keliru bisa melahirkan pemenang kedua. */
-async function claimedStrip(admin: SupabaseClient, relayId: string) {
-  const { data, error } = await admin
-    .from("relays")
-    .select("strip_id")
-    .eq("id", relayId)
-    .maybeSingle()
-  if (error !== null) {
-    throw new Error(error.message)
-  }
-  const stripId = (data as { strip_id: string | null } | null)?.strip_id ?? null
+async function claimedStrip(db: D1Database, relayId: string) {
+  const row = await db
+    .prepare("SELECT strip_id FROM relays WHERE id = ?1")
+    .bind(relayId)
+    .first<{ strip_id: string | null }>()
+  const stripId = row?.strip_id ?? null
   if (stripId === null) {
     return null
   }
   for (let percobaan = 0; percobaan < 4; percobaan += 1) {
-    const { data: stripData, error: stripError } = await admin
-      .from("strips")
-      .select(STRIP_COLUMNS)
-      .eq("id", stripId)
-      .maybeSingle()
-    if (stripError !== null) {
-      throw new Error(stripError.message)
-    }
-    if (stripData !== null) {
-      return { id: stripId, strip: stripData as StripRow }
+    const strip = await selectStrip(db, stripId)
+    if (strip !== null) {
+      return { id: stripId, strip }
     }
     await pauseBeforeReread()
   }
   return { id: stripId, strip: null }
 }
 
-/** Merekam pemenang: hanya berhasil bila `strip_id` masih kosong. */
-async function claimRelayStrip(
-  admin: SupabaseClient,
-  relayId: string,
-  stripId: string
-) {
-  const { data, error } = await admin
-    .from("relays")
-    .update({ strip_id: stripId })
-    .eq("id", relayId)
-    .is("strip_id", null)
-    .select("id")
-  if (error !== null) {
-    throw new Error(error.message)
-  }
-  return (data ?? []).length > 0
-}
-
-/** Membuka gerbang bila strip pemenangnya sudah tidak ada, supaya draf
- *  berikutnya bisa mengisi kolom yang sama. */
-async function releaseRelayStrip(
-  admin: SupabaseClient,
-  relayId: string,
-  stripId: string
-) {
-  const { error } = await admin
-    .from("relays")
-    .update({ strip_id: null })
-    .eq("id", relayId)
-    .eq("strip_id", stripId)
-  if (error !== null) {
-    throw new Error(error.message)
-  }
-}
-
 /** Membuang draf yang kalah balapan. Barisnya saja: URL unggahnya baru dibuat
  *  dan tidak pernah dipakai klien, jadi belum ada berkas yang bisa yatim.
  *  Kegagalannya tidak menjatuhkan jawaban, karena pemenangnya sudah punya draf
  *  yang sah; sisa baris yatim paling lama dibersihkan pembersih draf basi. */
-async function dropDraftStrip(admin: SupabaseClient, stripId: string) {
+async function dropDraftStrip(db: D1Database, stripId: string) {
   try {
-    const { error } = await admin
-      .from("strips")
-      .delete()
-      .eq("id", stripId)
-      .eq("status", "draft")
-    if (error !== null) {
-      throw new Error(error.message)
-    }
+    await deleteDraftStrip(db, stripId)
   } catch (error) {
     console.error("Draf strip estafet yang kalah balapan gagal dibuang:", error)
   }
@@ -234,11 +160,11 @@ async function dropDraftStrip(admin: SupabaseClient, stripId: string) {
 
 /** Jawaban untuk strip estafet yang sudah ada: draf diterbitkan ulang
  *  unggahannya, yang sudah selesai dijawab apa adanya. */
-async function existingStripResponse(admin: SupabaseClient, strip: StripRow) {
+async function existingStripResponse(bindings: Bindings, strip: StripRow) {
   if (strip.status === "complete") {
     return Response.json({ stripId: strip.id, expiresAt: strip.expires_at })
   }
-  return Response.json(await reissueDraftStrip(admin, strip))
+  return Response.json(await reissueDraftStrip(bindings, strip))
 }
 
 /** Jawaban untuk estafet yang sudah `complete`: strip yang sama bila sudah
@@ -257,31 +183,31 @@ async function existingStripResponse(admin: SupabaseClient, strip: StripRow) {
  *  yang belum punya gerbang. Untuk alasan yang sama, satu estafet bisa punya
  *  lebih dari satu baris strip kalau baris lamanya adalah batu nisan
  *  penghapusan; yang dijaga di sini adalah satu strip AKTIF per estafet. */
-async function completedResponse(admin: SupabaseClient, row: RelayRow) {
+async function completedResponse(bindings: Bindings, row: RelayRow) {
   /* Tiga putaran: balapan biasa selesai di putaran kedua. Putaran ketiga hanya
      terpakai bila strip pemenang dihapus di antara dua permintaan. */
   for (let putaran = 0; putaran < 3; putaran += 1) {
-    const winner = await claimedStrip(admin, row.id)
+    const winner = await claimedStrip(bindings.db, row.id)
     if (winner !== null) {
       if (winner.strip !== null && winner.strip.status !== "deleted") {
-        return await existingStripResponse(admin, winner.strip)
+        return await existingStripResponse(bindings, winner.strip)
       }
-      await releaseRelayStrip(admin, row.id, winner.id)
+      await releaseRelayStrip(bindings.db, row.id, winner.id)
       continue
     }
 
     /* Tanpa pemenang di gerbang: baris lama dari sebelum migrasi (atau sisa
        yang gerbangnya sudah dibuka) boleh dipakai apa adanya. */
-    const legacy = await findRelayStrip(admin, row.id)
+    const legacy = await selectStripByRelayId(bindings.db, row.id)
     if (legacy !== null && legacy.status !== "deleted") {
-      return await existingStripResponse(admin, legacy)
+      return await existingStripResponse(bindings, legacy)
     }
 
-    const draft = await createDraftStrip(admin, row.id, row.layout)
-    if (await claimRelayStrip(admin, row.id, draft.stripId)) {
+    const draft = await createDraftStrip(bindings, row.id, row.layout)
+    if (await setRelayStripOnce(bindings.db, row.id, draft.stripId)) {
       return Response.json(draft)
     }
-    await dropDraftStrip(admin, draft.stripId)
+    await dropDraftStrip(bindings.db, draft.stripId)
   }
   throw new Error("Klaim strip estafet tidak menemukan pemenang.")
 }
@@ -290,8 +216,8 @@ export async function POST(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     return Response.json(UNAVAILABLE, { status: 503 })
   }
   const token = request.headers.get("x-relay-token")
@@ -301,15 +227,7 @@ export async function POST(
   const { id } = await ctx.params
 
   try {
-    const { data, error } = await admin
-      .from("relays")
-      .select(RELAY_COLUMNS)
-      .eq("id", id)
-      .maybeSingle()
-    if (error !== null) {
-      throw new Error(error.message)
-    }
-    const row = data as RelayRow | null
+    const row = await selectRelay(bindings.db, id)
     if (row === null) {
       return Response.json(NOT_FOUND, { status: 404 })
     }
@@ -327,7 +245,7 @@ export async function POST(
       return Response.json(WRONG_TOKEN, { status: 401 })
     }
     if (row.status === "complete") {
-      return await completedResponse(admin, row)
+      return await completedResponse(bindings, row)
     }
 
     /* Status `claimed`: semua slot diperiksa. Slot pembuat tidak bisa diperbaiki
@@ -337,7 +255,7 @@ export async function POST(
     let hostInvalid = false
     for (const slot of relaySlotsOf(row)) {
       const ok = await verifyStoredFile(
-        admin,
+        bindings.bucket,
         slot.path,
         RELAY_SLOT_BYTE_LIMIT,
         [RELAY_SLOT_MIME]
@@ -346,16 +264,10 @@ export async function POST(
         continue
       }
       if (slot.owner === "guest") {
-        const { data: signed, error: signError } = await admin.storage
-          .from(STORAGE_BUCKET)
-          .createSignedUploadUrl(slot.path)
-        if (signError !== null || signed === null) {
-          throw new Error(signError?.message ?? "URL unggah slot gagal dibuat.")
-        }
         missingGuest.push({
           index: slot.index,
-          path: signed.path,
-          token: signed.token,
+          path: slot.path,
+          url: await presignPut(bindings.s3, slot.path, RELAY_SLOT_MIME),
         })
       } else {
         hostInvalid = true
@@ -371,16 +283,7 @@ export async function POST(
       )
     }
 
-    const { data: updated, error: updateError } = await admin
-      .from("relays")
-      .update({ status: "complete" })
-      .eq("id", id)
-      .eq("status", "claimed")
-      .select("id")
-    if (updateError !== null) {
-      throw new Error(updateError.message)
-    }
-    if ((updated ?? []).length === 0) {
+    if (!(await completeRelayOnce(bindings.db, id))) {
       /* Balapan: permintaan lain sudah menuntaskan estafet ini lebih dulu. */
       return Response.json(TAKEN, { status: 409 })
     }
@@ -388,7 +291,7 @@ export async function POST(
     /* Draf stripnya dibuat lewat jalur yang sama dengan pemulihan: gerbang
        `relays.strip_id` berlaku untuk keduanya, jadi penuntasan dan pemulihan
        yang berbarengan tetap hanya menghasilkan satu draf. */
-    return await completedResponse(admin, row)
+    return await completedResponse(bindings, row)
   } catch (error) {
     console.error("POST /api/relays/[id]/complete gagal:", error)
     return Response.json(FAILED, { status: 500 })

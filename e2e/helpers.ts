@@ -127,11 +127,31 @@ export async function masukHiasDariGaleri(page: Page): Promise<void> {
 
 /** Setiap uji ber-link memakai sidang pembatasan laju sendiri supaya kuota 10
  *  link per jam tidak dipakai bersama antar-uji maupun antar-jalankan.
- *  `x-real-ip` memang header yang dibaca rute; di produksi diisi platform
- *  hosting. */
+ *  `cf-connecting-ip` adalah header yang dibaca rute di Cloudflare (dan di
+ *  pratinjau `wrangler dev` diisi 127.0.0.1 untuk semua pemanggil, jadi tanpa
+ *  ini seluruh uji berbagi satu kuota); `x-real-ip` ikut diisi untuk server
+ *  pengembangan yang tidak mengenal header Cloudflare. Di produksi Cloudflare
+ *  menimpa `cf-connecting-ip` di tepi, jadi pengiriman header ini tidak bisa
+ *  dipakai menipu pembatasan laju.
+ *
+ *  Headernya disisipkan HANYA ke panggilan `/api/**` milik aplikasi, bukan
+ *  lewat `setExtraHTTPHeaders` yang berlaku untuk semua permintaan: unggahan
+ *  langsung ke R2 terjadi lintas origin, dan header tambahan di sana membuat
+ *  preflight CORS menuntut header yang tidak diizinkan bucket, sehingga setiap
+ *  unggahan diblokir peramban (bukti dan gejalanya di `docs/DECISIONS.md`
+ *  M10). */
 export async function pasangSidangBaru(page: Page): Promise<void> {
   const oktet = 20 + Math.floor(Math.random() * 200)
-  await page.setExtraHTTPHeaders({ "x-real-ip": `198.51.100.${oktet}` })
+  const alamat = `198.51.100.${oktet}`
+  await page.route("**/api/**", (route) =>
+    route.continue({
+      headers: {
+        ...route.request().headers(),
+        "cf-connecting-ip": alamat,
+        "x-real-ip": alamat,
+      },
+    })
+  )
 }
 
 /** M8 (SE-01, SE-02): pembuat mengisi dua foto lalu membuat link estafet;

@@ -1,0 +1,46 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "snapme",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-10-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "vars": { "R2_ACCOUNT_ID": "498caefdd18079b89c3cb4cca69ceb6a" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "snapme-db",
+      "database_id": "846d6a45-e099-464c-9fe1-0f7eda756d11"
+    }
+  ],
+  "kv_namespaces": [
+    { "binding": "RATE_LIMIT_KV", "id": "844abc05bb704f549ae78b578e8a08e4" }
+  ],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "snapme" }],
+  "triggers": { "crons": ["0 3 * * *"] },
+  "env": {
+    /* Env `e2e` tidak mewarisi `vars` dari env atas (aturan wrangler), jadi
+       nilai yang sama ditulis ulang di sini supaya CSP dan presign R2 di
+       server e2e memakai account yang sama. */
+    "e2e": {
+      "vars": { "R2_ACCOUNT_ID": "498caefdd18079b89c3cb4cca69ceb6a" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "snapme-db",
+          "database_id": "846d6a45-e099-464c-9fe1-0f7eda756d11"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "RATE_LIMIT_KV",
+          "id": "844abc05bb704f549ae78b578e8a08e4"
+        }
+      ],
+      "r2_buckets": [
+        { "binding": "BUCKET", "bucket_name": "snapme", "remote": true }
+      ]
+    }
+  }
+}

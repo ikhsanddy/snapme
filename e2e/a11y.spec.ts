@@ -17,7 +17,7 @@ import {
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 const PERLU_PROYEK =
-  "Butuh proyek Supabase: jalankan dengan SUPABASE_E2E=1 setelah .env.local diisi."
+  "Butuh binding Cloudflare: jalankan dengan CLOUDFLARE_E2E=1 setelah .dev.vars diisi."
 
 test.beforeEach(async ({ page }) => {
   await matikanGesture(page)
@@ -114,8 +114,8 @@ for (const viewport of [
   }
 }
 
-test.describe("audit halaman ber-link dengan proyek Supabase", () => {
-  test.skip(process.env.SUPABASE_E2E !== "1", PERLU_PROYEK)
+test.describe("audit halaman ber-link dengan binding Cloudflare", () => {
+  test.skip(process.env.CLOUDFLARE_E2E !== "1", PERLU_PROYEK)
 
   test("halaman strip lengkap bersih dari pelanggaran axe", async ({ page }) => {
     test.setTimeout(180_000)

@@ -1,6 +1,6 @@
 # snapme: Milestones
 
-Sepuluh milestone, dikerjakan berurutan, satu milestone per sesi omp. Nomor kebutuhan (FR, GS, SE, SH) merujuk ke `PRD.md` §7.
+Sebelas milestone, dikerjakan berurutan, satu milestone per sesi omp. Nomor kebutuhan (FR, GS, SE, SH) merujuk ke `PRD.md` §7.
 
 ## Cara memakai
 
@@ -34,6 +34,7 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 - [x] M7 Strip Hidup
 - [x] M8 Strip Estafet
 - [ ] M9 Pengerasan
+- [ ] M10 Migrasi Cloudflare
 
 Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai berarti" di `AGENTS.md` terpenuhi.
 
@@ -335,3 +336,37 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 - Target PRD §8 tercapai, atau selisihnya dicatat beserta rencana. (sebagian: ekspor strip dan FCP di dalam target; LCP Welcome 3,17 detik terhadap 2,5 detik, selisih 670 ms beserta tiga langkah rencananya dicatat di `docs/DECISIONS.md` M9)
 - QR pada cetakan asli terbaca oleh kamera HP. (**menunggu pengguna**: langkahnya ada di tabel manual `docs/DECISIONS.md` M9; agent tidak bisa mencetak dan memindai)
 - Daftar periksa DESIGN-SYSTEM §14 lolos untuk semua halaman. (terpenuhi: tabel per butir di `docs/DECISIONS.md` M9, termasuk hasil zoom 200% dan temuan keyboard pada pil pilihan hiasan)
+
+---
+
+## M10 Migrasi Cloudflare
+
+**Tujuan.** Backend snapme berjalan penuh di Cloudflare: D1 untuk basis data, KV untuk anggaran laju peristiwa, R2 untuk berkas, Worker (OpenNext) menggantikan Vercel, tanpa sisa kode Supabase.
+
+**Baca.** ARCHITECTURE §3, §4, §6, §7, §8, §10, §13. `docs/DECISIONS.md` M9 dan M10.
+**Kata kunci find-skills.** `cloudflare workers`, `d1`, `r2`, `opennext`.
+
+**Pekerjaan**
+
+- [x] Infrastruktur: `wrangler.jsonc` (binding DB/ASSETS/RATE_LIMIT_KV/BUCKET, Cron Trigger harian, env `e2e` dengan R2 remote), `worker.ts` (custom worker OpenNext + `scheduled` pembersih), `open-next.config.ts`, `migrations/0001_init.sql`, `r2-cors.json`, `.dev.vars.example`.
+- [x] Modul pustaka baru: `src/lib/cloudflare.ts` (seam `getBindings`, null → 503), `src/lib/db/{rows,strips,relays,events}.ts` (prepared statement D1, tiga gerbang atomik `meta.changes`), `src/lib/r2/{storage,presign}.ts` (`bucket.head`, aws4fetch presigned PUT/GET), `src/lib/rateLimit.ts` (kuota strips/relays tetap di D1, anggaran events di KV jendela tetap), `src/lib/purge.ts`.
+- [x] Cutover 10 rute `src/app/api/**`: kontrak unggah berubah dari `{ path, token }` ke `{ path, url }` (presigned PUT); verifikasi berkas lewat `bucket.head`.
+- [x] Halaman RSC `/s/[id]` dan `/r/[id]`: URL presigned GET, unduhan lewat `response-content-disposition` yang ikut ditandatangani.
+- [x] Klien `features/share/api.ts` dan `features/relay/api.ts`: PUT langsung ke URL presigned, `@supabase/storage-js` dilepas.
+- [x] `next.config.ts`: origin CSP dari `R2_ACCOUNT_ID`; `package.json`: skrip `preview`, `preview:e2e`, `deploy`, `cf-typegen`, `test:e2e:cf`.
+- [x] Tambalan kecil `scripts/patch-opennext.mjs` (dijalankan `postinstall` dan tiap skrip build Cloudflare) untuk celah upstream `@opennextjs/cloudflare` 1.20.10: manifest `preview-props.json` milik Next 16.4 belum masuk daftar manifest yang disisipkan ke bundel Worker (tanpa ini semua rute menjawab 500 dengan `Unexpected loadManifest(...)`). Alasan dan syarat penghapusannya di `docs/DECISIONS.md` M10.
+- [x] Uji: `tests/db/harness.ts` (binding D1/R2/KV sungguhan lewat `wrangler getPlatformProxy`), `tests/db/{strips,relays,events}.test.ts` menggantikan uji klien Supabase palsu, `tests/client-bundle-secrecy.test.ts` diperbarui, gerbang e2e `CLOUDFLARE_E2E`, `playwright.cf.config.ts`.
+- [x] Dokumen: ARCHITECTURE, PRD §12, `docs/DECISIONS.md` M10, AGENTS.md tabel Perintah.
+- [x] Penghapusan: `vercel.json`, `supabase/`, `src/lib/supabase/`, dependensi `@supabase/*`.
+- [x] Pembongkaran proyek Supabase dan kaitan Vercel di dasbor. (dikonfirmasi pengguna 10 Oktober 2026: semua kotak sudah dicentang; `.env.local` kini hanya memuat `R2_ACCOUNT_ID` karena kata sandi Supabase-nya sudah tidak berguna)
+
+**Butuh dari pengguna.** Login Cloudflare (`npx wrangler login`), token API R2 Object Read & Write untuk bucket `snapme`, dan pembongkaran proyek Supabase/Vercel setelah semuanya hijau. (Ketiganya selesai: login dan pembuatan sumber daya dijalankan di sesi ini, token R2 diisi pengguna ke `.dev.vars`, dan pembongkaran Supabase/Vercel dikonfirmasi pengguna 10 Oktober 2026.)
+
+**Selesai bila**
+
+- `npm run lint`, `npm run typecheck`, `npm test`, dan `npm run build` hijau. (terpenuhi: lint dan typecheck hijau; `npm test` 23 berkas dan 179 uji hijau, termasuk 63 uji basis data baru di `tests/db/`; `npm run build` hijau dan `opennextjs-cloudflare build` menghasilkan `.open-next/worker.js`. Catatan: `cacheComponents`/PPR beserta `htmlLimitedBots` dilepas selama milestone ini karena runtime Worker menolak mesin Cache Components di bawah permintaan bersamaan, rincian dan buktinya di `docs/DECISIONS.md` M10)
+- Uji D1 berlari di atas SQLite sungguhan: kasus dari uji lama dipertahankan, termasuk dua klaim serentak → 200/409 dan rollback batas laju. (terpenuhi: `tests/db/strips.test.ts` 23 kasus, `tests/db/relays.test.ts` 30 kasus, `tests/db/events.test.ts` 10 kasus, semua di atas D1/R2/KV miniflare lewat `wrangler getPlatformProxy`; dua klaim serentak menghasilkan tepat satu 200 dan satu 409, dan rollback baris ke-11 batas laju diuji)
+- Putaran pratinjau menembus R2 sungguhan: buat strip → PUT presigned → complete → buka `/s/{id}` → hapus; relay 201 + klaim serentak; `POST /api/events` sampai 429; purge 401/200. (terpenuhi: 31 pemeriksaan lulus di `wrangler dev --env e2e` dengan bucket R2 sungguhan, termasuk tautan unduh ber-`response-content-disposition` yang isinya bita identik, penghapusan objek, penuntasan estafet dua langkah, 25 batch peristiwa lalu 429, purge 401/200, dan Cron Trigger lokal; tabelnya di `docs/DECISIONS.md` M10)
+- `npx playwright test` dan `npm run test:e2e:cf` hijau. (terpenuhi: suite utama terhadap dev server **66 lolos, 8 dilewati, 0 gagal**; suite ber-binding terhadap pratinjau Cloudflare **30 lolos, 3 dilewati, 0 gagal**. Tiga yang dilewati adalah jalur "server tanpa binding" yang memang tidak berlaku saat binding ada. Tiga temuan yang diperbaiki di sepanjang jalur ini dicatat di `docs/DECISIONS.md` M10: PPR/Cache Components dilepas, helper sesi uji dipersempit ke `/api/**`, dan `fetchSlotShots` memakai `cache: "no-store"`)
+- `npm run deploy` berhasil dan URL produksi menjawab; `npx wrangler d1 execute snapme-db --remote --command "select count(*) from strips"` menunjukkan baris uji; cron harian terlihat di dasbor. (terpenuhi: Worker `snapme` ter-deploy di `https://snapme.ikhsandyy-dev.workers.dev` (Version ID `26c7f70b-1280-4066-aaca-826f9e8f7c0c`), triggernya terdaftar saat deploy dengan `schedule: 0 3 * * *`; baris D1 remote `strips` 3, `relays` 1, `events` 1; 14 dari 15 pemeriksaan produksi lulus dan satu-satunya kegagalan adalah kesalahan skrip verifikasi, lalu bukti bit-identik diambil ulang dan lulus. Tabelnya di `docs/DECISIONS.md` M10)
+- Median `npm run perf:lcp` terhadap pratinjau dicatat di `docs/DECISIONS.md` M10. (terpenuhi: median LCP 3,745 detik dari lima jalankan terhadap `wrangler dev`, pembanding M9 3,17 detik di `next start`; FCP 1,11 detik, TBT 44 ms, CLS 0, skor 0,87)

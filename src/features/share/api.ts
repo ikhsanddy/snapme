@@ -1,21 +1,20 @@
 "use client"
 
-import { StorageClient } from "@supabase/storage-js"
-
 import type { LayoutId } from "@/lib/layouts"
-import { LIVE_MIME_TYPES, STILL_MIME, STORAGE_BUCKET, type LiveKind } from "@/lib/schemas"
+import { LIVE_MIME_TYPES, STILL_MIME, type LiveKind } from "@/lib/schemas"
 
 /* M6 (SH-04, SH-06): panggilan jaringan alur bagikan. Hanya berkas ini yang
-   berbicara dengan rute server dan Storage dari sisi klien.
+   berbicara dengan rute server dan bucket dari sisi klien.
 
    Unggahan tidak lewat rute server (ARCHITECTURE §7): badannya lumayan besar
    dan fungsi serverless punya batas ukuran isi permintaan. Klien mengunggah
-   langsung ke Storage memakai URL bertanda tangan, lalu rute complete yang
-   memeriksa hasilnya. */
+   langsung ke R2 lewat URL presigned (M10), lalu rute complete yang memeriksa
+   hasilnya. Jenis isi ikut ditandatangani di URL, jadi header PUT-nya wajib
+   sama dengan yang dipakai server saat menandatangani. */
 
 export interface StripUpload {
   path: string
-  token: string
+  url: string
 }
 
 export interface CreatedStrip {
@@ -59,17 +58,16 @@ export async function requestStrip(
   return (await response.json()) as CreatedStrip
 }
 
+const UPLOAD_FAILED = "Fotonya belum bisa diunggah. Coba lagi sebentar lagi."
+
 async function uploadToSignedUrl(upload: StripUpload, blob: Blob, contentType: string): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (url === undefined || url === "") {
-    throw new Error(CREATE_FAILED)
-  }
-  const client = new StorageClient(`${url}/storage/v1`)
-  const { error } = await client
-    .from(STORAGE_BUCKET)
-    .uploadToSignedUrl(upload.path, upload.token, blob, { contentType })
-  if (error !== null) {
-    throw new Error(error.message)
+  const response = await fetch(upload.url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: blob,
+  })
+  if (!response.ok) {
+    throw new Error(UPLOAD_FAILED)
   }
 }
 

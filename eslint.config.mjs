@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Keluaran build OpenNext dan tipe binding hasil `wrangler types`
+    // (M10): keduanya berkas jadi, bukan kode yang disunting.
+    ".open-next/**",
+    "cloudflare-env.d.ts",
+    // Bundel sementara `wrangler dev` di dalam repo.
+    ".wrangler/**",
     // Berkas wasm MediaPipe yang disalin apa adanya ke public/ (ARCHITECTURE §4).
     "public/mediapipe/**",
   ]),

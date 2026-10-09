@@ -8,28 +8,24 @@ import { SiteHeader } from "@/components/site/SiteHeader"
 import { Button } from "@/components/ui/button"
 import { LiveStripVideo } from "@/features/live/LiveStripVideo"
 import { StripOwnerActions } from "@/features/share/StripOwnerActions"
+import { getBindings } from "@/lib/cloudflare"
+import { selectStrip } from "@/lib/db/strips"
 import { isExpired } from "@/lib/expiry"
-import { STORAGE_BUCKET } from "@/lib/schemas"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
-import { STRIP_COLUMNS, type StripRow } from "@/lib/supabase/strips"
+import { presignGet } from "@/lib/r2/presign"
 
 /* SH-05: halaman strip yang dibuka dari QR atau link pribadi. Komponen server,
-   `noindex` lewat metadata, dan berkasnya diambil lewat URL bertanda tangan
-   berumur pendek supaya tautan Storage tidak pernah tersimpan di perangkat.
+   `noindex` lewat metadata, dan berkasnya diambil lewat URL presigned R2
+   berumur pendek supaya tautan bucket tidak pernah tersimpan di perangkat.
 
    Penyimpangan tercatat (DECISIONS M6): App Router tidak bisa memasang status
    410 pada halaman, jadi strip yang lewat 7 hari dirender sebagai tampilan
    kedaluwarsa; status 410 harfiah dijawab rute API. Di luar itu halaman ini
    menjawab 404 (strip tidak ada, masih draf, atau berkasnya sudah hilang). */
 
-const SIGNED_URL_SECONDS = 3_600
-
 /* Halaman ini isinya seluruhnya bergantung pada satu baris basis data: tidak
-   ada bagian statis yang berguna untuk di-stream lebih dulu. Rutenya sengaja
-   blocking (`instant = false`, Next 16 Cache Components) supaya `notFound()`
-   benar-benar menjawab 404, bukan 200 yang menyusul tampilan tidak ditemukan
-   di tengah aliran. */
-export const instant = false
+   ada bagian statis yang berguna untuk di-stream lebih dulu. Komponennya
+   memanggil `connection()` supaya dirender dinamis per permintaan, jadi
+   `notFound()` benar-benar menjawab 404. */
 
 const EXPIRY_FORMAT = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -65,20 +61,17 @@ export default async function StripPage({
   await connection()
   const { id } = await params
 
-  const admin = getSupabaseAdmin()
-  if (admin === null) {
+  const bindings = getBindings()
+  if (bindings === null) {
     notFound()
   }
-  const { data, error } = await admin
-    .from("strips")
-    .select(STRIP_COLUMNS)
-    .eq("id", id)
-    .maybeSingle()
-  if (error !== null) {
-    console.error("Halaman /s/[id] gagal membaca strip:", error.message)
+  let row
+  try {
+    row = await selectStrip(bindings.db, id)
+  } catch (error) {
+    console.error("Halaman /s/[id] gagal membaca strip:", error)
     notFound()
   }
-  const row = data as StripRow | null
   /* Draf belum pernah selesai diunggah, jadi belum ada yang bisa dilihat. */
   if (row === null || row.status !== "complete") {
     notFound()
@@ -102,43 +95,45 @@ export default async function StripPage({
     )
   }
 
-  const signed =
-    row.still_path === null
-      ? null
-      : await admin.storage
-          .from(STORAGE_BUCKET)
-          .createSignedUrl(row.still_path, SIGNED_URL_SECONDS)
-  if (signed === null || signed.error !== null) {
+  if (row.still_path === null) {
+    notFound()
+  }
+  let stillUrl: string
+  let downloadUrl: string
+  try {
+    stillUrl = await presignGet(bindings.s3, row.still_path)
+    /* M10: tautan unduh memakai `response-content-disposition` yang ikut
+       ditandatangani, jadi nama berkasnya ramah pengguna tanpa URL tambahan. */
+    downloadUrl = await presignGet(bindings.s3, row.still_path, {
+      downloadFilename: `snapme-${row.id}.png`,
+    })
+  } catch (error) {
+    console.error("Halaman /s/[id] gagal membuat tautan berkas:", error)
     notFound()
   }
   /* M7: versi hidup ikut ditampilkan bila stripnya punya klip. Bila tautannya
      gagal dibuat, halaman tetap utuh dengan versi diamnya saja. */
-  const liveSigned =
-    row.live_path === null
-      ? null
-      : await admin.storage
-          .from(STORAGE_BUCKET)
-          .createSignedUrl(row.live_path, SIGNED_URL_SECONDS)
-  const liveUrl =
-    liveSigned === null || liveSigned.error !== null
-      ? null
-      : liveSigned.data.signedUrl
-  const downloadUrl = new URL(signed.data.signedUrl)
-  downloadUrl.searchParams.set("download", `snapme-${row.id}.png`)
+  let liveUrl: string | null = null
+  if (row.live_path !== null) {
+    try {
+      liveUrl = await presignGet(bindings.s3, row.live_path)
+    } catch (error) {
+      console.error("Halaman /s/[id] gagal membuat tautan klip:", error)
+    }
+  }
 
   return (
     <StripShell>
       <h1 className="heading text-ink">Strip ini</h1>
-      {/* DataURL/URL bertanda tangan dari Storage, bukan aset: next/image
-          tidak dipakai. */}
+      {/* URL presigned dari bucket, bukan aset: next/image tidak dipakai. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={signed.data.signedUrl}
+        src={stillUrl}
         alt="Strip"
         className="h-auto w-full max-w-[420px] border-2 border-ink bg-cream"
       />
       {liveUrl === null ? null : (
-        <LiveStripVideo src={liveUrl} poster={signed.data.signedUrl} />
+        <LiveStripVideo src={liveUrl} poster={stillUrl} />
       )}
       <p className="flex items-center gap-2 text-sm text-muted">
         <Timer weight="bold" className="size-5 shrink-0" aria-hidden />
@@ -148,7 +143,7 @@ export default async function StripPage({
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" asChild>
-          <a href={downloadUrl.toString()}>
+          <a href={downloadUrl}>
             <DownloadSimple weight="bold" className="size-[22px]" aria-hidden />
             Unduh
           </a>
