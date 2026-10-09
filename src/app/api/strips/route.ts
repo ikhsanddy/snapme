@@ -87,7 +87,9 @@ export async function POST(request: Request) {
       throw new Error(insertError.message)
     }
 
-    if ((await countRecentCreations(admin, rateKey, now)) > CREATE_LIMIT) {
+    if (
+      (await countRecentCreations(admin, "strips", rateKey, now)) > CREATE_LIMIT
+    ) {
       /* Batalkan baris yang baru saja dibuat: kuota tidak boleh dikembalikan
          oleh percobaan yang ditolak. */
       const { error: rollbackError } = await admin

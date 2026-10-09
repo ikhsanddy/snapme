@@ -37,11 +37,31 @@ export type CreateStripPayload = z.infer<typeof CREATE_STRIP_SCHEMA>
 export const STILL_MIME = "image/png"
 export const STILL_BYTE_LIMIT = 2_097_152
 
-/** Satu bucket pribadi untuk semua berkas (ARCHITECTURE §7). */
+/** M8: satu bucket pribadi untuk semua berkas (ARCHITECTURE §7). */
 export const STORAGE_BUCKET = "snapme"
+
+/** M8 (SE-01): estafet punya layout saja; jumlah slotnya diturunkan dari
+ *  geometri layout, dan tidak ada klip atau QR di jalur ini. */
+export const CREATE_RELAY_SCHEMA = z.object({
+  layout: CREATE_STRIP_SCHEMA.shape.layout,
+})
+
+export type CreateRelayPayload = z.infer<typeof CREATE_RELAY_SCHEMA>
+
+/** PRD §8: slot estafet 1 MB, dan selalu JPEG karena klien mengekspor bingkai
+ *  kamera lewat kanvas. Bucket menerima 5 MB (batas klip), jadi rute inilah
+ *  pagar ukuran yang sebenarnya untuk slot. */
+export const RELAY_SLOT_MIME = "image/jpeg"
+export const RELAY_SLOT_BYTE_LIMIT = 1_048_576
 
 export function stripStillPath(id: string): string {
   return `strips/${id}/still.png`
+}
+
+/** M8: satu berkas per slot estafet. Penomoran 1-based mengikuti bahasa
+ *  antarmuka ("Slot teman 1"), sedangkan indeks di kode selalu 0-based. */
+export function relaySlotPath(relayId: string, index: number): string {
+  return `relays/${relayId}/slot-${index + 1}.jpg`
 }
 
 /** M7 (SH-03): klip Strip Hidup; jenisnya masuk ke nama berkas supaya

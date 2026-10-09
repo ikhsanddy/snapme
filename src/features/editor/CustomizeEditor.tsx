@@ -49,6 +49,12 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
   const setQrEnabled = useBoothStore((state) => state.setQrEnabled)
   const liveEnabled = useBoothStore((state) => state.live.enabled)
   const setLiveEnabled = useBoothStore((state) => state.setLiveEnabled)
+  /* M8: sesi teman tidak pernah mengunggah QR, dan salinan lokal pembuat
+     (SE-10) tidak boleh menimpa versi temannya. Di dua keadaan itu kartu QR
+     disembunyikan, dan versi hidup hanya jadi unduhan lokal. */
+  const relay = useBoothStore((state) => state.relay)
+  const localOnly = useBoothStore((state) => state.localOnly)
+  const hidesUpload = relay?.role === "guest" || localOnly
 
   const stageRef = useRef<KonvaStage>(null)
   const groupRef = useRef<KonvaGroup>(null)
@@ -144,11 +150,13 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
                 </div>
               </div>
               <p className="text-[15px] leading-[1.4]">
-                {hasClips
-                  ? "Tiap foto diputar sebagai klip pendek di halaman strip."
-                  : "Klip hanya terekam saat memotret lewat kamera."}
+                {!hasClips
+                  ? "Klip hanya terekam saat memotret lewat kamera."
+                  : hidesUpload
+                    ? "Tiap foto diputar sebagai klip pendek di perangkat ini. Versi hidupnya tidak ikut diunggah."
+                    : "Tiap foto diputar sebagai klip pendek di halaman strip."}
               </p>
-              {liveEnabled && hasClips && shareStrip === null ? (
+              {liveEnabled && hasClips && shareStrip === null && !hidesUpload ? (
                 <p
                   role="status"
                   className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
@@ -175,39 +183,43 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
 
             {/* SH-04: kartu QR di strip. Teksnya dari docs/ui-reference/
                 customize.html; tidak ada aksi `tangerine` baru di sini supaya
-                satu aksi utama per layar tetap "Selesai & Unduh". */}
-            <div className="flex flex-col gap-2 rounded-card border-2 border-ink bg-paper p-4">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-display text-base font-extrabold">
-                  QR di strip
-                </h2>
-                <Switch
-                  checked={qrEnabled || shareStrip !== null}
-                  disabled={shareStrip !== null}
-                  onCheckedChange={setQrEnabled}
-                  aria-label="QR di strip"
-                />
+                satu aksi utama per layar tetap "Selesai & Unduh".
+                M8: teman tidak mengunggah QR, dan salinan lokal pembuat juga
+                tidak, jadi kartunya disembunyikan di dua keadaan itu. */}
+            {hidesUpload ? null : (
+              <div className="flex flex-col gap-2 rounded-card border-2 border-ink bg-paper p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-display text-base font-extrabold">
+                    QR di strip
+                  </h2>
+                  <Switch
+                    checked={qrEnabled || shareStrip !== null}
+                    disabled={shareStrip !== null}
+                    onCheckedChange={setQrEnabled}
+                    aria-label="QR di strip"
+                  />
+                </div>
+                <p className="text-[15px] leading-[1.4]">
+                  QR membuka halaman strip. Fotomu diunggah ke link pribadi dan
+                  terhapus otomatis setelah 7 hari.
+                </p>
+                {shareStrip !== null ? (
+                  <p
+                    role="status"
+                    className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
+                  >
+                    Link sudah dibuat di langkah Hasil.
+                  </p>
+                ) : qrEnabled ? (
+                  <p
+                    role="status"
+                    className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
+                  >
+                    Kamu akan dimintai izin unggah saat mengunduh.
+                  </p>
+                ) : null}
               </div>
-              <p className="text-[15px] leading-[1.4]">
-                QR membuka halaman strip. Fotomu diunggah ke link pribadi dan
-                terhapus otomatis setelah 7 hari.
-              </p>
-              {shareStrip !== null ? (
-                <p
-                  role="status"
-                  className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
-                >
-                  Link sudah dibuat di langkah Hasil.
-                </p>
-              ) : qrEnabled ? (
-                <p
-                  role="status"
-                  className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
-                >
-                  Kamu akan dimintai izin unggah saat mengunduh.
-                </p>
-              ) : null}
-            </div>
+            )}
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[15px]">
               <dt className="self-center font-mono text-xs font-bold tracking-[0.06em] text-muted uppercase">

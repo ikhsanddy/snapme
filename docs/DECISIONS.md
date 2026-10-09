@@ -708,3 +708,107 @@ Perangkat dan browser di luar Chromium headless belum pernah menjalankan versi h
 |Pemutaran di `/s/{id}` (SH-05)|menunggu pengguna|menunggu pengguna|menunggu pengguna|
 
 Catatan: tombol "Unduh Video" dan pemutar di `/s/[id]` hanya muncul bila `MediaRecorder` mendukung `video/webm` atau `video/mp4`; di Safari yang merekam MP4, jenis berkas unduhannya `.mp4`.
+
+---
+
+## M8 Strip Estafet (9 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M8
+
+`npx skills find supabase`, `security`, dan `playwright` dijalankan; `playwright` nihil, lalu dicoba istilah `e2e testing` dan `web security review`. Kandidat yang relevan: `supabase/agent-skills@supabase-postgres-best-practices` (436,8 rb pemasang, sumber resmi), `currents-dev/playwright-best-practices-skill` (91,2 rb), dan `addyosmani/agent-skills@security-and-hardening` (54,6 rb). **Tidak ada yang dipasang**: sesuai aturan ARCHITECTURE §11.3 skill diusulkan dulu ke pengguna, dan rencana M8 tidak bergantung padanya. Untuk tinjauan keamanan, agent bawaan `security-reviewer` dipakai (memang disyaratkan MILESTONES M8).
+
+### Pembagian slot dan pemetaan foto pembuat
+
+Aturan tunggal untuk semua layout: indeks 0-based genap milik pembuat, ganjil milik teman (`src/lib/relaySlots.ts`). Strip 4 → pembuat [0, 2], teman [1, 3]; Strip 3 → pembuat [0, 2], teman [1]; Grid 2 x 2 → sama seperti Strip 4. Pembuat selalu mengisi tepat setengah slot, jadi syarat SE-01 ("minimal setengah") terpenuhi di semua layout. Dua foto terisi pertama sesi lokal dipetakan berurutan ke slot pembuat; sesi lokal pembuat tidak diubah setelah link dibuat, jadi foto yang diulang setelahnya tidak mengubah berkas yang sudah diunggah (itu snapshot saat link dibuat).
+
+### Slot teman diunggah saat penuntasan, bukan saat jepret
+
+Rencana awal tidak menyebut kapan berkas slot teman naik ke Storage. Yang dipilih: **saat penuntasan**, dengan mekanisme penyembuhan sendiri. Rute `complete` memeriksa semua berkas slot; slot teman yang belum ada dijawab 422 beserta URL unggah baru untuk slot yang kurang, lalu klien mengunggah foto yang ada di sesinya dan mencoba sekali lagi (`RelaySlotsNeededError` + `finishRelayOnce` di `src/features/editor/ResultView.tsx`).
+
+Alasan: URL unggah bertanda tangan berlaku sekitar 2 jam sedangkan link estafet hidup 48 jam, jadi menyimpan URL itu di sesi (atau di IndexedDB) akan kedaluwarsa di tengah jalan. Dengan cara ini URL-nya selalu segar, dan sesi yang pulih dari perangkat lain (foto lokal sudah ada di IndexedDB) bisa menambal berkas yang hilang tanpa endpoint tambahan. Akibat yang terlihat pengguna: unggahan terjadi sekali di "Selesai & Unduh", dan bila foto lokalnya juga tidak ada, pesannya "Isi ulang foto yang kurang."
+
+### Token satu header, giliran sekali di basis data
+
+Token pembuat dan tamu lewat header `x-relay-token`; hanya hash SHA-256-nya ada di baris `relays`. Di perangkat, token disimpan per id (`localStorage` `snapme:relay-token:{id}`) bersama perannya, karena satu perangkat bisa jadi pembuat di satu link dan tamu di link lain. Giliran sekali dijamin `UPDATE ... WHERE id = ? AND status = 'waiting'`; nol baris berubah berarti 409 "Estafet ini sudah diambil." (SE-06), dan penuntasan memakai pola yang sama dengan `status = 'claimed'`.
+
+### Strip estafet hanya PNG diam, tanpa klip dan tanpa QR
+
+Klip Strip Hidup milik teman tetap bisa diputar dan diunduh di perangkatnya, tetapi tidak diunggah: PRD tidak meminta versi hidup untuk estafet, dan menambahkannya berarti satu berkas lagi per estafet. QR juga tidak ada di strip estafet karena teman tidak pernah membuat link sendiri. Karena itu kartu "QR di strip" disembunyikan untuk sesi teman dan sesi lokal (`hidesUpload` di `CustomizeEditor`/`ResultView`).
+
+### Tampilan `/r/[id]` setelah 48 jam
+
+Kedaluwarsa diperiksa lebih dulu, jadi setelah 48 jam halaman estafet menampilkan "Estafet ini sudah kedaluwarsa." walau strip hasilnya masih hidup 7 hari (SE-08). Konsekuensinya tautan `/s/{id}` tidak lagi terjangkau dari `/r` setelah 48 jam; teman yang menuntaskan tetap disimpan di halamannya saat itu, dan pembuat bisa memintanya. Ini mengikuti rencana yang disetujui; bila pengguna ingin tautan strip tetap tampil selama 7 hari, itu perubahan perilaku kecil di halaman `/r/[id]`.
+
+### Pembuat bisa membatalkan setelah estafet selesai
+
+SE-09 tidak membatasi status, jadi tombol "Batalkan dan Hapus" ada di `RelayJoinView` (menunggu/diambil) dan `RelayCompleteView` (selesai) lewat komponen bersama `RelayCancel.tsx`. Satu permintaan menghapus berkas slot, strip hasilnya (bila ada), lalu menandai baris estafet `cancelled` dengan masa tenggang batu nisan yang sama dengan strip. Ini juga yang dipakai uji e2e untuk bersih-bersih.
+
+### `localOnly` ikut tersimpan di rekaman sesi
+
+Salinan lokal pembuat (SE-10) ditandai `localOnly` di store dan ikut disimpan di IndexedDB sebagai bidang opsional (versi rekaman tetap 1; rekaman lama tanpa bidang itu diterima). Tanpa itu, memuat ulang halaman akan mengubah salinan lokal menjadi sesi biasa yang menawarkan unggahan lagi.
+
+### Refactor kecil yang menyertai M8
+
+`countRecentCreations` menerima nama tabel (`"strips" | "relays"`) supaya kuota estafet terpisah dari kuota strip; pemanggil lama di `POST /api/strips` diperbarui. Pemeriksaan berkas hasil unggahan diekstrak ke `verifyStoredFile` (`src/lib/supabase/storage.ts`) dan dipakai rute complete strip, claim, dan complete estafet; tingkah laku rute strip tidak berubah (uji lama tetap hijau).
+
+### Label antarmuka baru
+
+Belum ada di DESIGN-SYSTEM §12, dicatat di sini mengikuti presedem M6/M7 (dokumen tidak diubah diam-diam): "Butuh 2 foto dulu.", "Bagikan tautan", "Lihat status", "Lengkapi strip ini", "Ambil Giliran", "Lanjut isi slot", "Menunggu teman", "Teman sudah mulai", "Bayangan pose teman", "Hias ulang salinanmu", "Batalkan dan Hapus", "Estafet ini sudah diambil.", "Estafet ini sudah selesai.", "Estafet sudah dibatalkan pembuatnya.", "Estafet ini sudah kedaluwarsa.", "Slot teman {n}", "Slot {n}, sudah terisi", "Link estafet dibuat.", "Tautan disalin.", "Tautan dibagikan.", "Tautan belum bisa dibagikan. Salin manual dari alamat di atas.", "Menyelesaikan estafet...", dan "Menyiapkan salinan...". "Slot teman {n}" dipakai untuk slot milik pihak lain di baki foto teman (lencana gembok); di pratinjau `/r` slotnya diberi nomor netral ("Slot {n}") karena yang melihat bisa pembuat maupun teman.
+
+### Design Read taste-skill untuk permukaan M8
+
+Semua permukaan M8 adalah langkah booth dan halaman tautan, jadi hanya pagar umum taste-skill yang dipakai (DESIGN-SYSTEM §0): keadaan lengkap (menunggu, diambil, selesai, kedaluwarsa, dibatalkan, sibuk), kontras dari tabel §2, `prefers-reduced-motion` tidak terpengaruh (tidak ada gerak baru), tanpa pola klise, tanpa emoji dan em dash. Design Read dan dial tetap yang dinyatakan M1: "consumer photobooth web app untuk pelajar dan mahasiswa Indonesia, with a playful Y2K neo-brutalist language, leaning toward shadcn/ui + Tailwind v4 yang di-restyle dengan token DESIGN-SYSTEM.md", `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`.
+
+### Bukti browser M8
+
+|Pemeriksaan|Bukti|
+|---|---|
+|Kartu Strip Estafet di rel kanan|Tangkapan layar `/booth/capture` 1280 dan 360 px dibandingkan dengan `docs/ui-reference/capture.html`: kartu `violet-soft` duduk antara kartu lime dan blok aksi, judul berikon `Users`, tombol "Estafet ke Teman" nonaktif bergaris putus-putus dengan teks bantu "Butuh 2 foto dulu." saat foto belum cukup|
+|Halaman `/r` yang tidak ada|`curl`/Playwright: 404 + "Halaman tidak ditemukan." (tanpa gerbang env, ikut pola uji 404 M6)|
+|Overlay bayangan dan slot terkunci|`e2e/relay.spec.ts` (ber-jaringan, lihat baris berikutnya)|
+|Penyembuhan berkas slot teman (422 + URL pengganti)|Diuji langsung ke proyek: estafet dibuat, teman mengambil giliran, `complete` pertama dijawab 422 dengan URL unggah untuk slot 1 dan 3, setelah keduanya diunggah `complete` kedua dijawab 200 beserta `stripId`; PNG strip diunggah lalu `POST /api/strips/{id}/complete` dijawab 200 (`expiresAt` 7 hari)|
+|SE-09 di proyek sungguhan|`DELETE /api/relays/{id}` dengan token pembuat → 204; halaman `/s/{id}` berikutnya 404 (berkas dan barisnya hilang); `DELETE` tanpa token → 401; halaman `/r/{id}` menampilkan "Estafet sudah dibatalkan pembuatnya."|
+|Gate token di server|HTML halaman `/r/{id}` tanpa token (diambil lewat `fetch`) tidak memuat path `/s/{id}` maupun `storage/v1/object/sign`|
+|Unit|`npm test`: 152 lolos, 21 berkas; di antaranya `tests/relay-slots.test.ts` (5), `tests/booth-relay.test.ts` (5), dan `tests/api-relays.test.ts` (22 kasus rute)|
+|Perintah pemeriksaan|`npm run lint`, `npm run typecheck`, `npm test` (152), `npm run build` (rute `/api/relays`, `/api/relays/[id]`, `/api/relays/[id]/claim`, `/api/relays/[id]/complete`, `/api/relays/[id]/strip`, dan `/r/[id]` terdaftar), dan `npx playwright test` penuh (51 lolos, 6 dilewati) semuanya hijau|
+
+### Catatan uji ber-jaringan: kuota per sidang
+
+`e2e/relay.spec.ts` membuat satu estafet per uji, dan `POST /api/relays` dibatasi 10 pembuatan per jam per sidang alamat IP. Kalau semua uji memakai sidang yang sama, menjalankan berkasnya beberapa kali dalam satu jam akan gagal dengan 429. Karena itu tiap uji memasang `x-real-ip` sendiri (198.51.100.x acak) lewat `page.setExtraHTTPHeaders`; header itu memang yang dibaca `clientKeyFromRequest` (di produksi diisi platform hosting), jadi tiap uji mendapat keranjang kuotanya sendiri dan hasilnya tidak bergantung pada jalankan sebelumnya. Uji klaim bersamaan memakai `request.post` tanpa header itu, dan rute `claim` memang tidak dibatasi.
+
+### Catatan uji: kompilasi dingin server pengembangan
+
+Dua uji M8 pernah gagal hanya karena server pengembangan baru dinyalakan: kompilasi rute pertama memicu muat ulang halaman setelah `goto`, sehingga pemilihan radio di `e2e/helpers.ts` kadang jatuh sebelum React terhidrasi (tombol "Mulai Foto" tetap nonaktif) dan asersi halaman 404 berlomba dengan navigasi yang berulang. Perbaikannya: `masukAmbilFotoLayout` mengulang pemilihan radio sampai tombolnya menyala (`expect(...).toPass`), dan uji 404 mengulang `goto` + asersinya. Keduanya berlaku untuk seluruh berkas e2e, bukan hanya M8; sesudah itu `npx playwright test` penuh hijau dari server yang baru dinyalakan.
+
+### Uji ber-jaringan M8
+
+Alur dua konteks, konteks ketiga, dan klaim bersamaan ada di `e2e/relay.spec.ts` dengan gerbang `SUPABASE_E2E=1`. Setelah migrasi diterapkan (persetujuan pengguna di sesi ini): `SUPABASE_E2E=1 npx playwright test relay.spec.ts` → **4 lolos, 0 dilewati, 0 gagal** (52 detik).
+
+|Uji|Bukti|
+|---|---|
+|Alur utama dua konteks|Pembuat mengisi 2 foto, membuat link lewat dialog persetujuan, dan membacanya dari kartu (`/r/{id}`). Teman membuka link di konteks kedua: melihat 2 foto pembuat sebagai "Slot 1/3 sudah terisi" dan slot 2/4 putus-putus, mengambil giliran lewat dialog, mengisi 2 foto (baki menampilkan slot terkunci bergembok + sakelar bayangan menyala + lapisan `stage-overlay` terlihat), hias tanpa kartu QR, lalu "Selesai & Unduh" → mendarat di `/s/{id}` dan `<img alt="Strip">` memuat PNG bertanda tangan dari `storage/v1/object/sign`. Konteks ketiga tanpa token melihat "Estafet ini sudah selesai." tanpa tautan, dan payload halamannya tidak memuat path `/s/{id}` maupun URL bertanda tangan (regresi untuk temuan major). Pembuat membuka `/r` lagi: tautan "Lihat strip" menunjuk path yang sama, lalu "Batalkan dan Hapus" menghapus stripnya (halaman `/s/{id}` berikutnya menjawab 404)|
+|Giliran sekali (SE-06)|Konteks ketiga setelah klaim API: "Estafet ini sudah diambil." dan tombol "Ambil Giliran" tidak ada|
+|Klaim bersamaan|Dua `POST /api/relays/{id}/claim` paralel: tepat satu 200 dan satu 409 (bukan mock: Postgres sungguhan)|
+|SE-10 (P1) hias ulang salinan pembuat|Di uji yang sama, setelah melihat tautan strip, pembuat menekan "Hias ulang salinanmu" → mendarat di `/booth/customize`, kanvas tampil, lencana kepala panel menunjukkan "4 foto siap" (semua slot termuat dari URL bertanda tangan), dan kartu "QR di strip" tidak ada|
+|404|`/r/tidakada1234` → 404 + "Halaman tidak ditemukan." (tanpa gerbang env)|
+
+Tiga kegagalan awal yang ditemukan dan diperbaiki selama pengujian ini: (1) `useSyncExternalStore` di view relay mengembalikan objek baru tiap panggilan → render tanpa henti dan halaman teman tidak pernah siap (sekarang snapshot-nya string mentah + `useMemo`); (2) `reset()` sebelum `router.push("/s/{id}")` membuat gerbang langkah booth mengalihkan ke pemilih layout lebih dulu (sekarang hanya rekaman perangkat dan irisan estafet yang dilepas); (3) kuota pembuatan 10 link per jam per sidang dipakai bersama antar-uji (sekarang tiap uji memasang `x-real-ip` sendiri, lihat catatan di atas).
+
+### Hasil security-reviewer (temuan major diperbaiki, sisanya dicatat)
+
+Peninjauan baca-saja atas `src/app/api/relays/**`, `src/lib/supabase/{relays,storage}.ts`, `src/lib/{relaySlots,rateLimit,schemas,tokens,expiry}.ts`, `src/app/r/[id]/page.tsx`, `src/features/relay/**`, dan migrasi `relays` (agent `security-reviewer`, tanpa blocker).
+
+|Tingkat|Temuan|Tindakan|
+|---|---|---|
+|major|Gate token di `/r/[id]` status `complete` hanya presentasional: halaman server mengirim `stripId` dan URL baca bertanda tangan untuk semua slot ke props komponen klien, jadi siapa pun pemegang link estafet bisa membacanya dari payload RSC/HTML tanpa token (desain M8 keputusan 7 menjanjikan sebaliknya)|**Diperbaiki.** Rute baru `POST /api/relays/[id]/strip` memverifikasi `x-relay-token` terhadap hash pembuat/tamu di server, lalu mengembalikan `stripId`, `expiresAt`, peran, dan URL slot berumur 1 jam. Halaman `/r/[id]` status `complete` tidak lagi membaca tabel `strips` maupun menandatangani apa pun; `RelayCompleteView` meminta datanya sendiri setelah tokennya terbaca (keadaan memuat/gagal/siap). Dijaga 4 kasus unit baru di `tests/api-relays.test.ts`|
+|minor|`claim` tanpa gate jenis isi: POST sederhana (form/`no-cors`) lintas situs bisa membakar giliran sekali pakai|**Diperbaiki.** `claim` menolak permintaan yang bukan `application/json` (400), klien resmi mengirim body JSON kosong, dan e2e mengirim `data: {}`. Dijaga uji unit baru|
+|minor|Tidak ada validasi runtime baris DB (`slots` diasumsikan array; `row.layout in LAYOUTS` menembus rantai prototipe)|**Diperbaiki sebagian.** `relaySlotsOf(row)` memeriksa bentuk tiap slot dan dipakai semua konsumen (halaman `/r`, rute claim/complete/strip, pembersih), dan `Object.hasOwn(LAYOUTS, …)` menggantikan `in`. Constraint `check (jsonb_typeof(slots) = 'array')` dan daftar layout tertutup diusulkan untuk M9 (perlu migrasi baru)|
+|minor|Balapan di jalur pemulihan: dua `complete` bersamaan saat stripnya sudah dihapus sama-sama membuat draf baru → dua baris `strips` ber-`relay_id` sama (tanpa unique index); jalur utamanya sendiri sudah aman (tepat satu pemenang)|**Diterima, dicatat.** Perbaikannya butuh kolom `strip_id` di `relays` + UPDATE bersyarat (migrasi baru). Dampaknya: satu baris yatim yang dibersihkan cron, dan pilihan tautan yang nondeterministik pada kasus langka itu|
+|minor|Tanpa rate limit untuk `claim`/`complete`: (i) pemegang id bisa membebani Storage lewat HEAD berulang di `claim`; (ii) loop `complete` → `DELETE /api/strips/[id]` bisa mencetak baris `strips` tanpa kuota (`rate_key` kosong)|**Diterima, dicatat.** (i) terbatas 2 permintaan HEAD per panggilan dan berhenti begitu status bukan `waiting`; (ii) id dan token tetap diperlukan, dan tiap putaran butuh token tamu yang sah. Bila kelak perlu, tambahkan hitungan baris per `relay_id` di `complete`|
+|—|Catatan non-keamanan: ARCHITECTURE §7 menyebut field "waktu isi" di `slots` yang tidak ada di implementasi|**Dicatat.** Slot menyimpan `{ index, owner, path }`; waktu isi tidak dipakai fitur mana pun hari ini. Dokumen tidak diubah diam-diam|
+
+Titik yang dinyatakan benar oleh peninjau: token 32 bita acak + SHA-256 + perbandingan waktu tetap; RLS tanpa policy; bucket privat; verifikasi HEAD pasca-unggah; UPDATE bersyarat sekali-pakai untuk claim/complete; balasan API tidak membocorkan hash maupun path slot teman; balasan 422 berisi URL unggah tidak menaikkan hak (token diperiksa lebih dulu dan hanya slot `guest` yang ditandatangani); halaman `/s` dan `/r` sudah `noindex` + `no-referrer`.
+
+### Batas aman
+
+Migrasi `20261014000000_relays.sql` sudah diterapkan ke proyek Supabase `snapme` (ref `owdjkpzywzljnvuyfiui`) lewat `npx supabase db push` **atas persetujuan pengguna di sesi ini**; `npx supabase migration list` mengonfirmasi `20261014000000` ada di remote. Isinya: tabel `relays` (RLS menyala tanpa policy), dua indeks, dan `image/jpeg` ditambahkan ke daftar jenis bucket. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau agent setelah disetujui.

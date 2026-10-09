@@ -3,6 +3,9 @@
    `expires_at`) dan saat membaca (menjawab 410 walau pembersih belum jalan). */
 
 export const STRIP_TTL_DAYS = 7
+/* M8 (SE-08): link estafet aktif 48 jam sejak dibuat dan tidak diperpanjang
+   saat temannya mengambil giliran atau menuntaskan strip. */
+export const RELAY_TTL_HOURS = 48
 /* Draf yang tidak pernah diselesaikan (pengguna menutup halaman sebelum
    mengunggah) tidak punya `expires_at`; pembersih membuangnya setelah ini. */
 export const STALE_DRAFT_HOURS = 24
@@ -18,6 +21,11 @@ const DAY_MS = 24 * HOUR_MS
 
 export function stripExpiry(from: Date): Date {
   return new Date(from.getTime() + STRIP_TTL_DAYS * DAY_MS)
+}
+
+/** M8 (SE-08): link estafet kedaluwarsa 48 jam sejak dibuat. */
+export function relayExpiry(from: Date): Date {
+  return new Date(from.getTime() + RELAY_TTL_HOURS * HOUR_MS)
 }
 
 export function deletedGraceExpiry(from: Date): Date {

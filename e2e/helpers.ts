@@ -15,13 +15,23 @@ export async function matikanGesture(page: Page): Promise<void> {
   })
 }
 
-/** Pilih layout mana pun lalu masuk ke langkah Ambil Foto. */
+/** Pilih layout mana pun lalu masuk ke langkah Ambil Foto.
+
+ *  Pemilihan radio diulang sampai tombolnya benar-benar menyala: di server
+ *  pengembangan yang baru dinyalakan, halaman bisa dikompilasi (dan dimuat
+ *  ulang) setelah `goto`, jadi klik pertama kadang jatuh sebelum React
+ *  terhidrasi dan tidak mengubah state. */
 export async function masukAmbilFotoLayout(
   page: Page,
   label: string
 ): Promise<void> {
   await page.goto("/booth/layout")
-  await page.getByRole("radio", { name: label }).check()
+  await expect(async () => {
+    await page.getByRole("radio", { name: label }).check()
+    await expect(page.getByRole("button", { name: "Mulai Foto" })).toBeEnabled({
+      timeout: 1_000,
+    })
+  }).toPass({ timeout: 30_000 })
   await page.getByRole("button", { name: "Mulai Foto" }).click()
   await page.waitForURL("**/booth/capture")
 }

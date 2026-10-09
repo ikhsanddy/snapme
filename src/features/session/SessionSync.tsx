@@ -44,6 +44,8 @@ export function SessionSync() {
           texts: record.texts,
           showDate: record.showDate,
           share: record.share,
+          relay: record.relay ?? null,
+          localOnly: record.localOnly === true,
         })
       } else if (stored !== null && record === null) {
         /* Rekaman rusak atau dari versi lain: dibuang. */

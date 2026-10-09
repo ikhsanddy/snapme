@@ -1,7 +1,13 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb"
 
 import { LAYOUTS, type LayoutId } from "@/lib/layouts"
-import type { ShareState, Shot, StickerInstance, StripText } from "@/stores/booth"
+import type {
+  RelaySession,
+  ShareState,
+  Shot,
+  StickerInstance,
+  StripText,
+} from "@/stores/booth"
 
 /* FR-14: sesi bertahan saat halaman dimuat ulang. Hanya state yang perlu
    dipulihkan yang disimpan; pengaturan perangkat punya jalurnya sendiri
@@ -28,6 +34,13 @@ export interface SessionRecord {
    *  localStorage (`features/share/stripToken.ts`), jadi rekaman ini tidak
    *  berisi rahasia. */
   share: ShareState
+  /** M8: irisan estafet bila sesi ini milik estafet. Token tidak ikut, sama
+   *  seperti token hapus: ia tinggal di perangkat (`features/relay/relayToken.ts`).
+   *  Rekaman lama tanpa bidang ini tetap valid. */
+  relay?: RelaySession | null
+  /** M8 (SE-10): sesi lokal dari estafet yang sudah selesai; menetap supaya
+   *  muat ulang tidak mengubahnya jadi sesi yang bisa mengunggah lagi. */
+  localOnly?: boolean
 }
 
 /** Bagian state sesi yang disimpan. `settings` dan `sessionReady` bukan milik
@@ -42,6 +55,8 @@ export type SessionState = Pick<
   | "texts"
   | "showDate"
   | "share"
+  | "relay"
+  | "localOnly"
 >
 
 interface SessionDb extends DBSchema {
@@ -131,6 +146,28 @@ function isShare(value: unknown): value is ShareState {
   return strip.expiresAt === null || typeof strip.expiresAt === "string"
 }
 
+function isRelay(value: unknown): value is RelaySession {
+  if (typeof value !== "object" || value === null) {
+    return false
+  }
+  const relay = value as Record<string, unknown>
+  if (
+    typeof relay.id !== "string" ||
+    relay.id.length < SHARE_ID_MIN ||
+    relay.id.length > SHARE_ID_MAX
+  ) {
+    return false
+  }
+  if (relay.role !== "host" && relay.role !== "guest") {
+    return false
+  }
+  return (
+    Array.isArray(relay.lockedSlots) &&
+    relay.lockedSlots.every((slot) => isNumber(slot) && Number.isInteger(slot)) &&
+    typeof relay.ghostEnabled === "boolean"
+  )
+}
+
 export function serializeSession(state: SessionState): SessionRecord {
   return {
     version: SESSION_VERSION,
@@ -147,6 +184,8 @@ export function serializeSession(state: SessionState): SessionRecord {
     texts: state.texts,
     showDate: state.showDate,
     share: state.share,
+    relay: state.relay ?? null,
+    localOnly: state.localOnly ?? false,
   }
 }
 
@@ -199,6 +238,16 @@ export function validateRecord(value: unknown): SessionRecord | null {
   if (share !== undefined && !isShare(share)) {
     return null
   }
+  /* M8: rekaman sebelum estafet tidak punya `relay`; bentuknya diterima apa
+     adanya dengan nilai null, jadi versi rekaman tidak perlu dinaikkan. */
+  const relay = record.relay
+  if (relay !== undefined && relay !== null && !isRelay(relay)) {
+    return null
+  }
+  const { localOnly } = record
+  if (localOnly !== undefined && typeof localOnly !== "boolean") {
+    return null
+  }
 
   return {
     version: SESSION_VERSION,
@@ -210,6 +259,8 @@ export function validateRecord(value: unknown): SessionRecord | null {
     texts: record.texts as StripText[],
     showDate: record.showDate,
     share: share === undefined ? { qrEnabled: false, strip: null } : share,
+    relay: relay === undefined ? null : (relay as RelaySession | null),
+    localOnly: localOnly === true,
   }
 }
 

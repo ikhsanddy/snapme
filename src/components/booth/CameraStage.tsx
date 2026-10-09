@@ -44,6 +44,9 @@ interface CameraStageProps {
   onShoot: () => void
   children?: ReactNode
   hud?: ReactNode
+  /** M8 (SE-05): lapisan di atas pratinjau, dipakai untuk bayangan pose foto
+   *  pembuat di layar teman. Di bawah HUD, hitung mundur, dan braket bidik. */
+  overlay?: ReactNode
 }
 
 function PermissionScreen({
@@ -104,6 +107,7 @@ export function CameraStage({
   onShoot,
   children,
   hud,
+  overlay,
 }: CameraStageProps) {
   /* Tanpa kamera (belum izin atau izin ditolak) kontrol jepret tidak ditampilkan
      supaya tidak menutupi tombol izin. */
@@ -153,6 +157,18 @@ export function CameraStage({
         />
       ) : null}
       {phase === "idle" || phase === "denied" ? null : children}
+
+      {/* M8 (SE-05): bayangan pose teman, opasitasnya diatur pemanggil. z-[5]
+          menjaga braket bidik (z-10) tetap di atasnya. */}
+      {overlay === undefined || phase === "idle" || phase === "denied" ? null : (
+        <div
+          aria-hidden
+          data-testid="stage-overlay"
+          className="pointer-events-none absolute inset-0 z-[5] opacity-35"
+        >
+          {overlay}
+        </div>
+      )}
 
       {hud === undefined ? null : (
         <div className="absolute inset-x-0 top-3.5 flex justify-center px-4 md:top-7 md:px-16">
