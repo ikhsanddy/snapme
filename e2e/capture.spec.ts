@@ -1,43 +1,24 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test } from "@playwright/test"
+
+import {
+  izinkanKamera,
+  jepret,
+  masukAmbilFoto,
+  matikanGesture,
+  srcSlot,
+} from "./helpers"
 
 /* FR-04 sampai FR-07 dengan kamera palsu Chromium (ARCHITECTURE §10).
-   Konvensi navigasi mengikuti e2e/welcome-to-capture.spec.ts. */
+   Alur menuju langkah booth ada di e2e/helpers.ts. */
+
+test.beforeEach(async ({ page }) => {
+  await matikanGesture(page)
+})
 
 declare global {
   interface Window {
     __flashSeen?: boolean
   }
-}
-
-async function masukAmbilFoto(page: Page) {
-  await page.goto("/booth/layout")
-  await page.getByRole("radio", { name: "Strip 4 foto" }).check()
-  await page.getByRole("button", { name: "Mulai Foto" }).click()
-  await page.waitForURL("**/booth/capture")
-}
-
-async function izinkanKamera(page: Page) {
-  await page.getByRole("button", { name: "Izinkan Kamera" }).click()
-  await expect(page.locator("video")).toBeVisible()
-  /* Elemen video muncul sebelum izin selesai: tunggu bingkai pertama. */
-  await expect
-    .poll(() =>
-      page.evaluate(() => document.querySelector("video")?.videoWidth ?? 0)
-    )
-    .toBeGreaterThan(0)
-}
-
-async function jepret(page: Page) {
-  await page.getByRole("button", { name: "Ambil foto" }).click()
-  await expect(page.getByRole("status")).toBeVisible()
-  await expect(page.getByRole("status")).toHaveCount(0)
-}
-
-async function srcSlot(page: Page, nomor: number) {
-  return page
-    .getByRole("button", { name: `Ulang foto ${nomor}` })
-    .locator("img")
-    .getAttribute("src")
 }
 
 test("empat foto terambil, satu diulang, lalu lanjut ke hias", async ({ page }) => {
@@ -68,8 +49,8 @@ test("empat foto terambil, satu diulang, lalu lanjut ke hias", async ({ page }) 
   /* FR-07: ulang foto terakhir mengganti slot 2 tanpa menghapus slot 1. */
   const sebelum = await srcSlot(page, 2)
   await page.getByRole("button", { name: "Ulang foto terakhir" }).click()
-  await expect(page.getByRole("status")).toBeVisible()
-  await expect(page.getByRole("status")).toHaveCount(0)
+  await expect(page.getByTestId("countdown")).toBeVisible()
+  await expect(page.getByTestId("countdown")).toHaveCount(0)
   await expect.poll(() => srcSlot(page, 2)).not.toBe(sebelum)
 
   const slot1Sesudah = await srcSlot(page, 1)
@@ -84,8 +65,8 @@ test("empat foto terambil, satu diulang, lalu lanjut ke hias", async ({ page }) 
   /* FR-07: ulang foto tertentu saat semua slot terisi. */
   const slot1Lengkap = await srcSlot(page, 1)
   await page.getByRole("button", { name: "Ulang foto 1" }).click()
-  await expect(page.getByRole("status")).toBeVisible()
-  await expect(page.getByRole("status")).toHaveCount(0)
+  await expect(page.getByTestId("countdown")).toBeVisible()
+  await expect(page.getByTestId("countdown")).toHaveCount(0)
   await expect.poll(() => srcSlot(page, 1)).not.toBe(slot1Lengkap)
   await expect(page.getByText("4/4")).toBeVisible()
 
@@ -95,7 +76,9 @@ test("empat foto terambil, satu diulang, lalu lanjut ke hias", async ({ page }) 
 
   await expect(page).toHaveURL("/booth/customize")
   await expect(page.getByRole("heading", { name: "Hias Strip" })).toBeVisible()
-  await expect(page.getByText("4 foto siap")).toBeVisible()
+  /* Persis: rute lama tetap ada di DOM secara tersembunyi (Next menyimpannya),
+     dan HUD halaman capture memuat teks "4 foto siap dihias". */
+  await expect(page.getByText("4 foto siap", { exact: true })).toBeVisible()
 })
 
 test("izin ditolak menampilkan pesan dan jalan keluar", async ({ page }) => {
@@ -123,7 +106,7 @@ test("Spasi mengambil foto saat fokus di area kamera", async ({ page }) => {
   await page.getByRole("group", { name: "Area kamera" }).focus()
   await page.keyboard.press("Space")
 
-  await expect(page.getByRole("status")).toHaveText("3")
+  await expect(page.getByTestId("countdown")).toHaveText("3")
   await expect(page.getByText("1/4")).toBeVisible()
 })
 

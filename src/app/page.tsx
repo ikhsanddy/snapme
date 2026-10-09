@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react/ssr"
 
 import { SiteHeader } from "@/components/site/SiteHeader"
+import { GalleryPicker } from "@/components/site/GalleryPicker"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -64,6 +65,7 @@ export default function Home() {
                     />
                   </Link>
                 </Button>
+                <GalleryPicker />
               </div>
             </div>
 

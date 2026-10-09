@@ -1,11 +1,17 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
-/* Audit aksesibilitas otomatis (WCAG 2.2 AA) untuk halaman M1.
+import { masukHias, matikanGesture } from "./helpers"
+
+/* Audit aksesibilitas otomatis (WCAG 2.2 AA) untuk halaman M1 sampai M4.
    Alat otomatis hanya menangkap sebagian hambatan: uji keyboard dan
    pembaca layar manual tetap dijalankan terpisah (MILESTONES M9). */
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
+
+test.beforeEach(async ({ page }) => {
+  await matikanGesture(page)
+})
 
 async function pilihLayoutLaluMasukFoto(page: Page) {
   await page.goto("/booth/layout")
@@ -37,6 +43,7 @@ const HALAMAN: {
     },
   },
   { nama: "ambil foto", siapkan: pilihLayoutLaluMasukFoto },
+  { nama: "hias strip", siapkan: masukHias },
 ]
 
 for (const viewport of [

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Berkas wasm MediaPipe yang disalin apa adanya ke public/ (ARCHITECTURE §4).
+    "public/mediapipe/**",
   ]),
 ]);
 

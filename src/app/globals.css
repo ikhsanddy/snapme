@@ -125,8 +125,12 @@
   background-size: 56px 56px;
 }
 
-/* DESIGN-SYSTEM §5: wadah halaman. */
+/* DESIGN-SYSTEM §5: wadah halaman.
+   `width: 100%` wajib: tanpa itu `margin-inline: auto` mematikan peregangan
+   flex pada sumbu silang (CSS Flexbox §9.4), sehingga wadah mengecil mengikuti
+   isinya, bukan melebar sampai 1280 px seperti di halaman acuan. */
 @utility page-container {
+  width: 100%;
   max-width: 1280px;
   margin-inline: auto;
   padding-inline: clamp(16px, 3vw, 40px);

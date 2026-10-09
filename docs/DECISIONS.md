@@ -195,4 +195,216 @@ Catatan dari penulisan uji:
 |Legenda gesture, sakelar Gesture Snap, GestureHUD, RelayInviteCard, kata "gesture" di baris privasi|§10.2 menggambarkannya lengkap|Milik M3 dan M8|Tidak dirender di M2; baris privasi berbunyi "Kamera berjalan di perangkat ini." Kartu tip lime tetap ada dengan tiga baris yang benar untuk M2|
 |Tombol pemilih kamera di kepala panel|Tidak ada di acuan|FR-08 (P1) menambahkannya|Tombol `neutral sm` berlabel perangkat + daftar tombol perangkat (pola disclosure, bukan komponen baru). Hanya dirender bila perangkat lebih dari satu|
 |Aksi utama jingga ganda saat semua slot terisi|§2: satu aksi utama jingga per layar|Tombol jepret dan "Lanjut Hias" sama-sama jingga, persis seperti acuan|Diikuti acuan; keduanya memang disebut di §2 dan §9|
-|Jeda antar angka hitung mundur|§7 menetapkan animasi angka 500 ms, tidak menetapkan jeda antar angka. `capture.html` memakai 800 ms|FR-06 menyebut hitung mundur 3 detik|1000 ms per angka (3, 2, 1) supaya totalnya pas 3 detik seperti FR-06; animasi masuknya tetap 500 ms dengan lewatan 1,08 seperti §7. 800 ms di acuan hanya pacing demo|
+| Jeda antar angka hitung mundur | §7 menetapkan animasi angka 500 ms, tidak menetapkan jeda antar angka. `capture.html` memakai 800 ms| FR-06 menyebut hitung mundur 3 detik| 1000 ms per angka (3, 2, 1) supaya totalnya pas 3 detik seperti FR-06; animasi masuknya tetap 500 ms dengan lewatan 1,08 seperti §7. 800 ms di acuan hanya pacing demo|
+
+## M3 Gesture Snap (9 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M3
+
+`npx skills find` dijalankan untuk dua kata kunci milestone (`mediapipe`, `web performance`):
+
+|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
+|---|---|---|---|
+|`mediapipe`|`kinemotioninc/kinemotion@mediapipe-pose-detection`|82|Tidak dipasang: di bawah 100 pemasangan dan penulis tak dikenal|
+||`liuchiawei/agent-skills@mediapipe-usage`|61|Tidak dipasang: alasan sama|
+||`omer-metin/skills-for-antigravity@hand-gesture-recognition`|38|Tidak dipasang: alasan sama|
+|`web performance`|`vercel-labs/agent-skills@vercel-react-best-practices`|778,6 ribu|Sudah terpasang sejak M0|
+||`cloudflare/skills@web-perf`|93 ribu|**Dipasang 9 Oktober 2026** setelah pengguna menyetujui usulan M3|
+
+**Keputusan pemasangan saat milestone: tidak ada yang dipasang sendiri.** Semua kandidat `mediapipe` berada di bawah ambang kelayakan find-skills (sumber tak dikenal, pemasangan sedikit); rujukan yang dipakai adalah dokumentasi resmi Google AI Edge untuk Gesture Recognizer Web, yang juga menjadi sumber URL model dan wasm. `cloudflare/skills@web-perf` (93 ribu pemasangan, sumber resmi Cloudflare) diusulkan ke pengguna dan dipasang setelah disetujui.
+
+### Skill `web-perf` yang dipasang
+
+Perintah: `npx skills add cloudflare/skills --skill web-perf -a universal -y`. Terpasang di `.agents/skills/web-perf/` dan tercatat di `skills-lock.json`; pemeriksaan kelayakan sebelum pasang: sumber resmi Cloudflare (repo `cloudflare/skills`, 3.014 bintang, lisensi Apache-2.0, push terakhir 9 Oktober 2026, tidak diarsipkan), 93 ribu pemasangan, penilaian otomatis skill.sh "Safe". Isinya memandu audit performa (Core Web Vitals, Lighthouse, analisis trace) dengan sumber retrieval resmi (web.dev, Chrome DevTools docs). Relevan untuk butir kinerja PRD §8 dan milestone M9; pemakaiannya belum dijalankan di M3.
+
+### Aset wasm dan model
+
+- `public/mediapipe/wasm/` berisi enam berkas salinan `node_modules/@mediapipe/tasks-vision/wasm/` (`vision_wasm_internal.{js,wasm}`, `vision_wasm_module_internal.{js,wasm}`, `vision_wasm_nosimd_internal.{js,wasm}`). Disalin apa adanya, tidak ada CDN (ARCHITECTURE §4, §8). Berkas-berkas ini dikecualikan dari ESLint lewat `globalIgnores` karena ditulis Emscripten dan gagal aturan proyek (`require()`, alias `this`).
+- `public/models/gesture_recognizer.task` (8.373.332 bita) diunduh dari URL resmi dokumentasi GestureRecognizer Web: `https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task`.
+- `FilesetResolver.forVisionTasks("/mediapipe/wasm")` dan `modelAssetPath: "/models/gesture_recognizer.task"`: tidak ada permintaan ke luar origin saat deteksi berjalan. Dibuktikan uji Playwright GS-01.
+
+### Ambang awal dan satu penyimpangan rumus laju
+
+`src/features/gesture/thresholds.ts` memuat nilai awal PRD §7.2: skor 0,6, tahan 800 ms, jeda 1.500 ms setelah foto, interval deteksi 80 ms (sekitar 12,5 kali per detik), bingkai diperkecil 320 px.
+
+**Penyimpangan dari rencana M3.** Rencana menjadwalkan tik berikutnya `max(0, 80 - elapsed)`. Diukur di Chromium headless tanpa GPU: satu inferensi memakan ratusan milidetik, sehingga jadwal itu berubah menjadi loop tanpa jeda yang memenuhi main thread. Akibatnya klik "Ambil foto" tertunda rata-rata 1,2 detik dan timer hitung mundur meleset. Perbaikannya: jeda minimal sama dengan durasi inferensi itu sendiri (`max(80 - elapsed, elapsed)`), jadi perangkat lambat turun ke siklus 50 persen dan timer UI tetap jalan. Perangkat yang sanggup inferensi di bawah 80 ms tetap 12,5 kali per detik.
+
+### Penyimpangan M3
+
+|Hal|Dokumen atau acuan|Kenyataan|Tindakan|
+|---|---|---|---|
+|Keadaan HUD "siap"|`capture.html` merendernya sebagai tombol demo `onClick=`|Klik tidak punya makna di produk, dan §11 meminta HUD memakai `role="status"`|Dirender sebagai `role="status"` noninteraktif|
+|Durasi indikator tahan|Animasi `hold` di `capture.html` 900 ms|PRD GS-02 menetapkan 0,8 detik|800 ms (`HOLD_DURATION_MS`); batang mengikuti progres sampel, bukan animasi tetap|
+|Keadaan "Menyiapkan gesture..."|§9 menyebut empat keadaan HUD|GS-07 meminta status memuat|Ditambah keadaan kelima `loading` di luar empat keadaan acuan|
+|Delegate model|Rencana: GPU dengan fallback CPU|Di headless tanpa WebGL, `createFromOptions` gagal dan fallback CPU dipakai otomatis|GPU dulu, satu percobaan ulang dengan CPU; kegagalan keduanya memicu jalur GS-07 (sakelar disembunyikan, satu toast)|
+|`numHands`|GS-10 (P1) meminta dua tangan|Konfigurasi model tidak bisa diubah tanpa memuat ulang model|`numHands: 2` dipasang sejak P0 supaya GS-10 tidak mengubah konfigurasi|
+|Legenda gesture di kartu lime|Acuan memakai tiga baris (dua jari, telapak, jempol)|GS-08 dan GS-09 adalah P1|P0 sempat memakai dua baris; setelah P1 dikerjakan di sesi yang sama, legenda kembali ke tiga baris acuan persis (`HandPeace`, `HandPalm`, `ThumbsUp`)|
+|Penanganan gesture P1|GS-08 (telapak mengulang foto terakhir), GS-09 (jempol lanjut ke hias), GS-10 (dua tangan)|Dikerjakan setelah P0 tuntas di sesi yang sama|`useGestureSnap` menangani aksi `retake` pada fase `ready` dan `complete` (dispatch `SHOOT` dengan target) dan `proceed` pada fase `complete` (`onProceed`). Loop juga berjalan di fase `complete` saat ada foto yang bisa diulang; kedua aksi tidak menyentuh fase `holding` mesin. GS-10 hanya konfigurasi `numHands: 2`|
+|Uji kamera di Playwright|Rencana: seluruh uji memakai bawaan sakelar menyala|Chromium headless tanpa GPU butuh ratusan milidetik per inferensi, sehingga hitung mundur pada uji alur kamera bisa meleset|`e2e/capture.spec.ts` mematikan sakelar lewat localStorage (berkas ini menguji kamera, bukan gesture); `e2e/gesture.spec.ts` menguji sakelar menyala dan menunggu model siap sebelum memotret|
+|Batas `expect` Playwright|Bawaan 5 detik|Inisialisasi model dan inferensi pertama di headless memblokir main thread beberapa detik|`expect.timeout` 15 detik di `playwright.config.ts`, dengan komentar alasan|
+|Wrapper `foto`/`sampel` uji|Uji M2 memakai `getByRole("status")` untuk hitung mundur|HUD gesture juga `role="status"` sehingga selektornya ambigu|`CountdownOverlay` diberi `data-testid="countdown"`; helper uji memakai selektor itu|
+|Pil HUD di 360 px|`capture.html` satu baris (252 x 44 px)|Dengan fon yang sama (Space Grotesk 700 15 px) produk butuh sekitar 264 px, jadi teks membungkus dua baris dan pil menjadi 49 px|Dibiarkan membungkus: min-height 44 px tetap terpenuhi dan pil tetap di tengah. Perbedaan lebar berasal dari rupa fon acuan di lingkungan uji, bukan dari token|
+
+### Perbandingan berdampingan dengan `capture.html`
+
+Dijalankan dengan Playwright pada 1280 dan 360 px, memakai `getComputedStyle` dan `getBoundingClientRect`; tangkapan layarnya sementara dan tidak disimpan di repo.
+
+|Bagian|Acuan|Produk|
+|---|---|---|
+|Pil siap 1280 px|297 x 44, `paper`, garis 2 `ink`, radius 999, 15 px/700, padding 0 16, gap 10|297 x 44, nilai sama persis|
+|Pil siap 360 px|252 x 44, satu baris|244 x 49, dua baris (lihat penyimpangan di atas)|
+|Pil selesai|187 px, `lime`, radius 999, 15 px/700, gap 8|187 px, `lime`, radius 999, 15 px/700, gap 8|
+|Pil menahan|`lime`, radius 16, padding 10 16, gap 6, batang 8 px `violet` di rel `paper`|Nilai sama dari `GestureHUD`; keadaan menahan hanya bisa dipicu tangan sungguhan, jadi dibuktikan uji komponen `tests/gesture-hud.test.tsx` (lebar batang mengikuti progres)|
+|Sakelar Gesture Snap|`paper`, garis 2 `ink`, radius 999, min-height 44, padding 0 8 0 16, 15 px/700, chip `lime` "Nyala" / `cream` "Mati"|Sama persis sampai ukuran chip; `aria-pressed` mengikuti keadaan|
+|Legenda|"Dua jari: mulai hitung mundur", "Telapak: ulang foto terakhir", "Jempol: lanjut ke hias"|Sama persis|
+|Baris privasi|"Kamera dan deteksi gesture berjalan di perangkat ini. Tidak ada yang diunggah."|Sama persis|
+
+### Sumber satu-satunya modul MediaPipe
+
+`src/features/gesture/gestureSource.ts` adalah satu-satunya pengimpor `@mediapipe/tasks-vision`, dan impornya dinamis (`await import(...)`) sesuai ARCHITECTURE §9, jadi bundel Welcome dan langkah lain tidak ikut berat. Impor statis sengaja dihindari; alasannya ditulis di komentar berkas itu.
+
+Perkakas: `createGestureSource` mengembalikan `start` (mulai loop), `stop` (jeda loop, model tetap hidup), dan `close` (tutup model). Pemisahan ini penting: menghentikan loop selama hitung mundur tidak boleh membuang model, kalau tidak setiap foto menunggu muat ulang model.
+
+### Uji manual (diisi pengguna)
+
+Agent tidak bisa memverifikasi deteksi gesture dengan kamera palsu: kamera palsu tidak punya tangan. Isi tabel ini setelah mencoba di perangkat nyata: buka `/booth/capture`, nyalakan Gesture Snap, lakukan 10 kali tanda dua jari di bawah cahaya yang biasa dipakai, dan catat berapa yang memicu hitung mundur.
+
+|Perangkat|Browser|Cahaya|Berhasil dari 10|Catatan|
+|---|---|---|---|---|
+| | | | | |
+| | | | | |
+
+Ambang akhir yang dipakai: skor 0,6, tahan 800 ms, jeda 1.500 ms, interval 80 ms. Bila hasil uji manual menunjukkan lemah, ubah hanya `src/features/gesture/thresholds.ts` (satu berkas konstanta, ARCHITECTURE §6) dan ulangi tabel di atas.
+
+
+## M4 Hias strip (9 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M4
+
+`npx skills find` dijalankan untuk tiga kata kunci milestone (`canvas`, `konva`, `image generation`):
+
+|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
+|---|---|---|---|
+|`konva`|`terminalskills/skills@konva`|18|Tidak dipasang: di bawah ambang 100 pemasangan dan penulis tak dikenal|
+||`p7gg/skills@konva-js`|7|Tidak dipasang: alasan sama|
+|`canvas`|`anthropics/skills@canvas-design`|114,8 ribu|Tidak dipasang: artefak poster PNG/PDF, bukan editor kanvas|
+||`currents-dev/playwright-best-practices`|91,2 ribu|Tidak dipasang: konvensi Playwright repo sudah terbentuk sejak M1|
+|`image generation`|`leonxlnx/taste-skill@imagegen-frontend-web`|346,4 ribu|**Dipasang 9 Oktober 2026** setelah pengguna menyetujui|
+||`101-skills/superpowers@ai-image-generation`|705,2 ribu|Tidak dipasang: fork yang tidak jelas asalnya|
+
+`imagegen-frontend-web` terpasang di `.agents/skills/imagegen-frontend-web/` (`npx skills add leonxlnx/taste-skill --skill imagegen-frontend-web -a universal -y`) dan tercatat di `skills-lock.json`. Sumbernya repo yang sudah dipakai sejak M0 (`Leonxlnx/taste-skill`), penilaian otomatis skill.sh "Safe". Rujukan teknis kanvas tetap dokumentasi resmi konva.js dan react-konva; tiga kandidat `konva` di bawah ambang tidak dipasang.
+
+### 12 stiker: SVG ditulis tangan, bukan role `image`
+
+Keputusan pengguna untuk M4. DESIGN-SYSTEM §8 mengizinkan stiker dibuat dengan role `image` lalu ditinjau manusia; menulis SVG langsung menghindari langkah tinjauan gambar dan menjaga berkas tetap kecil (247 sampai 1.213 bita per berkas).
+
+Spesifikasi seragam: `viewBox="0 0 256 256"`, isian warna datar dari palet §2, `stroke="#141414" stroke-width="14" stroke-linejoin="round"`, tanpa gradasi, tanpa teks, tanpa `defs`/`style`/`filters`, dan gambar dijaga di dalam batas 10 px supaya garis tepi 14 px tidak terpotong bingkai. Nilai heks di `public/stickers/` boleh ada karena kriteria M0 memindai `src/` saja.
+
+Satu berkas diperbaiki setelah render pertama: `cloud.svg` semula tersusun dari tiga lingkaran bergaris; garis lingkaran yang tertimpa lingkaran berikutnya tetap terlihat sebagai busur hitam di dalam badan awan. Sekarang satu `<path>` tertutup yang menelusuri gabungan siluet (tiga busur atas plus alas membulat), jadi tidak ada garis dalam.
+
+### Frame sebagai data, bukan berkas di `public/frames/`
+
+ARCHITECTURE §4 mencantumkan `public/frames/`, tetapi frame di M4 adalah kombinasi warna geometris (latar, garis slot, warna wordmark) yang digambar Konva dari data. Aset raster akan menambah bobot dan kabur saat diskalakan ke 600 x 1800. `public/frames/` karena itu tidak dibuat, dan **frame ditunda sebagai keputusan yang perlu dikonfirmasi**: bila nanti frame bergambar memang diinginkan, ia masuk sebagai aset tambahan di samping enam frame warna ini.
+
+Enam pasangan warna yang dipakai semuanya ada di tabel kontras §2: `klasik` (paper/ink), `malam` (ink/paper/lime), `limau` (lime/ink), `gulali` (pink/ink), `ungu` (violet/paper), `permen` (violet-soft/ink).
+
+### Warna kanvas: token dibaca saat dipakai
+
+Konva butuh nilai warna konkret, sedangkan DESIGN-SYSTEM §14 melarang nilai mentah di komponen. `src/features/editor/tokenColor.ts` membaca variabel token dari elemen akar (`getComputedStyle(document.documentElement).getPropertyValue("--color-paper")`), dan `canvasFonts.ts` membaca nama keluarga fon hasil `next/font` dari elemen probe berkelas `font-display`/`font-sans`/`font-mono`. Jadi token tetap satu sumber kebenaran, dan kanvas tidak menyimpan salinan heks.
+
+Dibuktikan uji Playwright: piksel latar strip di kanvas sama dengan `paper` pada frame bawaan dan berubah jadi `ink` setelah memilih frame "Malam". Bila token tidak terbaca, nilainya kosong dan strip akan tembus pandang, sehingga pemeriksaan piksel ini menangkap kesalahan itu.
+
+### Cache filter Konva: `pixelRatio` 1, bukan 600 / lebar panggung
+
+Rencana M4 menetapkan `cachePixelRatio = 600 / lebar tampilan panggung`. Setelah membaca `Node.cache()` di konva 10, ternyata rect cache dihitung dengan `getClientRect({ skipTransform: true, relativeTo: parent })`, yaitu di ruang induk node dan tidak terpengaruh skala panggung. Artinya `pixelRatio: 1` sudah menghasilkan kanvas cache sebesar ukuran strip (mis. 528 x 372) dan tetap tajam saat ekspor, sedangkan nilai dari rencana akan membengkakkan memori tanpa menambah ketajaman. Dipakai `pixelRatio: 1` di `src/features/editor/filters.ts`.
+
+Pemetaan efek ke filter bawaan Konva: `pop` = HSV (saturation 1,6) + Contrast (1,15), `piksel` = Pixelate (pixelSize 12), `lembut` = Blur (1,2) + Brighten (0,08), sisanya Grayscale, Sepia, dan Invert tanpa parameter. Diuji di browser dengan membandingkan sidik jari piksel kanvas sebelum dan sesudah efek dipasang; Retro mengubahnya besar, Piksel mengubahnya kecil tetapi konsisten (foto uji berupa gradien halus, jadi blok 12 px hampir sama dengan aslinya).
+
+### Ekspor PNG (FR-11)
+
+`exportStrip` bekerja dengan mengubah ukuran panggung di tempat menjadi 600 x 1800 lalu memulihkannya. `Stage.toDataURL` merender ulang layer ke kanvas baru, jadi kanvas yang terlihat tidak tersentuh, dan ukuran/skala dipulihkan secara imperatif karena prop React-nya tidak berubah sehingga react-konva tidak akan memasangnya lagi. Transformer di dalam panggung disembunyikan selama ekspor lewat nama `editor-overlay`.
+
+Jalur kedua untuk batas 2 MB: bila PNG masih melebihi 2.097.152 bita, tiap foto slot digambar ulang lewat JPEG mutu 0,8 (menghaluskan derau yang tidak bisa dipadatkan PNG), lalu ekspor diulang sekali. Pada uji dengan foto gradien hasilnya 51 sampai 62 KB, jadi jalur ini belum pernah terpicu; ia tetap ada sebagai pagar untuk foto kamera sungguhan dan diuji manual pada M9.
+
+Nama berkas `snapme-YYYYMMDD-HHmm.png` memakai waktu lokal. Unduhan dibuat lewat `Blob` + `URL.createObjectURL` (bukan `data:` langsung) supaya tidak menyentuh batas panjang URL, dan URL-nya dilepas setelah 10 detik.
+
+### Ukuran strip di panggung dan tata letak kaki strip
+
+Empat angka yang lahir dari pembandingan berdampingan dengan `customize.html`:
+
+1. **Lebar panggung dijepit 180 sampai 216 px** (rencana menulis 320). Acuan memakai strip 210 px pada semua lebar. Pada 216 px panel produk setinggi 879 px dan halaman 987 px, hampir sama dengan acuan (871 dan 998 px), sehingga tombol "Selesai & Unduh" tetap dekat lipatan layar. Pada 320 px strip menjadi 960 px dan aksi utama terdorong jauh ke bawah.
+2. **Warna seluruh teks kaki strip mengikuti warna wordmark frame.** Semula teks pengguna memakai `ink` dan tanggal memakai `muted`; di frame "Malam" keduanya tidak terbaca (`ink` di atas `ink`) atau hanya 2,85 : 1 (`muted` di atas `ink`, di bawah batas 4,5 : 1 untuk teks 28 px yang dicetak sekitar 6,7 pt). Warna wordmark sudah dijamin lolos kontras §2 untuk setiap frame.
+3. **Kaki strip dibagi dua baris.** Baris atas 100 px untuk wordmark dan tanggal, sisanya untuk teks pengguna. Sebelumnya teks bawaan di y 1698 menimpa wordmark yang tegak di tengah kaki.
+4. **Posisi bawaan teks pengguna y 1696**, tepat di bawah baris atas kaki. Konva memakai `lineHeight` 1, jadi teks 44 px sepanjang 24 karakter paling banyak dua baris (88 px) dan tetap muat di dalam strip.
+
+### Penyimpangan M4
+
+|Hal|Dokumen atau acuan|Kenyataan|Tindakan|
+|---|---|---|---|
+|Kartu "Strip Hidup" dan "QR di strip" di rel kanan|§10.3 dan `customize.html` menampilkannya|Milik M6 dan M7|Tidak dirender di M4 sesuai keputusan pengguna. Rel kanan: ringkasan dan aksi utama saja|
+|Tombol "Cetak 4R"|§10.3 dan acuan menampilkannya|FR-12 milik M5|Belum dirender|
+|Frame sebagai berkas aset|ARCHITECTURE §4 mencantumkan `public/frames/`|Frame adalah data warna geometris|Folder tidak dibuat; alasannya di atas|
+|Tombol stiker|Acuan: "Ketuk untuk menempel atau melepas" (toggle demo)|Stiker bisa ditempel berkali-kali dan dihapus dari kanvas atau daftar|Tombol berarti tempel; kalimat bantu diubah mengikuti perilaku produk|
+|Tab "Teks"|Tidak ada di acuan|FR-10 (P1) menambah teks dan tanggal|Tab keempat ditambahkan; susunannya sama dengan tiga tab lain|
+|Daftar "Isi strip" di bawah kanvas|Tidak ada di acuan|§11 mewajibkan padanan daftar untuk kanvas|Bagian baru di kolom tengah, hanya dirender bila ada isi|
+|Pembacaan ukuran di daftar "Isi strip"|Rencana: `x · y · rotasi`|Kriteria M4 menuntut "Perbesar" terbukti menaikkan lebar, dan tak ada tempat lain yang menampilkannya|Pembacaan ditambah ukuran (`120 px`) dan tinggi fon (`44 px`)|
+|Pilihan hias di layar sempit|Acuan menampilkan rel pilihan secara inline pada 360 px|§9 menetapkan Drawer sebagai lembar bawah untuk pilihan hias di layar sempit|Di bawah 768 px rel kiri menjadi tombol "Hiasan" yang membuka lembar bawah. Diuji Playwright pada 360 px|
+|Chip "4 foto siap" di kepala panel|§10.3: "di kanan chip lime"|`BoothPanel` menaruh `chip` tepat setelah judul dan `actions` di kanan|Halaman Hias memakai `actions`, jadi chip berada di kanan seperti acuan; ditambah ikon centang seperti acuan|
+|Hook `useHtmlImage`|Rencana: paket `use-image` dihindari, ditulis sendiri|Satu berkas 30 baris tanpa dependensi baru|Ditulis di `src/features/editor/useHtmlImage.ts`|
+|Kembalian `exportStrip`|Rencana: `{ dataUrl, bytes }`|Jumlah bita hanya dipakai di dalam fungsi untuk memutuskan jalur kedua|Mengembalikan `dataUrl` saja; ambang 2 MB dijaga di dalam|
+|Impor tipe Konva|`konva` hanya mengekspor default|Tipe kelas diambil dari submodul (`konva/lib/Stage`, `konva/lib/shapes/Image`)|Sesuai peta ekspor paket; tidak ada impor nilai tambahan|
+|Peran ARIA tab pil|§9: `toggle-group` tunggal|Radix merender `radiogroup` dengan `radio` di dalamnya|Tidak diubah (perilaku dan aksesibilitas Radix tidak disentuh, ARCHITECTURE §2); uji memakai peran `radio`|
+|Utilitas `page-container`|§5: `max-width: 1280px` + `margin-inline: auto`|`margin-inline: auto` mematikan peregangan flex pada sumbu silang (CSS Flexbox §9.4), sehingga wadah mengecil mengikuti isi: panel 962 px, bukan 1203 px seperti acuan|Ditambah `width: 100%` di utilitas. Berlaku juga untuk Welcome dan Privasi, yang kini selebar acuan|
+
+### Perbandingan berdampingan dengan `customize.html`
+
+Diukur dengan `getBoundingClientRect` di Chromium pada 1280 x 900 dan 360 x 640; tangkapan layar tidak disimpan di repo.
+
+|Bagian|Acuan 1280|Produk 1280|Acuan 360|Produk 360|
+|---|---|---|---|---|
+|Panel utama|1203 x 871|1203 x 879|328 x 1941|328 x 1149|
+|Lebar kolom (kiri | tengah | kanan)|289 | 538 | 289|264 | 549 | 304|satu kolom|satu kolom|
+|Strip|210 x 639|216 x 648|210 x 639|216 x 648|
+|Tinggi dokumen|998|987|2158|1341|
+|Pil tab|106 / 94 / 105, tinggi 44|114 / 102 / 113, tinggi 44|sama|tombol "Hiasan" (panel di lembar bawah)|
+|Swatch frame (rasio 2 : 3)|87 x 131|79 x 118|85 x 127|panel di lembar bawah|
+|Jarak kisi swatch|14 px|14 px|14 px|14 px|
+
+Selisih yang tersisa punya sebab yang sudah dicatat: panel pada 360 px lebih pendek karena kartu Strip Hidup dan QR belum ada, dan pil tab sedikit lebih lebar karena rupa fon yang berbeda dari berkas acuan (yang memuat Google Fonts lewat `<link>`).
+
+### Uji manual yang perlu dilengkapi pengguna
+
+Agent tidak bisa memverifikasi dua hal dengan kamera palsu:
+
+1. **Foto kamera sungguhan dan batas 2 MB.** Foto gradien menghasilkan PNG 51 sampai 62 KB, jadi jalur kedua rekompresi JPEG belum terpicu. Buka `/booth/capture` di perangkat nyata, ambil empat foto, lalu "Selesai & Unduh": catat ukuran berkasnya. Bila di atas 2 MB, turunkan `JPEG_QUALITY` di `captureFrame.ts` (satu konstanta) dan catat di sini.
+2. **Cetak dan pindai QR.** Bagian ini milik M6 dan M9 (QR belum ada di strip).
+
+### Id preset dipisah dari data preset
+
+`stores/booth.ts` semula mengimpor `DEFAULT_FRAME_ID` dan `DEFAULT_EFFECT_ID` dari `presets.ts`. Akibatnya seluruh data preset (enam frame, tujuh efek, dua belas stiker beserta labelnya) ikut masuk bundel halaman yang tidak memakai kanvas: uji "konva tidak ikut termuat" menemukan teks `presets.ts` di salah satu skrip `/` lewat `GalleryPicker`, yang memakai store.
+
+Id bawaan sekarang tinggal di `src/features/editor/defaults.ts` (dua string), dan `presets.ts` serta store membacanya dari sana. Tidak ada nilai yang digandakan.
+
+### Bentuk asersi "Konva tidak dimuat"
+
+Rencana memakai pemeriksaan substring `"Konva"` pada teks skrip. Asersi itu memberi positif palsu: kata "Konva" juga muncul di komentar biasa, termasuk komentar `presets.ts` yang menjelaskan bahwa berkas itu tidak mengimpor Konva.
+
+Asersi diganti menjadi pemeriksaan perilaku: Konva memanggil `_injectGlobal` saat modulnya dievaluasi (`node_modules/konva/lib/Global.js`), jadi `"Konva" in window` bernilai true begitu pustakanya termuat. Uji memeriksa itu di `/` dan `/booth/capture`, ditambah pemeriksaan teks skrip untuk penanda milik kami sendiri (`editor-overlay`) yang hanya ada di potongan kode penyunting.
+
+Dua uji lain yang gagal pada jalannya pertama juga diperbaiki, keduanya karena kesalahan uji, bukan kode produk: helper `masukHias` sekarang menunggu kanvas penyunting yang dimuat dinamis, dan uji keyboard membuka tab "Stiker" lebih dulu (tab bawaan adalah "Frame", jadi tombol tempel belum dirender).
+
+### Yang diperiksa di browser selain uji otomatis
+
+Selama pengerjaan, alur berikut dijalankan langsung di Chromium (dengan empat foto galeri sebagai pengganti kamera) dan hasilnya diperiksa:
+
+|Pemeriksaan|Hasil|
+|---|---|
+|Ganti frame "Malam"|Latar strip, garis slot, dan wordmark berubah sesuai data frame; piksel latar panggung `ink`|
+|Efek "Retro"|Keempat foto berubah warna (sepia); sidik jari kanvas berubah besar|
+|Efek "Piksel"|Sidik jari kanvas berubah kecil tetapi konsisten dan kembali persis saat efek dikembalikan ke "Asli"|
+|Seret stiker di kanvas|Posisi di daftar "Isi strip" berpindah dari (300, 900) ke (408, 1006), sama dengan jarak seret dikali skala panggung|
+|Tombol Transformer|Pegangan ubah ukuran dan putar muncul di sekeliling node terpilih, tetap berukuran layar karena Transformer berada di luar grup berskala|
+|Tombol Delete|Menghapus stiker terpilih dan barisnya hilang dari daftar|
+|Ekspor saat stiker terpilih|PNG bersih tanpa kotak pilihan dan pegangan Transformer|
+|Ekspor dengan teks 24 karakter dan tanggal|Teks membungkus dua baris dan tetap di dalam strip; tanggal rata kanan di baris atas kaki strip|
+|Unduhan|Berkas `snapme-20261009-0936.png` dan seterusnya, 600 x 1800 px, 51 sampai 62 KB, tanpa penanda EXIF|

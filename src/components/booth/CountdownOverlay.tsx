@@ -15,6 +15,7 @@ export function CountdownOverlay({ value }: { value: CountdownValue }) {
       <motion.div
         key={value}
         role="status"
+        data-testid="countdown"
         initial={reduceMotion ? false : { scale: 0.6, opacity: 0 }}
         animate={{ scale: [0.6, 1.08, 1], opacity: 1 }}
         transition={{ duration: 0.5, times: [0, 0.6, 1], ease: [0.16, 1, 0.3, 1] }}

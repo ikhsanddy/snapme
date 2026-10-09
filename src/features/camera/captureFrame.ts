@@ -1,6 +1,8 @@
 /* ARCHITECTURE §6: foto diambil dari bingkai video, di-crop tengah ke rasio slot,
    lalu dicerminkan supaya sama dengan pratinjau (FR-05). */
 
+import { computeCenterCrop } from "./crop"
+
 export const JPEG_QUALITY = 0.92
 
 export function captureFrame(
@@ -14,37 +16,29 @@ export function captureFrame(
     return null
   }
 
-  let cropWidth = sourceWidth
-  let cropHeight = Math.round(sourceWidth / slotRatio)
-  if (cropHeight > sourceHeight) {
-    cropHeight = sourceHeight
-    cropWidth = Math.round(sourceHeight * slotRatio)
-  }
+  const crop = computeCenterCrop(sourceWidth, sourceHeight, slotRatio)
 
   const canvas = document.createElement("canvas")
-  canvas.width = cropWidth
-  canvas.height = cropHeight
+  canvas.width = crop.width
+  canvas.height = crop.height
 
   const context = canvas.getContext("2d")
   if (context === null) {
     return null
   }
 
-  const sourceX = Math.round((sourceWidth - cropWidth) / 2)
-  const sourceY = Math.round((sourceHeight - cropHeight) / 2)
-
-  context.translate(cropWidth, 0)
+  context.translate(crop.width, 0)
   context.scale(-1, 1)
   context.drawImage(
     video,
-    sourceX,
-    sourceY,
-    cropWidth,
-    cropHeight,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
     0,
     0,
-    cropWidth,
-    cropHeight
+    crop.width,
+    crop.height
   )
 
   return canvas.toDataURL("image/jpeg", quality)

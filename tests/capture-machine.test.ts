@@ -69,8 +69,18 @@ describe("mesin keadaan pemotretan", () => {
 
     expect(reduce(holding, { type: "HOLD_CANCEL" }).phase).toBe("ready")
 
-    /* Selama menahan, perintah lain tidak berpengaruh (M3 memakai peristiwa yang sama). */
-    expect(reduce(holding, { type: "SHOOT" })).toBe(holding)
+    /* GS-02: tahanan penuh memulai hitung mundur dari slot kosong pertama. */
+    const completed = reduce(holding, { type: "HOLD_COMPLETE" })
+    expect(completed.phase).toBe("countdown")
+    expect(completed.countdownValue).toBe(3)
+    expect(completed.targetSlot).toBeNull()
+
+    /* GS-05: Spasi dan tombol kamera tetap bisa dipakai saat gesture ditahan. */
+    const shot = reduce(holding, { type: "SHOOT" })
+    expect(shot.phase).toBe("countdown")
+    expect(shot.countdownValue).toBe(3)
+
+    /* Selama menahan, perintah lain tidak berpengaruh. */
     expect(reduce(holding, { type: "TICK" })).toBe(holding)
   })
 

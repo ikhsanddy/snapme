@@ -37,6 +37,7 @@ export type CaptureEvent =
   | { type: "SHOOT"; target?: number }
   | { type: "HOLD_START" }
   | { type: "HOLD_CANCEL" }
+  | { type: "HOLD_COMPLETE" }
   | { type: "TICK" }
   | { type: "SHOT_SAVED" }
   | { type: "FLASH_DONE" }
@@ -121,6 +122,16 @@ export function reduce(state: CaptureState, event: CaptureEvent): CaptureState {
     case "holding":
       if (event.type === "HOLD_CANCEL") {
         return { ...state, phase: "ready" }
+      }
+      /* GS-02: tahanan penuh memulai hitung mundur. GS-05: tombol kamera dan
+         Spasi tetap memotret walau gesture sedang ditahan. */
+      if (event.type === "HOLD_COMPLETE" || event.type === "SHOOT") {
+        return {
+          ...state,
+          phase: "countdown",
+          countdownValue: COUNTDOWN_FROM,
+          targetSlot: null,
+        }
       }
       return state
 
