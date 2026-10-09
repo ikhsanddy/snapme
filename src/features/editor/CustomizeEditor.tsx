@@ -2,9 +2,16 @@
 
 import { useRef, useState } from "react"
 import Link from "next/link"
-import { Check, DownloadSimple, Sticker as StickerIcon } from "@phosphor-icons/react"
+import {
+  Check,
+  DownloadSimple,
+  Pause,
+  Play,
+  Sticker as StickerIcon,
+} from "@phosphor-icons/react"
 import type { Group as KonvaGroup } from "konva/lib/Group"
 import type { Stage as KonvaStage } from "konva/lib/Stage"
+import { useReducedMotion } from "motion/react"
 
 import { BoothPanel } from "@/components/booth/BoothPanel"
 import { Badge } from "@/components/ui/badge"
@@ -16,16 +23,19 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { CLIP_FRAME_COUNT } from "@/features/capture/clipRecorder"
+import { useClipTicker } from "@/features/live/useClipTicker"
 import { getLayout, type LayoutId } from "@/lib/layouts"
-import { countFilled, useBoothStore } from "@/stores/booth"
+import { cn } from "@/lib/utils"
+import { countFilled, hasLiveClips, useBoothStore } from "@/stores/booth"
 import { DecorList } from "./DecorList"
 import { DecorPanel } from "./DecorPanel"
 import StripCanvas from "./StripCanvas"
 import { getEffect, getFrame } from "./presets"
 
 /* DESIGN-SYSTEM §10.3: halaman Hias Strip. Rel kiri pilihan hias (lembar bawah
-   di layar sempit), tengah kanvas strip, rel kanan kartu QR di strip, ringkasan,
-   dan aksi utama. Kartu Strip Hidup menyusul di M7.
+   di layar sempit), tengah kanvas strip, rel kanan kartu Strip Hidup lalu QR di
+   strip, ringkasan, dan aksi utama.
    Berkas ini dan seluruh isi `features/editor` hanya dimuat lewat import()
    dinamis dari halaman, supaya Konva tidak ikut bundel `/` dan `/booth/capture`. */
 
@@ -37,10 +47,22 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
   const qrEnabled = useBoothStore((state) => state.share.qrEnabled)
   const shareStrip = useBoothStore((state) => state.share.strip)
   const setQrEnabled = useBoothStore((state) => state.setQrEnabled)
+  const liveEnabled = useBoothStore((state) => state.live.enabled)
+  const setLiveEnabled = useBoothStore((state) => state.setLiveEnabled)
 
   const stageRef = useRef<KonvaStage>(null)
   const groupRef = useRef<KonvaGroup>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  /* SH-02: pratinjau berputar selama sakelarnya nyala, kecuali pengguna
+     meminta gerak dikurangi. Di situ klip ditampilkan diam dengan tombol
+     Putar, dan `userPlay` menjadi izin eksplisitnya. */
+  const hasClips = hasLiveClips(shots)
+  const prefersReducedMotion = useReducedMotion()
+  const [userPlay, setUserPlay] = useState(false)
+  const playing =
+    liveEnabled && hasClips && (userPlay || prefersReducedMotion === false)
+  const clipIndex = useClipTicker(playing, CLIP_FRAME_COUNT)
 
   const layout = getLayout(layoutId)
 
@@ -77,6 +99,15 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
                 layoutId={layoutId}
                 stageRef={stageRef}
                 groupRef={groupRef}
+                live={
+                  liveEnabled && hasClips
+                    ? {
+                        frames: shots.map((shot) => shot?.clip ?? null),
+                        index: playing ? clipIndex : -1,
+                        chrome: true,
+                      }
+                    : undefined
+                }
               />
             </div>
             <p className="text-center font-mono text-xs text-muted">
@@ -87,6 +118,61 @@ export default function CustomizeEditor({ layoutId }: { layoutId: LayoutId }) {
         }
         right={
           <>
+            {/* SH-02: kartu Strip Hidup, urutan pertama rel kanan mengikuti
+                docs/ui-reference/customize.html. Sakelar selalu disertai teks
+                keadaan (DESIGN-SYSTEM §9). */}
+            <div className="flex flex-col gap-2 rounded-card border-2 border-ink bg-paper p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-base font-extrabold">
+                  Strip Hidup
+                </h2>
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={cn(
+                      "rounded-pill border-2 border-ink px-2.5 py-0.5 font-mono text-xs font-bold tracking-[0.06em] text-ink uppercase",
+                      liveEnabled ? "bg-lime" : "bg-cream"
+                    )}
+                  >
+                    {liveEnabled ? "Nyala" : "Mati"}
+                  </span>
+                  <Switch
+                    checked={liveEnabled}
+                    disabled={!hasClips || shareStrip !== null}
+                    onCheckedChange={setLiveEnabled}
+                    aria-label="Strip Hidup"
+                  />
+                </div>
+              </div>
+              <p className="text-[15px] leading-[1.4]">
+                {hasClips
+                  ? "Tiap foto diputar sebagai klip pendek di halaman strip."
+                  : "Klip hanya terekam saat memotret lewat kamera."}
+              </p>
+              {liveEnabled && hasClips && shareStrip === null ? (
+                <p
+                  role="status"
+                  className="rounded-thumb border-2 border-ink bg-lime px-2.5 py-2 text-sm leading-[1.4]"
+                >
+                  Versi hidup ikut diunggah saat kamu membuat link.
+                </p>
+              ) : null}
+              {liveEnabled && hasClips && prefersReducedMotion === true ? (
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  aria-pressed={userPlay}
+                  onClick={() => setUserPlay((current) => !current)}
+                >
+                  {userPlay ? (
+                    <Pause weight="bold" className="size-[18px]" aria-hidden />
+                  ) : (
+                    <Play weight="bold" className="size-[18px]" aria-hidden />
+                  )}
+                  {userPlay ? "Jeda" : "Putar"}
+                </Button>
+              ) : null}
+            </div>
+
             {/* SH-04: kartu QR di strip. Teksnya dari docs/ui-reference/
                 customize.html; tidak ada aksi `tangerine` baru di sini supaya
                 satu aksi utama per layar tetap "Selesai & Unduh". */}

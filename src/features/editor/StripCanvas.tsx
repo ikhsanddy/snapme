@@ -9,7 +9,7 @@ import { Stage, Transformer } from "react-konva"
 import { useQrPlate } from "@/features/share/useQrImage"
 import { getLayout, type LayoutId } from "@/lib/layouts"
 import { STICKER_WIDTH_MIN, useBoothStore } from "@/stores/booth"
-import { StripStage, type StripSelection } from "./StripStage"
+import { StripStage, type StripSelection, type StripStageProps } from "./StripStage"
 import { getEffect, getFrame } from "./presets"
 import { resolveTokenColor } from "./tokenColor"
 
@@ -33,12 +33,15 @@ export interface StripCanvasProps {
   layoutId: LayoutId
   stageRef: RefObject<KonvaStage | null>
   groupRef: RefObject<KonvaGroup | null>
+  /** SH-02: pratinjau Strip Hidup dari halaman Hias. */
+  live?: StripStageProps["live"]
 }
 
 export default function StripCanvas({
   layoutId,
   stageRef,
   groupRef,
+  live,
 }: StripCanvasProps) {
   const shots = useBoothStore((state) => state.shots)
   const frameId = useBoothStore((state) => state.frameId)
@@ -161,6 +164,7 @@ export default function StripCanvas({
             texts={texts}
             showDate={showDate}
             qr={qr}
+            live={live}
             scale={scale}
             groupRef={groupRef}
             onSelect={setSelection}

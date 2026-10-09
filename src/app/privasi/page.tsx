@@ -13,7 +13,7 @@ const BAGIAN = [
   },
   {
     judul: "Kapan foto diunggah",
-    isi: "Foto hanya meninggalkan perangkatmu kalau kamu sendiri membuat link strip atau mengundang teman lewat Strip Estafet. Sebelum mengunggah, snapme selalu meminta persetujuan dan menampilkan isi yang akan dikirim. Saat membuat link, snapme menyimpan sidang terpotong dari alamat IP kamu selama satu jam untuk mencegah penyalahgunaan; nilai ini tidak bisa dipakai mengenali kamu dan terhapus bersama stripnya.",
+    isi: "Foto dan klip pendeknya hanya meninggalkan perangkatmu kalau kamu sendiri membuat link strip atau mengundang teman lewat Strip Estafet. Sebelum mengunggah, snapme selalu meminta persetujuan dan menampilkan isi yang akan dikirim. Saat membuat link, snapme menyimpan sidang terpotong dari alamat IP kamu selama satu jam untuk mencegah penyalahgunaan; nilai ini tidak bisa dipakai mengenali kamu dan terhapus bersama stripnya.",
   },
   {
     judul: "Masa simpan",

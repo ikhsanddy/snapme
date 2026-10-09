@@ -5,6 +5,7 @@ import type { Stage as KonvaStage } from "konva/lib/Stage"
 import { ensureFontsReady } from "./canvasFonts"
 import { applyEffect } from "./filters"
 import type { EffectParams } from "./presets"
+import type { LiveKind } from "@/lib/schemas"
 
 /* FR-11: ekspor strip 600 x 1800 px sebagai PNG di bawah 2 MB, tanpa metadata
    lokasi (kanvas tidak pernah menulis EXIF). Ekspor dilakukan dengan mengubah
@@ -15,11 +16,16 @@ export const PNG_BYTE_LIMIT = 2_097_152
 /* Dipakai hanya di jalur kedua, saat PNG masih melebihi batas. */
 const SLOT_JPEG_QUALITY = 0.8
 
-export function formatStripFilename(date: Date): string {
+/** FR-11: nama berkas `snapme-YYYYMMDD-HHmm.png`. M7 (SH-03): versi hidup
+ *  memakai akhiran jenis rekamannya, jadi polanya satu. */
+export function formatStripFilename(
+  date: Date,
+  ext: "png" | LiveKind = "png"
+): string {
   const pad = (value: number) => String(value).padStart(2, "0")
   return `snapme-${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(
     date.getDate()
-  )}-${pad(date.getHours())}${pad(date.getMinutes())}.png`
+  )}-${pad(date.getHours())}${pad(date.getMinutes())}.${ext}`
 }
 
 function pngByteLength(dataUrl: string): number {
@@ -112,8 +118,20 @@ export async function exportStrip(
   return dataUrl
 }
 
-/** FR-11: nama berkas `snapme-YYYYMMDD-HHmm.png` dan unduhan langsung dari
- *  perangkat pengguna, tanpa permintaan jaringan. */
+/** Unduhan dari blob, dipakai strip PNG dan (M7, SH-03) video versi hidup.
+ *  URL objeknya dilepas setelah klik supaya blob besar tidak menahan memori. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+/** FR-11: unduhan langsung dari perangkat pengguna, tanpa permintaan jaringan. */
 export function downloadStrip(dataUrl: string, filename: string): void {
   const meta = dataUrl.slice(0, dataUrl.indexOf(","))
   const mime = meta.slice(meta.indexOf(":") + 1, meta.indexOf(";"))
@@ -123,14 +141,5 @@ export function downloadStrip(dataUrl: string, filename: string): void {
     bytes[index] = binary.charCodeAt(index)
   }
 
-  const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
-  const anchor = document.createElement("a")
-  anchor.href = url
-  anchor.download = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  /* Unduhan sudah dipegang browser saat klik; URL dilepas setelah itu supaya
-     blob besar tidak menahan memori sesi. */
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  downloadBlob(new Blob([bytes], { type: mime }), filename)
 }

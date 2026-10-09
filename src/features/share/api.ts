@@ -3,7 +3,7 @@
 import { StorageClient } from "@supabase/storage-js"
 
 import type { LayoutId } from "@/lib/layouts"
-import { STILL_MIME, STORAGE_BUCKET } from "@/lib/schemas"
+import { LIVE_MIME_TYPES, STILL_MIME, STORAGE_BUCKET, type LiveKind } from "@/lib/schemas"
 
 /* M6 (SH-04, SH-06): panggilan jaringan alur bagikan. Hanya berkas ini yang
    berbicara dengan rute server dan Storage dari sisi klien.
@@ -22,6 +22,8 @@ export interface CreatedStrip {
   id: string
   deleteToken: string
   upload: StripUpload
+  /** M7: ada bila klip Strip Hidup ikut diminta; unggahannya best-effort. */
+  liveUpload?: StripUpload
 }
 
 const CREATE_FAILED = "Link belum bisa dibuat. Coba lagi sebentar lagi."
@@ -42,11 +44,14 @@ async function messageFrom(response: Response, fallback: string): Promise<string
   return fallback
 }
 
-export async function requestStrip(layoutId: LayoutId): Promise<CreatedStrip> {
+export async function requestStrip(
+  layoutId: LayoutId,
+  live?: LiveKind
+): Promise<CreatedStrip> {
   const response = await fetch("/api/strips", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ layout: layoutId }),
+    body: JSON.stringify(live === undefined ? { layout: layoutId } : { layout: layoutId, live }),
   })
   if (!response.ok) {
     throw new Error(await messageFrom(response, CREATE_FAILED))
@@ -54,10 +59,7 @@ export async function requestStrip(layoutId: LayoutId): Promise<CreatedStrip> {
   return (await response.json()) as CreatedStrip
 }
 
-export async function uploadStripStill(
-  upload: StripUpload,
-  blob: Blob
-): Promise<void> {
+async function uploadToSignedUrl(upload: StripUpload, blob: Blob, contentType: string): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (url === undefined || url === "") {
     throw new Error(CREATE_FAILED)
@@ -65,12 +67,27 @@ export async function uploadStripStill(
   const client = new StorageClient(`${url}/storage/v1`)
   const { error } = await client
     .from(STORAGE_BUCKET)
-    .uploadToSignedUrl(upload.path, upload.token, blob, {
-      contentType: STILL_MIME,
-    })
+    .uploadToSignedUrl(upload.path, upload.token, blob, { contentType })
   if (error !== null) {
     throw new Error(error.message)
   }
+}
+
+export async function uploadStripStill(
+  upload: StripUpload,
+  blob: Blob
+): Promise<void> {
+  await uploadToSignedUrl(upload, blob, STILL_MIME)
+}
+
+/** M7 (SH-03): klip Strip Hidup memakai jalur unggah yang sama; kegagalannya
+ *  tidak pernah menghalangi strip diam. */
+export async function uploadStripLive(
+  upload: StripUpload,
+  blob: Blob,
+  kind: LiveKind
+): Promise<void> {
+  await uploadToSignedUrl(upload, blob, LIVE_MIME_TYPES[kind])
 }
 
 export async function completeStrip(id: string): Promise<{ expiresAt: string | null }> {

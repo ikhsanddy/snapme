@@ -33,10 +33,16 @@ export function ShareCard({
   strip,
   busy,
   onCreate,
+  withLive = false,
+  statusText,
 }: {
   strip: ShareState["strip"]
   busy: boolean
   onCreate: () => void
+  /** M7: klip Strip Hidup ikut diunggah, jadi persetujuannya menyebutnya. */
+  withLive?: boolean
+  /** Keadaan sementara dari pemanggil (mis. "Merekam versi hidup..."). */
+  statusText?: string
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   /* Halaman Hasil dimuat tanpa SSR (`next/dynamic`, ARCHITECTURE §9), jadi
@@ -64,9 +70,10 @@ export function ShareCard({
           <p className="text-[15px] leading-[1.4]">
             Buat link pribadi supaya QR di strip bisa dibuka orang lain.
           </p>
-          {strip !== null || busy ? (
+          {strip !== null || busy || statusText !== undefined ? (
             <p role="status" className="text-sm leading-[1.4] text-muted">
-              {busy ? "Menyiapkan link..." : "Mengunggah strip ke link pribadi..."}
+              {statusText ??
+                (busy ? "Menyiapkan link..." : "Mengunggah strip ke link pribadi...")}
             </p>
           ) : (
             <Button
@@ -101,9 +108,9 @@ export function ShareCard({
           <DialogHeader>
             <DialogTitle className="title text-ink">Unggah strip?</DialogTitle>
             <DialogDescription className="text-[15px] leading-[1.5]">
-              Foto strip kamu diunggah ke server snapme. Siapa pun yang punya
-              link bisa melihatnya sampai 7 hari, lalu terhapus otomatis. Kamu
-              bisa menghapusnya kapan saja.
+              {withLive
+                ? "Foto dan klip pendek strip kamu diunggah ke server snapme. Siapa pun yang punya link bisa melihatnya sampai 7 hari, lalu terhapus otomatis. Kamu bisa menghapusnya kapan saja."
+                : "Foto strip kamu diunggah ke server snapme. Siapa pun yang punya link bisa melihatnya sampai 7 hari, lalu terhapus otomatis. Kamu bisa menghapusnya kapan saja."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

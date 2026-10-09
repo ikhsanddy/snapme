@@ -637,3 +637,74 @@ Kategori yang dinyatakan bersih oleh peninjau: entropi dan perbandingan token, p
 1. **Pindai QR dari cetakan.** Pengguna melaporkan sudah mencoba cetak dan pindai (9 Oktober 2026), tanpa rincian perangkat dan berapa yang berhasil. Karena strip ber-QR baru bisa diekspor setelah alur link berjalan hari ini, ulangi sekali dengan strip ber-link sungguhan (frame "Malam" sekaligus frame terang) dan catat perangkatnya; hasilnya menggantikan baris ini. Tetap syarat rilis M9.
 2. **Jadwal cron.** `vercel.json` memasang pembersih harian 03:00 UTC. Deploy baru terjadi di M9, jadi jalannya cron belum pernah terlihat. Pembersihnya sendiri sudah diuji unit (baris kedaluwarsa, draf basi, batu nisan).
 3. **Kata sandi basis data.** Dibuat acak oleh agent dan disimpan di `.env.local` (tidak di-commit). Simpan di pengelola kata sandi pengguna; kalau hilang, reset dari dasbor Supabase lalu perbarui `.env.local`.
+
+---
+
+## M7 Strip Hidup (9 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M7
+
+`npx skills find` dengan kata kunci `mediarecorder`, `video`, dan `web performance` tidak menemukan skill yang memenuhi ambang mutu (pemasang ≥1K atau sumber resmi). Kandidat terdekat: `sickn33/agentic-awesome-skills@web-performance-optimization` (2,9K pemasang, penulis tak dikenal) dan `ethankenkennerly/usertest-recorder-nextjs@browser-media-recording` (1 pemasang); sisanya pembuat video AI, di luar lingkup. **Tidak ada skill yang dipasang**: perekaman dan pemutaran dikerjakan dengan API platform (ARCHITECTURE §2 tangga 1), yaitu `canvas.captureStream()` dan `MediaRecorder`.
+
+### Klip hanya di memori, tidak ikut IndexedDB
+
+Bingkai SH-01 disimpan sebagai `ImageBitmap` di `Shot.clip` (`src/stores/booth.ts`). `serializeSession` sengaja menyalin ulang tiap foto menjadi `{ still, capturedAt }`, jadi `ImageBitmap` tidak pernah menyentuh IndexedDB. Alasannya: structured clone `ImageBitmap` tidak seragam antar browser, dan rekaman 40 bingkai 480 px akan membengkakkan penyimpanan sesi. Akibatnya yang terlihat pengguna: memuat ulang halaman mematikan Strip Hidup untuk sesi itu, dan kartu Hias menampilkan sakelar nonaktif dengan penjelasan "Klip hanya terekam saat memotret lewat kamera." Bila kelak ingin persisten, konversinya ke `Blob` dikerjakan di M9.
+
+Store juga melepas bingkainya (`close()`) setiap kali foto diganti, layout diganti, atau "Mulai dari awal" ditekan (butir "Lepas `ImageBitmap` saat sesi diulang" di `MILESTONES.md`). Dijaga uji `tests/booth-live.test.ts`.
+
+### Bucket naik ke 5 MB, batas 2 MB still ditegakkan rute `complete`
+
+`MILESTONES.md` M7 dan PRD §8 menuntut klip di bawah 5 MB, sedangkan bucket `snapme` dipasang 2 MB untuk PNG (M6). Batas bucket hanya satu angka untuk semua berkas, jadi migrasi `20261013000000_live_video.sql` menaikkannya ke 5 MB dan menambah `video/webm` serta `video/mp4` ke daftar jenis. Batas 2 MB untuk still tidak hilang: rute `complete` sudah memeriksanya sendiri (pagar kedua) dan tetap menolak PNG di atas 2 MB. Versi hidup juga tetap diperiksa di rute itu (≤ 5 MB, jenis persis `video/webm` atau `video/mp4`). Migrasinya sudah dijalankan ke proyek `snapme` lewat `supabase db push` setelah pengguna menyetujui 9 Oktober 2026, jadi uji ber-jaringan M7 memakai bucket yang sebenarnya.
+
+### Versi hidup best-effort di rute `complete`
+
+Rekaman bisa gagal di perangkat pengguna (kodek, tab di latar, kehabisan memori), jadi klip tidak pernah memblokir stripnya. `POST /api/strips` menulis `live_path` sejak baris dibuat dan mengembalikan `liveUpload` kedua; bila setelah unggah ternyata berkasnya tidak ada atau tidak lolos pemeriksaan, rute `complete` membuang berkas itu, mengosongkan `live_path`, dan tetap menandai stripnya `complete`. Pengguna melihat toast "Versi hidup tidak ikut terunggah." dan strip diamnya tetap utuh. Kehadiran `live` di `CREATE_STRIP_SCHEMA` adalah satu-satunya penanda bahwa klien menginginkan jalur ini.
+
+### Lencana "Klip" dan label baru
+
+`LiveStripPlayer` di DESIGN-SYSTEM §9 diwujudkan sebagai prop `live` di `StripStage` (ditambah `useClipTicker` dan `LiveStripVideo` untuk `/s/[id]`), bukan komponen panggung terpisah. Alasannya: panggung Konva yang sama dipakai tiga hal yang harus identik (hias, ekspor PNG, rekam video), dan komponen kedua akan menduplikasi susunan strip yang sudah ada di satu berkas. Nama "LiveStripPlayer" tetap dipakai untuk pemutarnya di halaman strip (`src/features/live/LiveStripVideo.tsx`, tanpa Konva supaya halaman itu ringan).
+
+Lencana digambar manual (Rect + Text) supaya angkanya sama persis dengan acuan: acuan memakai kiri dan bawah 6 px, tinggi 16 px, lebar 42 px, Space Mono 700 10 px, jarak huruf 0.06em pada strip 210 px. Ruang kanvas strip 600 px berarti 17 px, 46 px, 120 px, 28 px, dan 1.7. `Label`/`Tag` bawaan react-konva tidak dipakai karena padding-nya seragam, sedangkan acuan berpadding 2 px tegak dan 8 px datar.
+
+Label antarmuka baru yang belum ada di DESIGN-SYSTEM §12: "Unduh Video", "Putar", "Jeda", "Versi hidup tidak ikut terunggah.", dan "Video strip tersimpan di perangkatmu." Semuanya dicatat di sini mengikuti presedem M6; bila pengguna setuju, tambahkan ke tabel §12 dokumen (dokumen tidak diubah diam-diam).
+
+### Design Read taste-skill untuk permukaan M7
+
+Kartu Strip Hidup di langkah Hias dan pemutar video di `/s/[id]` termasuk langkah booth, jadi hanya pagar umum taste-skill yang dipakai (DESIGN-SYSTEM §0): keadaan lengkap (nonaktif, nyala, sibuk, tanpa klip), kontras dari tabel §2, `prefers-reduced-motion` dihormati, tanpa pola klise, dan tanpa emoji maupun em dash. `/s/[id]` sudah permukaan penuh sejak M6 dan tidak berubah perlakuan. Design Read dan dial tetap yang dinyatakan di M1 (Y2K neo-brutalist, `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`).
+
+### Perbandingan berdampingan lencana "Klip" dengan `customize.html`
+
+Diukur pada tangkapan layar 1280 px (skrip sementara, tidak disimpan di repo).
+
+|Bagian|Acuan (strip 210 px)|Produk (kanvas 600 px)|
+|---|---|---|
+|Posisi lencana|kiri 6 px, bawah 6 px|17 px, 17 px|
+|Ukuran|42 x 16 px|120 x 46 px|
+|Huruf|Space Mono 700 10 px, jarak 0.06em|Space Mono 700 28 px, jarak 1.7|
+|Isi|`ink` dengan teks `paper`, radius 999|sama|
+
+### Bukti browser M7
+
+|Pemeriksaan|Bukti|
+|---|---|
+|Perekaman tidak mengubah waktu foto utama|`tests/clip-recorder.test.ts`: tabel peristiwa yang sama dijalankan dengan dan tanpa pengamat perekam, urutan fasenya identik, dan offset sampling terakhir 2850 ms < 3000 ms|
+|Klip benar-benar terekam dan berputar|`e2e/live.spec.ts` uji 1: setelah sakelar dinyalakan, sidik jari kanvas berubah tiap 500 ms; saat sakelar mati, dua sampel identik|
+|`prefers-reduced-motion`|Uji 2: pratinjau diam, tetap berbeda dari keadaan sakelar mati (lencana "Klip"), tombol "Putar" menjalankan animasi, "Jeda" menghentikannya|
+|Tanpa klip|Uji 3 (foto galeri): sakelar nonaktif dan teks "Klip hanya terekam saat memotret lewat kamera."|
+|Unduh video (SH-03)|Uji 4: berkas `snapme-YYYYMMDD-HHmm.webm` terunduh di Chromium headless, ukurannya di atas 0 dan di bawah 5 MB|
+|Unggah klip dan rute `complete`|`tests/api-strips.test.ts` (20 lolos): POST dengan `live` mengembalikan `liveUpload` dan menulis `live_path`; complete menyimpannya bila klipnya lolos, dan mengosongkan `live_path` bila berkasnya 404, jenisnya salah, atau lebih dari 5 MB|
+|Alur ber-jaringan sungguhan|Setelah `npx supabase db push` (disetujui pengguna 9 Oktober 2026), `SUPABASE_E2E=1 npx playwright test share.spec.ts live.spec.ts` → 8 lolos, 1 dilewati. Konteks kedua membuka `/s/{id}` dan melihat `<video>` bertanda tangan dari `/storage/`; pemilik menghapus lalu halaman menjawab 404. Strip tanpa klip (uji lama) nol `video`|
+|Lencana "Klip" dan kartu Hias|Tangkapan layar 1280 dan 360 px dibandingkan dengan `docs/ui-reference/customize.html`: kartu Strip Hidup duduk di urutan pertama rel kanan (judul Unbounded 800 16, sakelar 56 x 32, pemberitahuan lime), lencana menempati 20 persen lebar slot di kiri bawah seperti acuan|
+|Perintah pemeriksaan|`npm run lint`, `npm run typecheck`, `npm test` (120 lolos, 18 berkas), `npm run build` (13 rute), dan `npx playwright test` (50 lolos, 3 dilewati) semuanya hijau|
+
+### Uji manual yang perlu dilengkapi pengguna
+
+Perangkat dan browser di luar Chromium headless belum pernah menjalankan versi hidup. Isi tabel ini setelah mencoba; hasilnya menggantikan status "menunggu pengguna".
+
+|Pemeriksaan|Chrome|Firefox|Safari|
+|---|---|---|---|
+|Pratinjau berputar di Hias|menunggu pengguna|menunggu pengguna|menunggu pengguna|
+|Rekam lalu unduh video (SH-03)|menunggu pengguna|menunggu pengguna|menunggu pengguna|
+|Pemutaran di `/s/{id}` (SH-05)|menunggu pengguna|menunggu pengguna|menunggu pengguna|
+
+Catatan: tombol "Unduh Video" dan pemutar di `/s/[id]` hanya muncul bila `MediaRecorder` mendukung `video/webm` atau `video/mp4`; di Safari yang merekam MP4, jenis berkas unduhannya `.mp4`.
