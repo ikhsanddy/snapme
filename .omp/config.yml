@@ -26,7 +26,7 @@ modelRoles:
   tiny: google-antigravity/gemini-3.7-flash:auto # judul sesi dan klasifikasi kecil
   memory: deepseek/deepseek-flash:high # hanya terpakai bila memory.backend diaktifkan
   task: opencode-go/deepseek-v4.1-flash:max # subagent `task` (pekerja umum, termasuk UI)
-  advisor: google-antigravity/gemini-3.8-flash:high # pengawas; butuh advisor.enabled di bawah
+  advisor: google-antigravity/gemini-3.8-flash:medium # pengawas; butuh advisor.enabled di bawah
 
   # Model-kind roles
   image: google-antigravity/gemini-3-pro-image # generate_image: stiker dan seni frame

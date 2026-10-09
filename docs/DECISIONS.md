@@ -131,3 +131,68 @@ Perbaikan yang lahir dari audit: `/` sebelumnya tidak punya landmark `main`; kon
 | Cakupan `/booth/capture` | §10.2 menggambarkan kamera, baki foto, HUD gesture | M2 sampai M4 yang mengerjakannya | M1 hanya kerangka: area kamera kosong, slot kosong, aksi utama nonaktif. `CameraStage`, `ShotTray`, `ShutterButton`, `CountdownOverlay` belum dibuat |
 | Cakupan `stores/booth.ts` | §5 mencantumkan `shots`, `editor`, `live`, `share`, `relay` | Milestone M1 belum memakainya | Hanya `layoutId` dan `settings` yang dibuat, sisanya menyusul bersama milestone pemiliknya supaya tidak ada tipe spekulatif |
 | Halaman `/booth/layout` | §5 menamai rute ini | Nama folder segmen sama dengan berkas konvensi `layout.tsx` | Next 16 menerimanya: `src/app/booth/layout.tsx` dan `src/app/booth/layout/page.tsx` berdampingan. Dibuktikan build dan uji Playwright |
+
+## M2 Kamera (10 Oktober 2026)
+
+### Hasil find-skills untuk kata kunci M2
+
+`npx skills find` dijalankan untuk tiga kata kunci milestone (`playwright`, `webcam`, `react testing`):
+
+|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
+|---|---|---|---|
+|`playwright`|`microsoft/playwright-cli`|178,1 ribu|Tidak dipasang (diusulkan ke pengguna)|
+||`anthropics/webapp-testing`|172,1 ribu|Tidak dipasang (diusulkan ke pengguna)|
+||`currents-dev/playwright-best-practices`|91,2 ribu|Tidak dipasang (diusulkan ke pengguna)|
+|`webcam`|`openclaw/camsnap`|3,1 ribu|Tidak dipasang: bukan photobooth browser|
+|`react testing`|tanpa hasil yang relevan| |Tidak dipasang|
+
+**Keputusan: tidak ada pemasangan skill baru di M2.** Repo sudah punya Playwright terkonfigurasi dengan tiga berkas uji yang berjalan, dan konvensinya (kamera palsu, selektor peran, axe) sudah jelas dari uji M1. Tiga kandidat Playwright diusulkan ke pengguna; pemasangannya menunggu persetujuan.
+
+### Mesin keadaan pemotretan: `src/features/capture/machine.ts`
+
+- Fase: `idle`, `requesting`, `denied`, `ready`, `holding`, `countdown`, `capturing`, `pause`, `complete` (ARCHITECTURE §5). Peristiwa: `PERMISSION_REQUEST`, `PERMISSION_GRANTED`, `PERMISSION_DENIED{reason}`, `SHOOT{target?}`, `HOLD_START`, `HOLD_CANCEL`, `TICK`, `SHOT_SAVED`, `FLASH_DONE`, `PAUSE_DONE{allFilled}`.
+- `reduce` adalah fungsi murni: peristiwa yang datang di fase yang salah mengembalikan objek state yang sama, jadi tidak ada render ulang yang sia-sia. Diuji 8 uji di `tests/capture-machine.test.ts`, termasuk tabel "peristiwa diabaikan" untuk tujuh fase.
+- Timer ada di `useCaptureMachine.ts`, bukan di reducer: 1000 ms per angka hitung mundur (`COUNTDOWN_STEP_MS`), jeda 300 ms setelah jepret (`PAUSE_MS`), kilat 160 ms (`FLASH_MS`). `PAUSE_DONE` membaca ulang store saat timer berbunyi, jadi keputusan "lengkap atau kembali siap" selalu memakai jumlah foto terbaru.
+- **Flag kilat ikut state mesin**, bukan state halaman: React 19 lewat ESLint Next 16 melarang `setState` langsung di dalam efek (`react-hooks/set-state-in-effect`), dan kilat harus tetap menyala saat fase sudah berpindah ke `pause`. Timer kilat karena itu bergantung pada `flash`, bukan pada `phase`, supaya tidak dibersihkan saat fase berganti.
+- Yang sudah disiapkan untuk M3: `HOLD_START`/`HOLD_CANCEL` sudah bertransisi `ready` ke `holding` dan kembali, `CameraStage` sudah punya slot `hud`, dan `isBusy`/`canShoot` adalah tabel per fase yang bisa dipakai HUD tanpa menebak.
+
+### Kamera: `src/features/camera/`
+
+- `useCamera.ts` adalah satu-satunya tempat `react-webcam` dipakai. `<Webcam>` baru dipasang setelah `requested` bernilai true, dan `useCamera.requestPermission()` menolak lebih dulu bila `navigator.mediaDevices.getUserMedia` tidak ada (`unavailable`), jadi konteks tidak aman tidak membuat halaman gagal render.
+- Pemetaan galat: `NotAllowedError` dan `SecurityError` menjadi `denied`; sisanya (`NotFoundError`, `NotReadableError`, `OverconstrainedError`, dan string "getUserMedia not supported" dari react-webcam) menjadi `unavailable`. Dua pesan berbeda ditampilkan, keduanya menyebut langkah berikutnya (DESIGN-SYSTEM §12).
+- `captureFrame.ts` memotong bingkai tengah ke rasio slot lalu mencerminkannya (`translate` + `scale(-1, 1)`) supaya hasilnya sama dengan pratinjau yang dicerminkan (FR-05). Hasil disimpan sebagai dataURL JPEG mutu 0,92; resolusi hasil sama dengan resolusi sumber yang dipotong (1280 x 720 menjadi 1022 x 720 pada Strip 4), penurunan skala baru terjadi di kanvas hias M4.
+- **`ref` ke `<Webcam>` wajib.** `react-webcam` menaruh `HTMLVideoElement` di properti instans (`webcamRef.current.video`); tanpa `ref` di pemakaian komponen, `webcamRef.current` selalu null dan tidak ada foto yang tersimpan. Ketahuan dari uji Playwright pertama yang gagal.
+- **Video yang dicerminkan punya stacking context sendiri.** Karena `mirrored` memasang `transform: scaleX(-1)`, elemen video dicat setelah elemen berposisi absolut yang datang lebih dulu di DOM, sehingga braket bidik tertutup. Braket diberi `z-10`.
+- Perangkat: `enumerateDevices()` dipanggil ulang di `onUserMedia` (label baru terbaca setelah izin), disaring ke `videoinput`, dan pilihannya disimpan di `settings.cameraDeviceId` (sesi saja, tanpa penyimpanan lintas muat ulang). Mengganti perangkat mengubah `videoConstraints`, dan `react-webcam` meminta ulang stream saat `videoConstraints` berubah; `shots` tidak tersentuh.
+
+### Kamera palsu di uji Playwright
+
+`playwright.config.ts` menambah `launchOptions.args` `--use-fake-ui-for-media-stream` dan `--use-fake-device-for-media-stream` pada proyek chromium (ARCHITECTURE §10). Berlaku untuk seluruh berkas uji; uji M1 tidak terpengaruh karena tidak membuka kamera.
+
+Catatan dari penulisan uji:
+
+|Hal|Kenyataan|Tindakan|
+|---|---|---|
+|Menunggu izin benar-benar selesai|Elemen `<video>` sudah ada beberapa ratus milidetik sebelum stream mengalir, jadi menunggu elemennya terlihat adalah balapan|Helper `izinkanKamera` menunggu `video.videoWidth > 0`|
+|Stream sintetis untuk uji cermin|`react-webcam` memanggil `getUserMedia` lebih dari sekali (mount ganda di mode pengembangan) dan menghentikan stream yang dianggap basi, sehingga stream bersama mati sebelum dipakai|Skrip uji membuat stream baru tiap panggilan, dan kanvas sumbernya terus digambar ulang supaya bingkai mengalir|
+|Klik "Izinkan Kamera" gagal|Baris tombol jepret (absolut, selebar panggung) menutupi tombol izin pada panggung yang pendek|Kontrol jepret hanya dirender saat kamera sudah diminta dan izin bukan `denied`, dan pembungkusnya `pointer-events-none`|
+
+### Penyimpanan foto di M2
+
+`stores/booth.ts` menyimpan `shots: (Shot | null)[]` dengan `Shot = { still: string; capturedAt: number }`, `still` berupa dataURL JPEG di memori. `setLayout` mengganti seluruh array sehingga invarian `shots.length === shotCount` selalu berlaku, dan mengganti layout mengosongkan foto. Penyimpanan lintas muat ulang (FR-14, IndexedDB) tetap milik M5.
+
+`useRequireShots()` menutup prasyarat langkah setelah foto: `/booth/customize` dialihkan ke `/booth/capture` selama masih ada slot kosong. Halaman Hias sendiri masih placeholder karena M4 yang membangunnya.
+
+### Penyimpangan M2
+
+|Hal|Dokumen atau acuan|Kenyataan|Tindakan|
+|---|---|---|---|
+|Tombol jepret dan chip "Spasi" saat belum ada kamera|`capture.html` selalu menampilkan keduanya|Keduanya menutupi tombol "Izinkan Kamera" pada panggung yang pendek, dan tidak ada gunanya sebelum kamera hidup|Baris kontrol hanya dirender setelah kamera diminta dan izin bukan `denied`|
+|Sudut braket bidik|`capture.html` memakai radius 6 px|§4 tidak punya token 6 px dan §6 hanya menyebut "empat sudut garis 4 px lime"|Sudut tegak tanpa radius. Dokumen menang|
+|Radius chip pintasan "Spasi"|`capture.html` memakai 8 px|§4 hanya punya `radius-thumb` 10 px; `rounded-sm` memetakan ke 8,4 px|Memakai `rounded-sm` (8,4 px), token terdekat|
+|Judul kartu "Senyum, kamera siap!"|Acuan memakai Unbounded 800 16 px|§3 mengizinkan `title` 16 sampai 22 px, tetapi utilitas `title` dipatok 22 px|Kartu ini memakai `font-display text-base font-extrabold` (16 px) supaya sama dengan acuan|
+|Slot terisi di baki foto|Acuan memakai blok warna berlabel "Foto 1", "Foto 2"|Produk menampilkan foto hasil kamera (FR-05)|Foto asli dengan lencana centang; teks demo tidak dipakai|
+|Legenda gesture, sakelar Gesture Snap, GestureHUD, RelayInviteCard, kata "gesture" di baris privasi|§10.2 menggambarkannya lengkap|Milik M3 dan M8|Tidak dirender di M2; baris privasi berbunyi "Kamera berjalan di perangkat ini." Kartu tip lime tetap ada dengan tiga baris yang benar untuk M2|
+|Tombol pemilih kamera di kepala panel|Tidak ada di acuan|FR-08 (P1) menambahkannya|Tombol `neutral sm` berlabel perangkat + daftar tombol perangkat (pola disclosure, bukan komponen baru). Hanya dirender bila perangkat lebih dari satu|
+|Aksi utama jingga ganda saat semua slot terisi|§2: satu aksi utama jingga per layar|Tombol jepret dan "Lanjut Hias" sama-sama jingga, persis seperti acuan|Diikuti acuan; keduanya memang disebut di §2 dan §9|
+|Jeda antar angka hitung mundur|§7 menetapkan animasi angka 500 ms, tidak menetapkan jeda antar angka. `capture.html` memakai 800 ms|FR-06 menyebut hitung mundur 3 detik|1000 ms per angka (3, 2, 1) supaya totalnya pas 3 detik seperti FR-06; animasi masuknya tetap 500 ms dengan lewatan 1,08 seperti §7. 800 ms di acuan hanya pacing demo|
