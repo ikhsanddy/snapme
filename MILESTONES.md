@@ -27,14 +27,14 @@ Untuk milestone yang membangun halaman, sebut juga berkas acuannya dengan `@` di
 - [x] M0 Fondasi
 - [x] M1 Welcome dan kerangka booth
 - [x] M2 Kamera
-- [ ] M3 Gesture Snap
+- [x] M3 Gesture Snap
 - [x] M4 Hias strip
 - [x] M5 Hasil dan cetak
 - [x] M6 Link strip dan QR
 - [x] M7 Strip Hidup
 - [x] M8 Strip Estafet
-- [ ] M9 Pengerasan
-- [ ] M10 Migrasi Cloudflare
+- [x] M9 Pengerasan
+- [x] M10 Migrasi Cloudflare
 
 Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai berarti" di `AGENTS.md` terpenuhi.
 
@@ -161,7 +161,7 @@ Agent mencentang kotak setelah semua butir "Selesai bila" dan syarat "Selesai be
 
 - Semua uji unit `holdDetector` dan uji privasi GS-01 lolos.
 - Dengan sakelar mati, model tidak dimuat dan tidak berjalan.
-- Hasil uji manual dicatat di `docs/DECISIONS.md`: perangkat, cahaya, berapa kali berhasil dari 10 percobaan, dan ambang akhir yang dipakai.
+- Hasil uji manual dicatat di `docs/DECISIONS.md`: perangkat, cahaya, berapa kali berhasil dari 10 percobaan, dan ambang akhir yang dipakai. (terpenuhi atas konfirmasi pengguna 16 Oktober 2026: deteksi di HP berhasil; jumlah dari 10 dan uji laptop tidak dirinci; ambang akhir tetap nilai awal, tabel di `docs/DECISIONS.md` M3)
 
 **Butuh dari pengguna.** Uji manual di satu HP Android dan satu laptop. Agent tidak bisa memverifikasi deteksi dengan kamera palsu.
 
@@ -328,13 +328,13 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 - [x] Analitik tanpa cookie untuk ukuran di PRD §4. Pilihan alat diusulkan dulu ke pengguna. (Pengguna memilih endpoint peristiwa first-party; migrasi `20261016000000_events.sql` diterapkan, daftar peristiwa tertutup, kueri lima rasio PRD §4 didokumentasikan, dan peristiwa kunjungan sungguhan terbukti masuk basis data)
 - [x] Tinjau ulang semua butir ARCHITECTURE §13 dan perbarui dokumen yang nilainya berubah. (§13 ditulis ulang; §3, §7, §8, dan §11.1 diperbarui; PRD dan DESIGN-SYSTEM tidak berubah)
 
-**Butuh dari pengguna.** Cetak satu strip dengan QR di kertas 4R dan pindai dari cetakannya. Deploy ke Vercel.
+**Butuh dari pengguna.** Cetak satu strip dengan QR di kertas 4R dan pindai dari cetakannya. Deploy ke Vercel. (QR selesai 16 Oktober 2026; deploy digantikan M10 ke Cloudflare, jadi tidak ada tugas Vercel yang tersisa di sini.)
 
 **Selesai bila**
 
 - Tidak ada pelanggaran axe tingkat serius atau kritis. (terpenuhi: audit otomatis nol pelanggaran di sembilan halaman pada 360 dan 1280 px, plus halaman strip dan estafet ber-link di bawah gerbang `SUPABASE_E2E=1`)
-- Target PRD §8 tercapai, atau selisihnya dicatat beserta rencana. (sebagian: ekspor strip dan FCP di dalam target; LCP Welcome 3,17 detik terhadap 2,5 detik, selisih 670 ms beserta tiga langkah rencananya dicatat di `docs/DECISIONS.md` M9)
-- QR pada cetakan asli terbaca oleh kamera HP. (**menunggu pengguna**: langkahnya ada di tabel manual `docs/DECISIONS.md` M9; agent tidak bisa mencetak dan memindai)
+- Target PRD §8 tercapai, atau selisihnya dicatat beserta rencana. (terpenuhi: ekspor strip dan FCP di dalam target; LCP Welcome **tercapai di produksi**, median 2,416 detik terhadap batas 2,5 detik dari lima jalankan 16 Oktober 2026. Angka M9 3,17 detik dan M10 3,745 detik diukur di server lokal, bukan CDN. Langkah 1 rencana dikerjakan: JS sebelum `load` di pratinjau turun 165,9 menjadi 153,9 KB dan chunk sonner tidak lagi ikut pra-`load`; langkah 2 dan 3 tidak lagi diperlukan untuk target. Tabel dan buktinya di `docs/DECISIONS.md` M9 "Langkah 1 rencana")
+- QR pada cetakan asli terbaca oleh kamera HP. (terpenuhi: dikonfirmasi pengguna 16 Oktober 2026, QR cetakan terbaca kamera HP)
 - Daftar periksa DESIGN-SYSTEM §14 lolos untuk semua halaman. (terpenuhi: tabel per butir di `docs/DECISIONS.md` M9, termasuk hasil zoom 200% dan temuan keyboard pada pil pilihan hiasan)
 
 ---
@@ -368,5 +368,5 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 - Uji D1 berlari di atas SQLite sungguhan: kasus dari uji lama dipertahankan, termasuk dua klaim serentak → 200/409 dan rollback batas laju. (terpenuhi: `tests/db/strips.test.ts` 23 kasus, `tests/db/relays.test.ts` 30 kasus, `tests/db/events.test.ts` 10 kasus, semua di atas D1/R2/KV miniflare lewat `wrangler getPlatformProxy`; dua klaim serentak menghasilkan tepat satu 200 dan satu 409, dan rollback baris ke-11 batas laju diuji)
 - Putaran pratinjau menembus R2 sungguhan: buat strip → PUT presigned → complete → buka `/s/{id}` → hapus; relay 201 + klaim serentak; `POST /api/events` sampai 429; purge 401/200. (terpenuhi: 31 pemeriksaan lulus di `wrangler dev --env e2e` dengan bucket R2 sungguhan, termasuk tautan unduh ber-`response-content-disposition` yang isinya bita identik, penghapusan objek, penuntasan estafet dua langkah, 25 batch peristiwa lalu 429, purge 401/200, dan Cron Trigger lokal; tabelnya di `docs/DECISIONS.md` M10)
 - `npx playwright test` dan `npm run test:e2e:cf` hijau. (terpenuhi: suite utama terhadap dev server **66 lolos, 8 dilewati, 0 gagal**; suite ber-binding terhadap pratinjau Cloudflare **30 lolos, 3 dilewati, 0 gagal**. Tiga yang dilewati adalah jalur "server tanpa binding" yang memang tidak berlaku saat binding ada. Tiga temuan yang diperbaiki di sepanjang jalur ini dicatat di `docs/DECISIONS.md` M10: PPR/Cache Components dilepas, helper sesi uji dipersempit ke `/api/**`, dan `fetchSlotShots` memakai `cache: "no-store"`)
-- `npm run deploy` berhasil dan URL produksi menjawab; `npx wrangler d1 execute snapme-db --remote --command "select count(*) from strips"` menunjukkan baris uji; cron harian terlihat di dasbor. (terpenuhi: Worker `snapme` ter-deploy di `https://snapme.ikhsandyy-dev.workers.dev` (Version ID `26c7f70b-1280-4066-aaca-826f9e8f7c0c`), triggernya terdaftar saat deploy dengan `schedule: 0 3 * * *`; baris D1 remote `strips` 3, `relays` 1, `events` 1; 14 dari 15 pemeriksaan produksi lulus dan satu-satunya kegagalan adalah kesalahan skrip verifikasi, lalu bukti bit-identik diambil ulang dan lulus. Tabelnya di `docs/DECISIONS.md` M10)
+- `npm run deploy` berhasil dan URL produksi menjawab; `npx wrangler d1 execute snapme-db --remote --command "select count(*) from strips"` menunjukkan baris uji; cron harian terlihat di dasbor. (terpenuhi: Worker `snapme` ter-deploy di `https://snapme.ikhsandyy-dev.workers.dev` (Version ID `26c7f70b-1280-4066-aaca-826f9e8f7c0c`), triggernya terdaftar saat deploy dengan `schedule: 0 3 * * *`; baris D1 remote `strips` 3, `relays` 1, `events` 1; 14 dari 15 pemeriksaan produksi lulus dan satu-satunya kegagalan adalah kesalahan skrip verifikasi, lalu bukti bit-identik diambil ulang dan lulus. Tabelnya di `docs/DECISIONS.md` M10. Cron harian di dasbor dikonfirmasi pengguna 16 Oktober 2026, dan deploy ulang pada tanggal yang sama menghasilkan Version ID `2dc38bdb-25ce-4016-a0ad-34423c94cbf9` dengan `GET /` 200)
 - Median `npm run perf:lcp` terhadap pratinjau dicatat di `docs/DECISIONS.md` M10. (terpenuhi: median LCP 3,745 detik dari lima jalankan terhadap `wrangler dev`, pembanding M9 3,17 detik di `next start`; FCP 1,11 detik, TBT 44 ms, CLS 0, skor 0,87)
