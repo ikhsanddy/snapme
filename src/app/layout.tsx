@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono, Unbounded } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
+import { DeferredToaster } from "@/components/ui/deferred-toaster";
 import "./globals.css";
 
 const unbounded = Unbounded({
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <Toaster />
+        <DeferredToaster />
       </body>
     </html>
   );

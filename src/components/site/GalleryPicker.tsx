@@ -3,7 +3,6 @@
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Images } from "@phosphor-icons/react"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { LAYOUTS, type LayoutId } from "@/lib/layouts"
@@ -36,6 +35,10 @@ export function GalleryPicker() {
         "@/features/gallery/muatFotoGaleri"
       )
       const { results, rejected } = await muatFotoGaleri(files, target)
+      /* `sonner` diimpor di sini (bukan di tingkat modul) supaya pustaka toast
+         tidak ikut bundel awal Welcome; Toaster-nya sendiri baru dipasang
+         setelah hidrasi oleh `DeferredToaster`. */
+      const { toast } = await import("sonner")
       const needed = LAYOUTS[target].shotCount
 
       if (results.length === 0) {
