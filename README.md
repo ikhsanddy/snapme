@@ -112,7 +112,8 @@ End-to-end tests need a browser once: `npx playwright install chromium`.
 | `npm run deploy` | OpenNext build, then deploy the Worker (requires Cloudflare credentials) |
 | `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` |
 | `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run typegen` | Generate the Next.js route types (`LayoutProps`, `PageProps`) without a full build |
+| `npm run typecheck` | Route types, then `tsc --noEmit` |
 | `npm test` | Vitest: units, components, and route tests against real D1, R2, and KV |
 | `npx playwright test` | Playwright end-to-end tests against the dev server |
 | `npm run test:e2e:cf` | End-to-end tests against the Cloudflare preview |

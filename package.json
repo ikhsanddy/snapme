@@ -37,7 +37,8 @@
     "deploy": "npm run cf:patch && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typegen": "next typegen",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e:cf": "playwright test -c playwright.cf.config.ts",
     "perf:lcp": "lighthouse http://localhost:8787 --output=json --output-path=test-results/lighthouse-welcome.json --only-categories=performance --chrome-flags=\"--headless=new\""
