@@ -1389,3 +1389,24 @@ Bukti: satu tekanan panah nyasar disisipkan sementara sebelum pemanggilan `panah
 
 Pola yang terbaca dari dua kegagalan CI berturut-turut di uji yang sama: input keyboard yang datang sebelum render atau transisi selesai dianggap hilang oleh aplikasi, bukan salah. Uji yang menekan tombol lalu langsung mengasersi keadaan berikutnya sebaiknya menunggu keadaan antara, seperti yang kini dilakukan di langkah pemotretan dan langkah panah.
 
+## Permintaan lanjutan: pemegang hak cipta, riwayat, proteksi branch (16 Oktober 2026)
+
+Keputusan atas permintaan pengguna, semuanya di luar daftar milestone:
+
+| Tindakan | Isi | Bukti |
+|---|---|---|
+| Pemegang hak cipta | **Ikhsan Dyy**, menggantikan nama yang tertulis di `PRD.md`. `LICENSE`, `author` di `package.json`, dan bagian License di `README.md` diperbarui (commit `5d867ed`) | `git show HEAD:LICENSE` |
+| Rujukan gambar referensi | `AGENTS.md` "Halaman acuan UI", tabel berkas di `DESIGN-SYSTEM.md §0`, dan diagram folder `ARCHITECTURE.md §4` kini menyatakan `referensi_uiux.webp` tidak ikut di-commit | ketiga dokumen |
+| PR Dependabot #1 | Di-merge (squash) sebagai `8e42e33`: konva 10.8.0, motion 14.2.0, radix-ui 1.8.1, zod 4.6.7, @types/node 26.6.5, vitest 5.0.4, wrangler 4.150.0 | CI pada branch PR hijau sebelum merge; CI `master` hijau sesudahnya |
+| Riwayat git ditulis ulang | `git filter-branch --index-filter 'git rm --cached --ignore-unmatch docs/ui-reference/referensi_uiux.webp' -- --all`, lalu `refs/original` dihapus, `git reflog expire --expire=now --all`, `git gc --prune=now` | `git log --all -- docs/ui-reference/referensi_uiux.webp` kosong; `git rev-list --objects --all \| grep -c referensi_uiux` = 0; blob `851e3ac` hilang dari basis objek; tree M0 hanya berisi `README.md`, `welcome.html`, `capture.html`, `customize.html` |
+| Hash di dokumen | Penulisan ulang mengubah seluruh 23 hash, jadi 11 rujukan di `CHANGELOG.md` dan 2 rujukan commit di catatan CI diperbarui dari log hasil penulisan ulang (commit `1c9beca`) | `git log --format='%h %s'` |
+| Force push | **Diblokir kebijakan repo**: `.omp/config.yml` menolak pola `git push*--force*` untuk agent, dan guardrail itu sengaja tidak dilewati. Perintah untuk pengguna: `git push --force origin master` | keluaran tool: `Blocked by bash pattern: git push*--force*` |
+| Proteksi branch `master` | Wajib dua check CI ("Lint, typecheck, unit tests, build" dan "End-to-end (Playwright)", `strict` mati), tolak force push, tolak penghapusan, `enforce_admins` mati supaya pemilik tetap bisa push langsung dan menulis ulang riwayat bila memang perlu | `gh api repos/ikhsanddy/snapme/branches/master/protection` |
+| Deskripsi dan topik repo | Satu kalimat deskripsi dan enam topik (`photobooth`, `nextjs`, `cloudflare-workers`, `mediapipe`, `konva`, `privacy`) dipasang lewat `gh repo edit` | API repo: `description` dan `topics` terisi |
+| Cache Turbopack basi | Setelah `npm ci` mengganti `node_modules`, `npm run build` gagal dengan 15 galat `Module not found: @vercel/turbopack-next/internal/font/google/font`. Itu cache `.next` yang basi, bukan regresi paket: dengan `.next` dihapus, build hijau (exit 0), dan CI pada commit yang sama juga hijau. Jadi: setelah `npm ci`, hapus `.next` bila build lokal mendadak gagal di `next/font` | dua jalankan `npm run build`: exit 1 dengan `.next` lama, exit 0 sesudah `rm -rf .next` |
+| Check "Workers Builds: snapme" | Merah di setiap commit. Itu pipeline build integrasi Git Cloudflare dari dasbor (`app: cloudflare-workers-and-pages`), bukan CI repo ini | `gh api repos/ikhsanddy/snapme/commits/<sha>/check-runs` |
+
+Verifikasi tip hasil penulisan ulang sebelum push: `npm run lint`, `npm run typecheck`, `npm test` (179 lulus), `npm run build` (exit 0), dan `npx playwright test` (66 lulus, 8 dilewati, 0 gagal).
+
+Yang belum diverifikasi: isi kegagalan "Workers Builds: snapme", karena tautannya hanya bisa dibuka dari dasbor Cloudflare. Pilihannya memperbaiki build command-nya di dasbor atau melepas integrasi Git untuk Worker `snapme` dan membiarkan `npm run deploy` dari CLI seperti yang ditulis `ARCHITECTURE.md §3`.
+
