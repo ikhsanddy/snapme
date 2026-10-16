@@ -1355,3 +1355,19 @@ Yang perlu diputuskan pengguna:
 - Nama pemegang hak cipta di `LICENSE` memakai nama di `PRD.md`. Ganti bila yang berlaku adalah nama lain atau nama badan.
 - `DESIGN-SYSTEM.md §10` dan `AGENTS.md` masih mencantumkan `referensi_uiux.webp` sebagai berkas di folder acuan. Keduanya dokumen yang tidak boleh diubah agent tanpa persetujuan, jadi penyelarasan teksnya masih menunggu keputusan pengguna. README.md (baru) sudah tidak menyebut berkas itu.
 
+## CI pertama gagal: tipe rute Next belum dibuat, jeda 300 ms, dan jalur artefak (16 Oktober 2026)
+
+Gejala: run pertama di GitHub Actions (`38905443112`, commit `f917c8d`) merah di kedua job. Job `checks` berhenti di langkah Typecheck dengan dua galat yang sama: `src/app/booth/layout.tsx(9,44): error TS2304: Cannot find name 'LayoutProps'` dan `src/app/layout.tsx(37,50)`. Job `e2e` berhenti di `e2e/keyboard-flow.spec.ts:122` (`seluruh alur selesai hanya dengan keyboard`): `getByTestId('countdown')` tidak pernah muncul dalam 15 detik; sisanya 66 lulus, 7 dilewati, 0 galat lain.
+
+Tiga sebab, terpisah:
+
+| Sebab | Bukti | Perbaikan |
+|---|---|---|
+| `LayoutProps` dan `PageProps` dihasilkan Next 16 ke `.next/types`, dan `tsconfig.json` memasukkannya. Di mesin pengembangan berkas itu sudah ada dari `next dev`/`next build`, jadi `tsc --noEmit` hijau di sana, tetapi klon bersih dan CI gagal | Direproduksi lokal: `.next` dipindahkan, `npm run typecheck` mengeluarkan tepat dua galat TS2304 yang sama; `npx next typegen` (perintah resmi Next 16, "Types generated successfully") lalu `tsc --noEmit` hijau | Skrip `typegen` (`next typegen`) ditambahkan, dan `typecheck` menjalankannya lebih dulu. Perintah dokumentasi `npm run typecheck` kini berdiri sendiri di klon bersih, tanpa langkah tambahan di CI |
+| Mesin keadaan hanya menerima `SHOOT` pada fase `ready` (`SHOOTABLE_PHASES` di `machine.ts`), sedangkan `PAUSE_MS` 300 ms berjalan setelah tiap foto (GS-04). Spasi yang ditekan di dalam jeda itu hilang tanpa galat, jadi hitung mundur tidak pernah dimulai. Di runner CI, tekanan Spasi jatuh di jendela 300 ms itu | `machine.ts`: `pause: false` pada `SHOOTABLE_PHASES`, `PAUSE_MS = 300`, `FLASH_MS = 160`. Kegagalan hanya di CI, bukan di mesin pengembangan | Uji menunggu tombol "Ambil foto" aktif (`isBusy(phase)` bernilai salah hanya di luar `countdown`, `capturing`, dan `pause`) sebelum menekan Spasi |
+| `handleKeyDown` di `CameraStage.tsx` mengabaikan Spasi yang datang dari elemen anak (`event.target !== event.currentTarget`). Tab bisa mendarat di elemen lain setelah video menyala, dan tekanannya lalu tidak melakukan apa pun | Kode `CameraStage.tsx`; kegagalan yang sama tanpa galat apa pun di halaman | Sebelum Spasi, fokus dipasang ke kontainer `role="group"` bernama "Area kamera" dan dipastikan dengan `toBeFocused()`. Pola memfokuskan elemen terprogram sudah dipakai uji yang sama untuk pil hiasan |
+
+Tambahan: unggahan artefak gagal dengan "No files were found with the provided path: playwright-report", karena reporter `line` tidak menulis laporan HTML. Jalur unggahannya sekarang memuat `test-results` (trace, error context, tangkapan layar) dan `if-no-files-found: ignore`.
+
+Retry Playwright sengaja **tidak** dipasang: uji yang gagal diperbaiki sebabnya, bukan ditutupi. Kalau nanti muncul flake baru tanpa sebab yang jelas, retry boleh dipertimbangkan sebagai jaring sementara dengan catatan di sini.
+
