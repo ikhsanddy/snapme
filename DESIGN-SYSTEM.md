@@ -18,52 +18,20 @@ Tiga berkas HTML itu mandiri (buka langsung di browser) dan menjadi **acuan past
 ### Urutan yang menang bila bertentangan
 
 1. `DESIGN-SYSTEM.md` (dokumen ini)
-2. Skill `design-taste-frontend` dari taste-skill
-3. Bawaan library komponen (shadcn/ui, registry neobrutalism)
+2. Bawaan library komponen (shadcn/ui, registry neobrutalism)
 
 Artinya: pasang komponen jadi dulu, lalu ubah tampilannya lewat token di sini. Jangan menulis komponen dari nol bila padanannya ada (ARCHITECTURE §2), dan jangan membiarkan tampilan bawaan library lolos tanpa disesuaikan.
 
-### Perintah wajib: taste-skill
+### Keputusan yang sengaja menimpa bawaan library komponen
 
-Pasang sekali di root repo, lalu muat sebelum mengerjakan UI apa pun:
-
-```powershell
-npx skills add Leonxlnx/taste-skill
-```
-
-Di pemilih interaktifnya, pilih hanya skill `design-taste-frontend` dan tujuan `.agents/skills` (Universal). Padanan tanpa tanya-jawab:
-
-```powershell
-npx skills add Leonxlnx/taste-skill --skill design-taste-frontend -a universal -y
-```
-
-Di dalam omp, panggil dengan `/skill:design-taste-frontend` pada awal setiap tugas UI. Skill lain di repo itu (`industrial-brutalist-ui`, `minimalist-ui`, `high-end-visual-design`, dan lainnya) jangan dipasang: arah gayanya bertentangan dengan dokumen ini.
-
-### Batas pemakaian taste-skill
-
-Skill itu sendiri menyatakan cakupannya halaman landing, portofolio, dan redesign, bukan UI produk multi-langkah. Maka:
-
-| Permukaan | Pemakaian |
-|---|---|
-| Welcome (`/`), halaman strip (`/s/{id}`), Privasi | Penuh, termasuk Pre-Flight Check-nya |
-| Langkah booth (layout, foto, hias, hasil) | Hanya pagar umumnya: state lengkap (memuat, kosong, galat), kontras, `prefers-reduced-motion`, larangan pola klise, audit teks |
-
-**Design Read** yang dinyatakan agent sebelum menulis kode UI (diminta skill pada §0.B-nya):
-
-> Reading this as: consumer photobooth web app untuk pelajar dan mahasiswa Indonesia, with a playful Y2K neo-brutalist language, leaning toward shadcn/ui + Tailwind v4 yang di-restyle dengan token DESIGN-SYSTEM.md.
-
-**Dial**: `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`.
-
-### Keputusan yang sengaja menimpa bawaan taste-skill
-
-| Aturan taste-skill | Keputusan snapme | Alasan |
+| Bawaan library komponen | Keputusan snapme | Alasan |
 |---|---|---|
 | Maksimal 1 warna aksen | Empat warna merek, masing-masing satu peran tetap (§2) | Identitas dari gambar referensi. Konsistensi dijaga lewat peran, bukan jumlah |
 | Bayangan diwarnai mengikuti latar, tanpa hitam pekat | Bayangan keras `ink` tanpa blur (§4) | Ciri neo-brutalist |
 | Mode gelap wajib | Tema terang saja pada v1 | Latar lime adalah identitas. Token dibuat semantik supaya tema gelap bisa ditambah nanti |
-| Satu skala radius | Aturan campuran terdokumentasi (§4): kontrol berbentuk pil, wadah bersudut 20 atau 14 px | Skill mengizinkan campuran bila aturannya tertulis dan dipatuhi |
+| Satu skala radius | Aturan campuran terdokumentasi (§4): kontrol berbentuk pil, wadah bersudut 20 atau 14 px | Dokumen ini mengizinkan campuran bila aturannya tertulis dan dipatuhi |
 
-Aturan taste-skill lain berlaku apa adanya, terutama: tanpa em dash di teks antarmuka, tanpa emoji, tanpa `#000` dan `#fff` murni, ikon dari Phosphor, animasi lewat `motion/react`, tanpa tiga kartu fitur sama lebar, satu label per maksud.
+Aturan gaya lain di dokumen ini berlaku apa adanya, terutama: tanpa em dash di teks antarmuka, tanpa emoji, tanpa `#000` dan `#fff` murni, ikon dari Phosphor, animasi lewat `motion/react`, tanpa tiga kartu fitur sama lebar, satu label per maksud.
 
 ## 1. Arah visual
 
@@ -234,7 +202,7 @@ Pustaka: `motion` (impor dari `motion/react`). Hanya `transform` dan `opacity` y
 
 - Ikon: `@phosphor-icons/react`, bobot **bold**, satu keluarga untuk seluruh produk. shadcn/ui bawaannya memakai `lucide-react`: ganti saat menambah komponen. Ukuran 16, 20, 24, 36 px. Jangan menggambar path ikon sendiri.
 - Gesture selalu digambarkan dengan ikon (`HandPeace`, `HandPalm`, `ThumbsUp`), bukan emoji.
-- Stiker dan seni frame: berkas PNG atau SVG di `public/stickers` dan `public/frames`. Boleh dibuat dengan role `image` di omp (`google-antigravity/gemini-3-pro-image`), lalu wajib ditinjau manusia sebelum masuk repo. Gaya: warna datar dari palet §2, garis tepi `ink`, tanpa gradasi.
+- Stiker dan seni frame: berkas PNG atau SVG di `public/stickers` dan `public/frames`. Wajib ditinjau manusia sebelum masuk repo. Gaya: warna datar dari palet §2, garis tepi `ink`, tanpa gradasi.
 - Fon di berkas acuan dimuat dari Google Fonts supaya berkasnya mandiri. Produk tetap memakai `next/font` (§3).
 - Foto contoh di Welcome: belum ada. Di halaman acuan slotnya berlabel "Foto contoh". Isi dengan foto asli yang punya izin pakai, atau biarkan sebagai blok warna berlabel. Jangan memakai wajah orang tanpa izin.
 
@@ -418,7 +386,7 @@ Susunan pasti berkas ini mengikuti keluaran `npx shadcn@latest init` pada versi 
 
 ## 14. Daftar periksa tinjauan UI
 
-Dipakai reviewer sebelum sebuah halaman dianggap selesai:
+Dipakai peninjau sebelum sebuah halaman dianggap selesai:
 
 - [ ] Komponen berasal dari dasar di §9, bukan tulisan sendiri yang menduplikasi library.
 - [ ] Tidak ada nilai warna, radius, atau bayangan mentah di luar `globals.css`.
@@ -429,4 +397,3 @@ Dipakai reviewer sebelum sebuah halaman dianggap selesai:
 - [ ] `prefers-reduced-motion` dihormati.
 - [ ] Rapi pada 360, 768, dan 1280 px, dan sudah dibandingkan berdampingan dengan berkas acuannya di `docs/ui-reference/` bila ada.
 - [ ] Label mengikuti §12, tanpa emoji dan tanpa em dash.
-- [ ] Untuk Welcome dan `/s/{id}`: Pre-Flight Check taste-skill dijalankan, dengan pengecualian di §0.

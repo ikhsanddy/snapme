@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Versi | 0.1 (draf untuk perencanaan omp) |
+| Versi | 0.1 (draf untuk perencanaan) |
 | Tanggal | 8 Oktober 2026 |
 | Pemilik | Ikhsan Dyy |
 | Dokumen terkait | `DESIGN-SYSTEM.md`, `ARCHITECTURE.md`, `MILESTONES.md`, halaman acuan UI di `docs/ui-reference/` |

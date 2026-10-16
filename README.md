@@ -22,7 +22,7 @@ Three things it does differently:
 **Status:** `v0.1.0`. The full v1 scope of the PRD is implemented and deployed, milestones M0 to
 M10 are complete, and what changed in each one is in [CHANGELOG.md](CHANGELOG.md). What is verified
 and what still needs a real device is listed in
-[ARCHITECTURE.md §13](ARCHITECTURE.md#13-yang-belum-diverifikasi).
+[ARCHITECTURE.md §12](ARCHITECTURE.md#12-yang-belum-diverifikasi).
 
 ## Live demo
 
@@ -156,10 +156,9 @@ they are set with `wrangler secret put` or in the Cloudflare dashboard. See
 | [PRD.md](PRD.md) | What is built, priorities, and acceptance criteria |
 | [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) | Tokens, typography, components, layout, accessibility |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Stack, folder structure, routes, data model, testing, workflow |
-| [MILESTONES.md](MILESTONES.md) | Work order and the acceptance criteria of each milestone |
+| [MILESTONES.md](MILESTONES.md) | Release plan with the acceptance criteria of each phase |
 | [CHANGELOG.md](CHANGELOG.md) | What changed per milestone |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log, including what was measured and what failed |
-| [AGENTS.md](AGENTS.md) | Working rules for agents and humans, and the project conventions |
 
 These documents are written in Indonesian; code, identifiers, filenames, and commit messages are in
 English. When a document and the reference pages in `docs/ui-reference` disagree, the document wins

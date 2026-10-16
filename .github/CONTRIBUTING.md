@@ -35,7 +35,6 @@ Useful entry points:
 | `DESIGN-SYSTEM.md` | Tokens, components, layout, accessibility, review checklist |
 | `ARCHITECTURE.md` | Stack, structure, routes, data model, testing, workflow |
 | `MILESTONES.md` | The work order and the acceptance criteria of each milestone |
-| `AGENTS.md` | The repository's working rules and safe limits |
 | `docs/ui-reference` | The reference pages that fix the layout of each booth screen |
 
 ## Available commands
@@ -66,8 +65,7 @@ npx playwright test
 
 ## Repository conventions
 
-These come from `AGENTS.md` and the three binding documents, and they are not negotiable in a pull
-request:
+These rules are not negotiable in a pull request:
 
 - Comments, identifiers, filenames, and commit messages are in English, following
   [Conventional Commits](https://www.conventionalcommits.org/). Interface text and the working

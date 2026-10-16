@@ -52,12 +52,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# omp working artifacts: brag marketing output, the stray skill copy it left at
-# the repo root, and the personal brag skills (see docs/DECISIONS.md).
-/brag-output*/
-/agent/
-.agents/skills/brag/
-.agents/skills/brag-slim/
+# Next.js regenerates AGENTS.md locally when a coding agent is present, so it must never be committed.
+/AGENTS.md
 
 # Third-party style reference kept locally only: the webp is a collage of
 # another product's screens as well as its brand and customers, so it is not

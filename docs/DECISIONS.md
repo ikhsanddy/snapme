@@ -17,21 +17,6 @@ Keputusan ARCHITECTURE §3. Bukti pemeriksaan:
 - Yang diganti ke token snapme (DESIGN-SYSTEM §9): `border-black` menjadi `border-ink`, `shadow-md`/`shadow-lg` (bayangan lunak bawaan Tailwind) menjadi `shadow-hard`/`shadow-hard-hover`, `rounded`/`rounded-xl` menjadi `rounded-pill`/`rounded-card`, `font-head` menjadi `font-display`/`font-sans`, ukuran menjadi 44 px (`sm`) dan 56 px (`lg`), plus cincin fokus `outline-violet` 3 px jarak 3 px.
 - Ketiga berkas itu sekarang bergaya snapme, jadi tidak ada kode registry yang tersisa apa adanya. Registry dicatat di sini supaya perbandingan berikutnya tahu asalnya.
 
-### Skill proyek yang dipasang
-
-Dipasang ke `.agents/skills/` (ARCHITECTURE §11.3, MILESTONES M0):
-
-| Skill | Sumber | Fungsi |
-|---|---|---|
-| `find-skills` | `vercel-labs/skills` | Mencari skill yang sudah ada sebelum menulis kode |
-| `design-taste-frontend` | `Leonxlnx/taste-skill` | Pagar kualitas UI, dipakai di Welcome, `/s/{id}`, dan Privasi |
-| `vercel-react-best-practices` | `vercel-labs/agent-skills` | Hasil `/skill:find-skills` kata kunci milestone M0 |
-| `shadcn` | `shadcn-ui/ui` | Hasil `/skill:find-skills` kata kunci milestone M0 |
-
-Hasil `npx skills find` untuk kata kunci `nextjs`, `shadcn`, `tailwind`: tiga kandidat di atas (masing-masing 365,4 ribu, 778,6 ribu, dan 16,3 ribu pemasangan). Dua yang resmi dipasang; `lombiq/tailwind-agent-skills@tailwind-4-docs` (komunitas, 16,3 ribu) tidak dipasang karena Tailwind v4 sudah terbaca dari token di `globals.css`.
-
-Verifikasi keempat skill ada di `.agents/skills/`. Pengecekan di `/extensions` tab Skills diserahkan ke pengguna karena UI omp tidak terlihat dari sesi agent.
-
 ### Penyimpangan dari dokumen
 
 | Hal | Dokumen | Kenyataan | Tindakan |
@@ -64,41 +49,7 @@ Semua perubahan berikut hanya menyentuh kelas Tailwind dan susunan internal komp
 
 ## M1 Welcome dan kerangka booth (9 Oktober 2026)
 
-### Hasil find-skills untuk kata kunci M1
-
-`npx skills find` dijalankan untuk tiga kata kunci milestone (`web design guidelines`, `react best practices`, `accessibility`):
-
-|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
-|---|---|---|---|
-|`web design guidelines`|`vercel-labs/agent-skills@web-design-guidelines`|709,8 ribu|Tidak dipasang|
-||`leonxlnx/taste-skill@design-taste-frontend`|576,7 ribu|Sudah terpasang di M0|
-|`react best practices`|`vercel-labs/agent-skills@vercel-react-best-practices`|778,6 ribu|Sudah terpasang di M0|
-|`accessibility`|`addyosmani/web-quality-skills@accessibility`|59,4 ribu|Tidak dipasang|
-||`jakubkrehel/skills@better-accessibility`|24,8 ribu|Tidak dipasang|
-
-**Keputusan: tidak ada pemasangan skill baru di M1.** Dua skill yang sudah terpasang menutupi kebutuhan M1, dan audit aksesibilitas menyeluruh memang dijadwalkan di M9 dengan `@axe-core/playwright` (sudah ada di devDependencies). Kedua kandidat aksesibilitas diusulkan ke pengguna; pemasangannya menunggu persetujuan.
-
-### Pre-Flight Check taste-skill untuk Welcome
-
-Dijalankan untuk `/` dengan pengecualian DESIGN-SYSTEM §0. Yang diperiksa dan hasilnya:
-
-|Pemeriksaan|Hasil|
-|---|---|
-|Design Read dan dial dinyatakan sebelum menulis kode|Dinyatakan: consumer photobooth web app untuk pelajar dan mahasiswa Indonesia, playful Y2K neo-brutalist, shadcn/ui + Tailwind v4 di-restyle token DESIGN-SYSTEM.md; `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`|
-|Nol em dash dan en dash di teks antarmuka|Lolos. Pencarian karakter em dash dan en dash di `src/` tidak menemukan satu pun|
-|Satu label per maksud, CTA tidak membungkus|Lolos. "Mulai Foto" hanya untuk memulai sesi, pil satu baris pada 360 sampai 1280 px|
-|Pasangan warna hanya dari tabel §2|Lolos. Diperiksa: `ink` di `paper`, `lime`, `violet-soft`, `tangerine`; `paper` di `violet` dan `ink`; `muted` di `paper`, `cream`, `lime`|
-|Kontras tombol dan kontrol|Lolos. Label tombol utama selalu `ink` di atas `tangerine` (5,33); kartu radio `ink` di atas `paper` (18,11) dengan cincin fokus `violet` 3 px|
-|Hitungan eyebrow|2 label huruf besar di halaman, batas `ceil(4 bagian / 3)` = 2. Lolos|
-|Tanpa pola klise|Lolos. Bukan tiga kartu sama lebar (ubin 2 : 1 : 1), bukan hero tengah, tanpa gradasi hiasan, tanpa Inter|
-|`prefers-reduced-motion`|Lolos. Aturan global di `globals.css` mematikan transisi dan animasi|
-|Gambar nyata|**Penyimpangan tercatat.** §8 melarang memakai wajah orang tanpa izin dan mengizinkan blok warna berlabel "Foto contoh"; halaman acuan memakai blok yang sama|
-|Kepala hero maksimal 2 baris|**Penyimpangan tercatat.** Pada 360 px judul membungkus 3 baris, sama seperti `welcome.html`. Syarat yang mengikat adalah FR-01, dan itu diuji otomatis: aksi utama terlihat tanpa menggulir pada 360 x 640 dan 1366 x 768|
-|Motion ditampilkan bila klaim > 4|**Penyimpangan tercatat.** Welcome hanya memakai umpan balik tekan tombol (§7), sama seperti acuan. Gerak lain (`motion/react`) masuk di langkah booth pada milestone yang memilikinya|
-
 ### Audit aksesibilitas M1
-
-Skill `accessibility` dari `addyosmani/web-quality-skills` dipasang ke `.agents/skills/accessibility` (dan tercatat di `skills-lock.json`) setelah usulan M1 disetujui. Pemeriksaan kelayakan sebelum pasang: lisensi MIT, commit terakhir `2026-08-24`, 2.909 bintang, tidak diarsipkan. Skill ini memakai alur bukti lebih dulu (Lighthouse atau axe pada halaman yang sudah dirender, lalu pemeriksaan manual).
 
 **Otomatis.** `e2e/a11y.spec.ts` menjalankan axe-core 4.14 lewat `@axe-core/playwright` pada empat halaman M1 (`/`, `/privasi`, `/booth/layout`, `/booth/capture`) di dua lebar (360 dan 1280 px), dengan tag `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`. Hasil: nol pelanggaran pada delapan pemindaian. Uji ini permanen, jadi regresi aksesibilitas M1 akan ketahuan.
 
@@ -134,20 +85,6 @@ Perbaikan yang lahir dari audit: `/` sebelumnya tidak punya landmark `main`; kon
 
 ## M2 Kamera (10 Oktober 2026)
 
-### Hasil find-skills untuk kata kunci M2
-
-`npx skills find` dijalankan untuk tiga kata kunci milestone (`playwright`, `webcam`, `react testing`):
-
-|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
-|---|---|---|---|
-|`playwright`|`microsoft/playwright-cli`|178,1 ribu|Tidak dipasang (diusulkan ke pengguna)|
-||`anthropics/webapp-testing`|172,1 ribu|Tidak dipasang (diusulkan ke pengguna)|
-||`currents-dev/playwright-best-practices`|91,2 ribu|Tidak dipasang (diusulkan ke pengguna)|
-|`webcam`|`openclaw/camsnap`|3,1 ribu|Tidak dipasang: bukan photobooth browser|
-|`react testing`|tanpa hasil yang relevan| |Tidak dipasang|
-
-**Keputusan: tidak ada pemasangan skill baru di M2.** Repo sudah punya Playwright terkonfigurasi dengan tiga berkas uji yang berjalan, dan konvensinya (kamera palsu, selektor peran, axe) sudah jelas dari uji M1. Tiga kandidat Playwright diusulkan ke pengguna; pemasangannya menunggu persetujuan.
-
 ### Mesin keadaan pemotretan: `src/features/capture/machine.ts`
 
 - Fase: `idle`, `requesting`, `denied`, `ready`, `holding`, `countdown`, `capturing`, `pause`, `complete` (ARCHITECTURE §5). Peristiwa: `PERMISSION_REQUEST`, `PERMISSION_GRANTED`, `PERMISSION_DENIED{reason}`, `SHOOT{target?}`, `HOLD_START`, `HOLD_CANCEL`, `TICK`, `SHOT_SAVED`, `FLASH_DONE`, `PAUSE_DONE{allFilled}`.
@@ -163,7 +100,7 @@ Perbaikan yang lahir dari audit: `/` sebelumnya tidak punya landmark `main`; kon
 - `captureFrame.ts` memotong bingkai tengah ke rasio slot lalu mencerminkannya (`translate` + `scale(-1, 1)`) supaya hasilnya sama dengan pratinjau yang dicerminkan (FR-05). Hasil disimpan sebagai dataURL JPEG mutu 0,92; resolusi hasil sama dengan resolusi sumber yang dipotong (1280 x 720 menjadi 1022 x 720 pada Strip 4), penurunan skala baru terjadi di kanvas hias M4.
 - **`ref` ke `<Webcam>` wajib.** `react-webcam` menaruh `HTMLVideoElement` di properti instans (`webcamRef.current.video`); tanpa `ref` di pemakaian komponen, `webcamRef.current` selalu null dan tidak ada foto yang tersimpan. Ketahuan dari uji Playwright pertama yang gagal.
 - **Video yang dicerminkan punya stacking context sendiri.** Karena `mirrored` memasang `transform: scaleX(-1)`, elemen video dicat setelah elemen berposisi absolut yang datang lebih dulu di DOM, sehingga braket bidik tertutup. Braket diberi `z-10`.
-- Perangkat: `enumerateDevices()` dipanggil ulang di `onUserMedia` (label baru terbaca setelah izin), disaring ke `videoinput`, dan pilihannya disimpan di `settings.cameraDeviceId` (sesi saja, tanpa penyimpanan lintas muat ulang). Mengganti perangkat mengubah `videoConstraints`, dan `react-webcam` meminta ulang stream saat `videoConstraints` berubah; `shots` tidak tersentuh.
+- Perangkat: `enumerateDevices()` dipanggil ulang di `onUserMedia` (label baru terbaca setelah izin), disaring ke `videoinput`, dan pilihannya disimpan di `settings.cameraDeviceId` (hanya di memori, tanpa penyimpanan lintas muat ulang). Mengganti perangkat mengubah `videoConstraints`, dan `react-webcam` meminta ulang stream saat `videoConstraints` berubah; `shots` tidak tersentuh.
 
 ### Kamera palsu di uji Playwright
 
@@ -199,24 +136,6 @@ Catatan dari penulisan uji:
 
 ## M3 Gesture Snap (9 Oktober 2026)
 
-### Hasil find-skills untuk kata kunci M3
-
-`npx skills find` dijalankan untuk dua kata kunci milestone (`mediapipe`, `web performance`):
-
-|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
-|---|---|---|---|
-|`mediapipe`|`kinemotioninc/kinemotion@mediapipe-pose-detection`|82|Tidak dipasang: di bawah 100 pemasangan dan penulis tak dikenal|
-||`liuchiawei/agent-skills@mediapipe-usage`|61|Tidak dipasang: alasan sama|
-||`omer-metin/skills-for-antigravity@hand-gesture-recognition`|38|Tidak dipasang: alasan sama|
-|`web performance`|`vercel-labs/agent-skills@vercel-react-best-practices`|778,6 ribu|Sudah terpasang sejak M0|
-||`cloudflare/skills@web-perf`|93 ribu|**Dipasang 9 Oktober 2026** setelah pengguna menyetujui usulan M3|
-
-**Keputusan pemasangan saat milestone: tidak ada yang dipasang sendiri.** Semua kandidat `mediapipe` berada di bawah ambang kelayakan find-skills (sumber tak dikenal, pemasangan sedikit); rujukan yang dipakai adalah dokumentasi resmi Google AI Edge untuk Gesture Recognizer Web, yang juga menjadi sumber URL model dan wasm. `cloudflare/skills@web-perf` (93 ribu pemasangan, sumber resmi Cloudflare) diusulkan ke pengguna dan dipasang setelah disetujui.
-
-### Skill `web-perf` yang dipasang
-
-Perintah: `npx skills add cloudflare/skills --skill web-perf -a universal -y`. Terpasang di `.agents/skills/web-perf/` dan tercatat di `skills-lock.json`; pemeriksaan kelayakan sebelum pasang: sumber resmi Cloudflare (repo `cloudflare/skills`, 3.014 bintang, lisensi Apache-2.0, push terakhir 9 Oktober 2026, tidak diarsipkan), 93 ribu pemasangan, penilaian otomatis skill.sh "Safe". Isinya memandu audit performa (Core Web Vitals, Lighthouse, analisis trace) dengan sumber retrieval resmi (web.dev, Chrome DevTools docs). Relevan untuk butir kinerja PRD §8 dan milestone M9; pemakaiannya belum dijalankan di M3.
-
 ### Aset wasm dan model
 
 - `public/mediapipe/wasm/` berisi enam berkas salinan `node_modules/@mediapipe/tasks-vision/wasm/` (`vision_wasm_internal.{js,wasm}`, `vision_wasm_module_internal.{js,wasm}`, `vision_wasm_nosimd_internal.{js,wasm}`). Disalin apa adanya, tidak ada CDN (ARCHITECTURE §4, §8). Berkas-berkas ini dikecualikan dari ESLint lewat `globalIgnores` karena ditulis Emscripten dan gagal aturan proyek (`require()`, alias `this`).
@@ -238,8 +157,8 @@ Perintah: `npx skills add cloudflare/skills --skill web-perf -a universal -y`. T
 |Keadaan "Menyiapkan gesture..."|§9 menyebut empat keadaan HUD|GS-07 meminta status memuat|Ditambah keadaan kelima `loading` di luar empat keadaan acuan|
 |Delegate model|Rencana: GPU dengan fallback CPU|Di headless tanpa WebGL, `createFromOptions` gagal dan fallback CPU dipakai otomatis|GPU dulu, satu percobaan ulang dengan CPU; kegagalan keduanya memicu jalur GS-07 (sakelar disembunyikan, satu toast)|
 |`numHands`|GS-10 (P1) meminta dua tangan|Konfigurasi model tidak bisa diubah tanpa memuat ulang model|`numHands: 2` dipasang sejak P0 supaya GS-10 tidak mengubah konfigurasi|
-|Legenda gesture di kartu lime|Acuan memakai tiga baris (dua jari, telapak, jempol)|GS-08 dan GS-09 adalah P1|P0 sempat memakai dua baris; setelah P1 dikerjakan di sesi yang sama, legenda kembali ke tiga baris acuan persis (`HandPeace`, `HandPalm`, `ThumbsUp`)|
-|Penanganan gesture P1|GS-08 (telapak mengulang foto terakhir), GS-09 (jempol lanjut ke hias), GS-10 (dua tangan)|Dikerjakan setelah P0 tuntas di sesi yang sama|`useGestureSnap` menangani aksi `retake` pada fase `ready` dan `complete` (dispatch `SHOOT` dengan target) dan `proceed` pada fase `complete` (`onProceed`). Loop juga berjalan di fase `complete` saat ada foto yang bisa diulang; kedua aksi tidak menyentuh fase `holding` mesin. GS-10 hanya konfigurasi `numHands: 2`|
+|Legenda gesture di kartu lime|Acuan memakai tiga baris (dua jari, telapak, jempol)|GS-08 dan GS-09 adalah P1|P0 sempat memakai dua baris; setelah P1 dikerjakan, legenda kembali ke tiga baris acuan persis (`HandPeace`, `HandPalm`, `ThumbsUp`)|
+|Penanganan gesture P1|GS-08 (telapak mengulang foto terakhir), GS-09 (jempol lanjut ke hias), GS-10 (dua tangan)|Dikerjakan setelah P0 tuntas|`useGestureSnap` menangani aksi `retake` pada fase `ready` dan `complete` (dispatch `SHOOT` dengan target) dan `proceed` pada fase `complete` (`onProceed`). Loop juga berjalan di fase `complete` saat ada foto yang bisa diulang; kedua aksi tidak menyentuh fase `holding` mesin. GS-10 hanya konfigurasi `numHands: 2`|
 |Uji kamera di Playwright|Rencana: seluruh uji memakai bawaan sakelar menyala|Chromium headless tanpa GPU butuh ratusan milidetik per inferensi, sehingga hitung mundur pada uji alur kamera bisa meleset|`e2e/capture.spec.ts` mematikan sakelar lewat localStorage (berkas ini menguji kamera, bukan gesture); `e2e/gesture.spec.ts` menguji sakelar menyala dan menunggu model siap sebelum memotret|
 |Batas `expect` Playwright|Bawaan 5 detik|Inisialisasi model dan inferensi pertama di headless memblokir main thread beberapa detik|`expect.timeout` 15 detik di `playwright.config.ts`, dengan komentar alasan|
 |Wrapper `foto`/`sampel` uji|Uji M2 memakai `getByRole("status")` untuk hitung mundur|HUD gesture juga `role="status"` sehingga selektornya ambigu|`CountdownOverlay` diberi `data-testid="countdown"`; helper uji memakai selektor itu|
@@ -267,7 +186,7 @@ Perkakas: `createGestureSource` mengembalikan `start` (mulai loop), `stop` (jeda
 
 ### Uji manual (diisi pengguna)
 
-Agent tidak bisa memverifikasi deteksi gesture dengan kamera palsu: kamera palsu tidak punya tangan. Isi tabel ini setelah mencoba di perangkat nyata: buka `/booth/capture`, nyalakan Gesture Snap, lakukan 10 kali tanda dua jari di bawah cahaya yang biasa dipakai, dan catat berapa yang memicu hitung mundur.
+Deteksi gesture tidak bisa diverifikasi dengan kamera palsu: kamera palsu tidak punya tangan. Isi tabel ini setelah mencoba di perangkat nyata: buka `/booth/capture`, nyalakan Gesture Snap, lakukan 10 kali tanda dua jari di bawah cahaya yang biasa dipakai, dan catat berapa yang memicu hitung mundur.
 
 |Perangkat|Browser|Cahaya|Berhasil dari 10|Catatan|
 |---|---|---|---|---|
@@ -281,24 +200,9 @@ Laporan pengguna 16 Oktober 2026 hanya menyebut "sudah saya coba di HP dan hasil
 
 ## M4 Hias strip (9 Oktober 2026)
 
-### Hasil find-skills untuk kata kunci M4
+### 12 stiker: SVG ditulis tangan
 
-`npx skills find` dijalankan untuk tiga kata kunci milestone (`canvas`, `konva`, `image generation`):
-
-|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
-|---|---|---|---|
-|`konva`|`terminalskills/skills@konva`|18|Tidak dipasang: di bawah ambang 100 pemasangan dan penulis tak dikenal|
-||`p7gg/skills@konva-js`|7|Tidak dipasang: alasan sama|
-|`canvas`|`anthropics/skills@canvas-design`|114,8 ribu|Tidak dipasang: artefak poster PNG/PDF, bukan editor kanvas|
-||`currents-dev/playwright-best-practices`|91,2 ribu|Tidak dipasang: konvensi Playwright repo sudah terbentuk sejak M1|
-|`image generation`|`leonxlnx/taste-skill@imagegen-frontend-web`|346,4 ribu|**Dipasang 9 Oktober 2026** setelah pengguna menyetujui|
-||`101-skills/superpowers@ai-image-generation`|705,2 ribu|Tidak dipasang: fork yang tidak jelas asalnya|
-
-`imagegen-frontend-web` terpasang di `.agents/skills/imagegen-frontend-web/` (`npx skills add leonxlnx/taste-skill --skill imagegen-frontend-web -a universal -y`) dan tercatat di `skills-lock.json`. Sumbernya repo yang sudah dipakai sejak M0 (`Leonxlnx/taste-skill`), penilaian otomatis skill.sh "Safe". Rujukan teknis kanvas tetap dokumentasi resmi konva.js dan react-konva; tiga kandidat `konva` di bawah ambang tidak dipasang.
-
-### 12 stiker: SVG ditulis tangan, bukan role `image`
-
-Keputusan pengguna untuk M4. DESIGN-SYSTEM §8 mengizinkan stiker dibuat dengan role `image` lalu ditinjau manusia; menulis SVG langsung menghindari langkah tinjauan gambar dan menjaga berkas tetap kecil (247 sampai 1.213 bita per berkas).
+Keputusan pengguna untuk M4. DESIGN-SYSTEM §8 mengizinkan stiker berupa gambar buatan yang ditinjau manusia; menulis SVG langsung menghindari langkah tinjauan gambar dan menjaga berkas tetap kecil (247 sampai 1.213 bita per berkas).
 
 Spesifikasi seragam: `viewBox="0 0 256 256"`, isian warna datar dari palet §2, `stroke="#141414" stroke-width="14" stroke-linejoin="round"`, tanpa gradasi, tanpa teks, tanpa `defs`/`style`/`filters`, dan gambar dijaga di dalam batas 10 px supaya garis tepi 14 px tidak terpotong bingkai. Nilai heks di `public/stickers/` boleh ada karena kriteria M0 memindai `src/` saja.
 
@@ -376,7 +280,7 @@ Selisih yang tersisa punya sebab yang sudah dicatat: panel pada 360 px lebih pen
 
 ### Uji manual yang perlu dilengkapi pengguna
 
-Agent tidak bisa memverifikasi dua hal dengan kamera palsu:
+Dua hal tidak bisa diverifikasi dengan kamera palsu:
 
 1. **Foto kamera sungguhan dan batas 2 MB.** Foto gradien menghasilkan PNG 51 sampai 62 KB, jadi jalur kedua rekompresi JPEG belum terpicu. Buka `/booth/capture` di perangkat nyata, ambil empat foto, lalu "Selesai & Unduh": catat ukuran berkasnya. Bila di atas 2 MB, turunkan `JPEG_QUALITY` di `captureFrame.ts` (satu konstanta) dan catat di sini.
 2. **Cetak dan pindai QR.** Bagian ini milik M6 dan M9 (QR belum ada di strip).
@@ -413,18 +317,6 @@ Selama pengerjaan, alur berikut dijalankan langsung di Chromium (dengan empat fo
 
 ## M5 Hasil dan cetak (9 Oktober 2026)
 
-### Hasil find-skills untuk kata kunci M5
-
-`npx skills find` dijalankan untuk dua kata kunci milestone (`print css`, `indexeddb`):
-
-|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
-|---|---|---|---|
-|`print css`|`sebastian-software/effective-print-design`|387|Tidak dipasang: domainnya desain poster dan PDF, bukan print CSS web|
-||`genericservice/claude-skills@print-css`|56|Tidak dipasang: di bawah ambang 100 pemasangan dan penulis tak dikenal|
-|`indexeddb`|tanpa hasil relevan| |Tidak dipasang|
-
-**Keputusan: tidak ada pemasangan skill baru di M5.** Tidak ada kandidat yang lolos ambang kelayakan (relevan dan pemasangan memadai). Kedua kandidat print diusulkan ke pengguna; pemasangannya menunggu persetujuan dan tidak memblokir milestone ini.
-
 ### Pencetakan 4R: portal ke `body`, bukan pola `visibility`
 
 Rencana awal memakai pola `body * { visibility: hidden }` dengan lembar cetak diletakkan di dalam pohon halaman. Pola itu lolos pemeriksaan dimensi, tetapi **gagal pada jumlah halaman**: `visibility: hidden` tidak menghilangkan kotak tataletaknya, jadi dokumen tetap setinggi halaman produk dan `page.pdf({ preferCSSPageSize: true })` menghasilkan **3 halaman**, bukan 1. Terbukti di uji pertama `e2e/result.spec.ts` uji 2.
@@ -455,13 +347,13 @@ Dua hal yang lahir dari kenyataan runtime:
 
 ### "Mulai dari awal" mengarah ke pemilih layout
 
-Bukan ke Welcome: pengguna yang baru selesai langsung memulai sesi baru tanpa melewati halaman pemasaran, dan tombol Kembali di setiap langkah tetap menyediakan jalan ke atas. Handler memanggil `clearSession()` (hapus rekaman FR-14), `reset()` (kosongkan store), lalu `router.replace("/booth/layout")`.
+Bukan ke Welcome: pengguna yang baru selesai langsung memulai alur baru tanpa melewati halaman pemasaran, dan tombol Kembali di setiap langkah tetap menyediakan jalan ke atas. Handler memanggil `clearSession()` (hapus rekaman FR-14), `reset()` (kosongkan store), lalu `router.replace("/booth/layout")`.
 
 ### `idb` sebagai klien penyimpanan (FR-14)
 
 Dipasang `idb@8.0.4` (MIT, terawat) alih-alih menulis pembungkus IndexedDB sendiri, sesuai ARCHITECTURE §2 ("klien penyimpanan" ada di daftar yang tidak boleh ditulis sendiri). Satu basis data `snapme-session`, satu object store `state`, satu kunci `"current"`.
 
-- Rekaman menyimpan `layoutId`, `shots`, dan slice editor; `settings` tidak ikut karena gesture sudah punya jalurnya sendiri (GS-06 di localStorage) dan pemilihan kamera memang hanya sesi (M2).
+- Rekaman menyimpan `layoutId`, `shots`, dan slice editor; `settings` tidak ikut karena gesture sudah punya jalurnya sendiri (GS-06 di localStorage) dan pemilihan kamera memang tidak disimpan (M2).
 - `validateRecord` adalah satu-satunya pintu dari penyimpanan ke store: hanya `version === 1`, layout dikenal, jumlah slot sama dengan `shotCount`, dan tipe tiap bidang benar yang diterima. Rekaman rusak dihapus, bukan ditebak.
 - `SessionSync` dipasang di `src/app/booth/layout.tsx`: membaca penyimpanan, mengisi store hanya bila store masih segar (`layoutId === null` dicek ulang setelah `await`, supaya alur galeri dari Welcome tidak tertimpa), lalu berlangganan dengan jeda simpan 400 ms.
 - Store mendapat bidang `sessionReady` (awal `false`, tidak ikut `reset()`). `useRequireLayout` dan `useRequireShots` menunda pengalihan selama `sessionReady` masih `false`, jadi muat ulang di tengah langkah tidak memantul ke pemilih layout sebelum IndexedDB terbaca.
@@ -497,29 +389,16 @@ Selain uji yang sudah disebut di atas, alur berikut dijalankan langsung di Chrom
 
 ### Uji manual yang perlu dilengkapi pengguna
 
-1. **Dialog cetak sungguhan.** `page.pdf` membuktikan satu halaman 4 x 6 inci, tetapi dialog cetak sistem (margin printer, "fit to page") tidak bisa diverifikasi agent. Cetak satu lembar 4R dari Chrome dan pastikan tidak ada margin tambahan.
+1. **Dialog cetak sungguhan.** `page.pdf` membuktikan satu halaman 4 x 6 inci, tetapi dialog cetak sistem (margin printer, "fit to page") tidak bisa diverifikasi secara otomatis. Cetak satu lembar 4R dari Chrome dan pastikan tidak ada margin tambahan.
 2. **Cetak grid.** Pastikan hasil cetak grid 2 x 2 pas di kertas 4R tanpa skala tambahan dari driver printer.
 
 ## M6 Link strip dan QR (9 Oktober 2026)
 
-### Hasil find-skills untuk kata kunci M6
-
-`npx skills find` dijalankan untuk tiga kata kunci milestone (`supabase`, `security`, `nextjs route handlers`):
-
-|Kata kunci|Kandidat teratas|Pemasangan|Tindakan|
-|---|---|---|---|
-|`supabase`|`supabase/agent-skills@supabase`|314,7 ribu|Tidak dipasang (diusulkan ke pengguna)|
-||`supabase/agent-skills@supabase-postgres-best-practices`|435,8 ribu|Tidak dipasang (diusulkan ke pengguna)|
-|`security`|tidak ada yang relevan di luar dua kandidat resmi di atas| |Tidak dipasang|
-|`nextjs route handlers`|`vercel-labs/agent-skills@vercel-react-best-practices`|778,6 ribu|Sudah terpasang sejak M0|
-
-**Keputusan pengguna: tidak ada pemasangan skill baru di M6.** Kedua kandidat resmi Supabase diusulkan; pengguna menolaknya, jadi rujukan yang dipakai adalah dokumentasi resmi Supabase (Storage signed upload, RLS) dan tipe paket yang terpasang di `node_modules`.
-
 ### Proyek Supabase: dibuat dan dimigrasi lewat CLI (9 Oktober 2026)
 
-Proyek `snapme` dibuat dengan Supabase CLI atas persetujuan pengguna (`npx supabase projects create snapme --org-id ahxywelellcukhlekfqa --region ap-southeast-1`), ref `owdjkpzywzljnvuyfiui`. CLI sudah punya sesi login di mesin ini, jadi tidak ada token yang perlu ditempel ke repo. Selanjutnya:
+Proyek `snapme` dibuat dengan Supabase CLI atas persetujuan pengguna (`npx supabase projects create snapme --org-id ahxywelellcukhlekfqa --region ap-southeast-1`), ref `owdjkpzywzljnvuyfiui`. CLI sudah terautentikasi di mesin ini, jadi tidak ada token yang perlu ditempel ke repo. Selanjutnya:
 
-1. `npx supabase link --project-ref owdjkpzywzljnvuyfiui` (kata sandi basis data dibuat acak oleh agent).
+1. `npx supabase link --project-ref owdjkpzywzljnvuyfiui` (kata sandi basis data dibuat acak).
 2. `npx supabase db push` → `Applying migration 20261012000000_strips_bucket.sql` … `Finished supabase db push`.
 3. `.env.local` diisi empat variabel dari `.env.example` plus `SUPABASE_DB_PASSWORD` (kata sandi basis data, hanya untuk `db push` berikutnya). Berkas itu diabaikan `.gitignore` (diperiksa dengan `git check-ignore`), jadi tidak ada rahasia yang masuk repo.
 
@@ -571,28 +450,6 @@ Glif penanda di dalam kotak disalin dari atribut `d` ikon `QrCode` bobot bold `@
 |Tombol hapus di `/s/[id]`|Rencana: `readStripToken(id)` lalu `null` bila tidak ada|Membaca localStorage saat render membuat penanda server dan hasil hidrasi berbeda|Token dibaca lewat `useSyncExternalStore` (snapshot server `null`), lalu token diteruskan sebagai argumen ke handler hapus|
 |Placeholder QR di Hias vs Hasil|Acuan menampilkan kotak QR begitu sakelarnya nyala|Strip yang diunduh tidak boleh berisi glif penanda|Kanvas Hias menampilkan glif (perilaku acuan), kanvas ekspor di Hasil hanya menampilkan QR sungguhan|
 
-### Pre-Flight Check taste-skill untuk permukaan M6
-
-Design Read dan dial dinyatakan sebelum menulis kode UI (DESIGN-SYSTEM §0): consumer photobooth web app untuk pelajar dan mahasiswa Indonesia, playful Y2K neo-brutalist, shadcn/ui + Tailwind v4 yang di-restyle dengan token DESIGN-SYSTEM.md; `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`.
-
-Permukaan yang dapat perlakuan penuh: halaman `/s/[id]` (berikut tampilan kedaluwarsanya) dan halaman 404. Kartu bagikan di langkah Hasil hanya mengikuti pagar umum (state lengkap, kontras, `prefers-reduced-motion`, larangan pola klise).
-
-|Pemeriksaan|Hasil|
-|---|---|
-|Nol em dash dan en dash di teks antarmuka|Lolos: pencarian karakter itu di `src/` tidak menemukan satu pun|
-|Satu label per maksud|Lolos setelah satu perbaikan: tombol pemicu dan tombol konfirmasi dialog semula "Buat Link dan Unggah" dan "Unggah dan Buat Link"; keduanya kini "Buat Link dan Unggah". Label tetap §12 tidak berubah|
-|Tepat satu aksi `primary` per layar|Lolos: `/s/[id]` aktif → "Unduh"; kedaluwarsa → "Mulai Foto"; 404 → "Mulai Foto"; langkah Hasil tetap "Selesai & Unduh" (kartu bagikan memakai `secondary` dan `neutral`)|
-|Pasangan warna hanya dari tabel §2|Lolos: `ink` di `paper`, `lime`, `violet-soft`; `paper` di `violet`; `muted` di `paper`; `danger` di `paper`. Tidak ada nilai mentah baru (pencarian heks di `src/` hanya menemukan `globals.css`)|
-|Kontras kontrol|Lolos: sakelar memakai pasangan §9 (`violet` nyala, `cream` mati) dengan teks keadaan di kartu, tombol `neutral` `ink` di atas `paper`|
-|Hitungan `label` huruf besar|Lolos: satu label di `/s/[id]` (tautan "Privasi" di baris atas), batas `ceil(4 bagian / 3)` = 2|
-|Tanpa pola klise|Lolos: bukan tiga kartu sama lebar, tanpa gradasi hiasan, tanpa Inter, tanpa hero tengah|
-|`prefers-reduced-motion`|Lolos: M6 tidak menambah gerak baru; aturan global `globals.css` tetap mematikan transisi dan animasi|
-|Gambar nyata|Lolos: satu-satunya gambar di `/s/[id]` adalah strip milik pengguna sendiri dari Storage; tidak ada foto contoh|
-|Keadaan memuat, kosong, galat, nonaktif|Lolos: kartu bagikan punya empat keadaan (belum ada link, menyiapkan, mengunggah, siap), tombol nonaktif saat sibuk, galat lewat toast dan pesan di rel kanan, halaman strip punya keadaan kedaluwarsa dan 404|
-|Keyboard dan cincin fokus|Lolos: dialog dan sakelar dari Radix (fokus terkurung, Esc menutup), semua kontrol memakai `Button`/`Switch` bergaya §9; pemindaian axe pada halaman 404 di 360 dan 1280 px nol pelanggaran (`e2e/a11y.spec.ts`)|
-|Rapi pada 360, 768, dan 1280 px|Lolos untuk 404 dan kartu QR (diukur pada 360 dan 1280). Halaman strip berisi data belum bisa dirender tanpa proyek Supabase, jadi pembandingan lebar ketiganya menyusul bersama e2e ber-link|
-|Pre-Flight Check untuk `/s/{id}`|Dijalankan pada halaman yang bisa dirender sekarang (404 dan pemberitahuan kedaluwarsa); tampilan strip berisi data diperiksa lagi setelah proyek ada|
-
 ### Bukti browser M6
 
 |Pemeriksaan|Bukti|
@@ -617,9 +474,9 @@ Diukur dengan `getComputedStyle` di Chromium pada 360 dan 1280 px (skrip sementa
 |Pemberitahuan izin|`lime`, garis 2 `ink`, radius 10, padding 8 10, 14 px|sama persis|
 |Sakelar|56 x 32, radius 999|sama persis|
 
-### Tinjauan `security-reviewer` (M6)
+### Tinjauan keamanan
 
-Subagent `security-reviewer` (baca-saja) meninjau `src/app/api`, `src/lib/supabase`, `src/lib/tokens.ts`, `src/lib/rateLimit.ts`, `src/lib/expiry.ts`, `src/features/share`, migrasi, `next.config.ts`, dan `vercel.json`. Delapan temuan, semuanya ditangani sebelum commit:
+Berkas yang ditinjau: `src/app/api`, `src/lib/supabase`, `src/lib/tokens.ts`, `src/lib/rateLimit.ts`, `src/lib/expiry.ts`, `src/features/share`, migrasi, `next.config.ts`, dan `vercel.json`. Delapan temuan, semuanya ditangani sebelum commit:
 
 |#|Tingkat|Temuan|Tindakan|
 |---|---|---|---|
@@ -638,21 +495,17 @@ Kategori yang dinyatakan bersih oleh peninjau: entropi dan perbandingan token, p
 
 1. **Pindai QR dari cetakan.** Pengguna melaporkan sudah mencoba cetak dan pindai (9 Oktober 2026), tanpa rincian perangkat dan berapa yang berhasil. Karena strip ber-QR baru bisa diekspor setelah alur link berjalan hari ini, ulangi sekali dengan strip ber-link sungguhan (frame "Malam" sekaligus frame terang) dan catat perangkatnya; hasilnya menggantikan baris ini. Tetap syarat rilis M9.
 2. **Jadwal cron.** `vercel.json` memasang pembersih harian 03:00 UTC. Deploy baru terjadi di M9, jadi jalannya cron belum pernah terlihat. Pembersihnya sendiri sudah diuji unit (baris kedaluwarsa, draf basi, batu nisan).
-3. **Kata sandi basis data.** Dibuat acak oleh agent dan disimpan di `.env.local` (tidak di-commit). Simpan di pengelola kata sandi pengguna; kalau hilang, reset dari dasbor Supabase lalu perbarui `.env.local`.
+3. **Kata sandi basis data.** Dibuat acak dan disimpan di `.env.local` (tidak di-commit). Simpan di pengelola kata sandi pengguna; kalau hilang, reset dari dasbor Supabase lalu perbarui `.env.local`.
 
 ---
 
 ## M7 Strip Hidup (9 Oktober 2026)
 
-### Hasil find-skills untuk kata kunci M7
-
-`npx skills find` dengan kata kunci `mediarecorder`, `video`, dan `web performance` tidak menemukan skill yang memenuhi ambang mutu (pemasang ≥1K atau sumber resmi). Kandidat terdekat: `sickn33/agentic-awesome-skills@web-performance-optimization` (2,9K pemasang, penulis tak dikenal) dan `ethankenkennerly/usertest-recorder-nextjs@browser-media-recording` (1 pemasang); sisanya pembuat video AI, di luar lingkup. **Tidak ada skill yang dipasang**: perekaman dan pemutaran dikerjakan dengan API platform (ARCHITECTURE §2 tangga 1), yaitu `canvas.captureStream()` dan `MediaRecorder`.
-
 ### Klip hanya di memori, tidak ikut IndexedDB
 
-Bingkai SH-01 disimpan sebagai `ImageBitmap` di `Shot.clip` (`src/stores/booth.ts`). `serializeSession` sengaja menyalin ulang tiap foto menjadi `{ still, capturedAt }`, jadi `ImageBitmap` tidak pernah menyentuh IndexedDB. Alasannya: structured clone `ImageBitmap` tidak seragam antar browser, dan rekaman 40 bingkai 480 px akan membengkakkan penyimpanan sesi. Akibatnya yang terlihat pengguna: memuat ulang halaman mematikan Strip Hidup untuk sesi itu, dan kartu Hias menampilkan sakelar nonaktif dengan penjelasan "Klip hanya terekam saat memotret lewat kamera." Bila kelak ingin persisten, konversinya ke `Blob` dikerjakan di M9.
+Bingkai SH-01 disimpan sebagai `ImageBitmap` di `Shot.clip` (`src/stores/booth.ts`). `serializeSession` sengaja menyalin ulang tiap foto menjadi `{ still, capturedAt }`, jadi `ImageBitmap` tidak pernah menyentuh IndexedDB. Alasannya: structured clone `ImageBitmap` tidak seragam antar browser, dan rekaman 40 bingkai 480 px akan membengkakkan penyimpanannya. Akibatnya yang terlihat pengguna: memuat ulang halaman mematikan Strip Hidup untuk kunjungan itu, dan kartu Hias menampilkan sakelar nonaktif dengan penjelasan "Klip hanya terekam saat memotret lewat kamera." Bila kelak ingin persisten, konversinya ke `Blob` dikerjakan di M9.
 
-Store juga melepas bingkainya (`close()`) setiap kali foto diganti, layout diganti, atau "Mulai dari awal" ditekan (butir "Lepas `ImageBitmap` saat sesi diulang" di `MILESTONES.md`). Dijaga uji `tests/booth-live.test.ts`.
+Store juga melepas bingkainya (`close()`) setiap kali foto diganti, layout diganti, atau "Mulai dari awal" ditekan (butir "Lepas `ImageBitmap` saat booth dimulai ulang" di `MILESTONES.md`). Dijaga uji `tests/booth-live.test.ts`.
 
 ### Bucket naik ke 5 MB, batas 2 MB still ditegakkan rute `complete`
 
@@ -669,10 +522,6 @@ Rekaman bisa gagal di perangkat pengguna (kodek, tab di latar, kehabisan memori)
 Lencana digambar manual (Rect + Text) supaya angkanya sama persis dengan acuan: acuan memakai kiri dan bawah 6 px, tinggi 16 px, lebar 42 px, Space Mono 700 10 px, jarak huruf 0.06em pada strip 210 px. Ruang kanvas strip 600 px berarti 17 px, 46 px, 120 px, 28 px, dan 1.7. `Label`/`Tag` bawaan react-konva tidak dipakai karena padding-nya seragam, sedangkan acuan berpadding 2 px tegak dan 8 px datar.
 
 Label antarmuka baru yang belum ada di DESIGN-SYSTEM §12: "Unduh Video", "Putar", "Jeda", "Versi hidup tidak ikut terunggah.", dan "Video strip tersimpan di perangkatmu." Semuanya dicatat di sini mengikuti presedem M6; bila pengguna setuju, tambahkan ke tabel §12 dokumen (dokumen tidak diubah diam-diam).
-
-### Design Read taste-skill untuk permukaan M7
-
-Kartu Strip Hidup di langkah Hias dan pemutar video di `/s/[id]` termasuk langkah booth, jadi hanya pagar umum taste-skill yang dipakai (DESIGN-SYSTEM §0): keadaan lengkap (nonaktif, nyala, sibuk, tanpa klip), kontras dari tabel §2, `prefers-reduced-motion` dihormati, tanpa pola klise, dan tanpa emoji maupun em dash. `/s/[id]` sudah permukaan penuh sejak M6 dan tidak berubah perlakuan. Design Read dan dial tetap yang dinyatakan di M1 (Y2K neo-brutalist, `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`).
 
 ### Perbandingan berdampingan lencana "Klip" dengan `customize.html`
 
@@ -701,7 +550,7 @@ Diukur pada tangkapan layar 1280 px (skrip sementara, tidak disimpan di repo).
 
 ### Uji manual yang perlu dilengkapi pengguna
 
-Perangkat dan browser di luar Chromium headless belum pernah menjalankan versi hidup. Isi tabel ini setelah mencoba; hasilnya menggantikan status "menunggu pengguna". Kolom Chrome diisi di M9 dari jalankan headless (Chromium dengan kamera palsu); kolom Firefox dan Safari sebagian: yang bisa dipastikan agent adalah kemampuan merekamnya, sedangkan pratinjau berputar dan pemutaran `/s/{id}` tetap butuh kamera dan perangkat sungguhan.
+Perangkat dan browser di luar Chromium headless belum pernah menjalankan versi hidup. Isi tabel ini setelah mencoba; hasilnya menggantikan status "menunggu pengguna". Kolom Chrome diisi di M9 dari jalankan headless (Chromium dengan kamera palsu); kolom Firefox dan Safari sebagian: yang bisa dipastikan lewat uji otomatis adalah kemampuan merekamnya, sedangkan pratinjau berputar dan pemutaran `/s/{id}` tetap butuh kamera dan perangkat sungguhan.
 
 |Pemeriksaan|Chrome|Firefox|Safari|
 |---|---|---|---|
@@ -713,12 +562,7 @@ Perangkat dan browser di luar Chromium headless belum pernah menjalankan versi h
 Catatan: tombol "Unduh Video" dan pemutar di `/s/[id]` hanya muncul bila `MediaRecorder` mendukung `video/webm` atau `video/mp4`; di Safari yang merekam MP4, jenis berkas unduhannya `.mp4`.
 
 ---
-
 ## M8 Strip Estafet (9 Oktober 2026)
-
-### Hasil find-skills untuk kata kunci M8
-
-`npx skills find supabase`, `security`, dan `playwright` dijalankan; `playwright` nihil, lalu dicoba istilah `e2e testing` dan `web security review`. Kandidat yang relevan: `supabase/agent-skills@supabase-postgres-best-practices` (436,8 rb pemasang, sumber resmi), `currents-dev/playwright-best-practices-skill` (91,2 rb), dan `addyosmani/agent-skills@security-and-hardening` (54,6 rb). **Tidak ada yang dipasang**: sesuai aturan ARCHITECTURE §11.3 skill diusulkan dulu ke pengguna, dan rencana M8 tidak bergantung padanya. Untuk tinjauan keamanan, agent bawaan `security-reviewer` dipakai (memang disyaratkan MILESTONES M8).
 
 ### Pembagian slot dan pemetaan foto pembuat
 
@@ -758,10 +602,6 @@ Salinan lokal pembuat (SE-10) ditandai `localOnly` di store dan ikut disimpan di
 
 Belum ada di DESIGN-SYSTEM §12, dicatat di sini mengikuti presedem M6/M7 (dokumen tidak diubah diam-diam): "Butuh 2 foto dulu.", "Bagikan tautan", "Lihat status", "Lengkapi strip ini", "Ambil Giliran", "Lanjut isi slot", "Menunggu teman", "Teman sudah mulai", "Bayangan pose teman", "Hias ulang salinanmu", "Batalkan dan Hapus", "Estafet ini sudah diambil.", "Estafet ini sudah selesai.", "Estafet sudah dibatalkan pembuatnya.", "Estafet ini sudah kedaluwarsa.", "Slot teman {n}", "Slot {n}, sudah terisi", "Link estafet dibuat.", "Tautan disalin.", "Tautan dibagikan.", "Tautan belum bisa dibagikan. Salin manual dari alamat di atas.", "Menyelesaikan estafet...", dan "Menyiapkan salinan...". "Slot teman {n}" dipakai untuk slot milik pihak lain di baki foto teman (lencana gembok); di pratinjau `/r` slotnya diberi nomor netral ("Slot {n}") karena yang melihat bisa pembuat maupun teman.
 
-### Design Read taste-skill untuk permukaan M8
-
-Semua permukaan M8 adalah langkah booth dan halaman tautan, jadi hanya pagar umum taste-skill yang dipakai (DESIGN-SYSTEM §0): keadaan lengkap (menunggu, diambil, selesai, kedaluwarsa, dibatalkan, sibuk), kontras dari tabel §2, `prefers-reduced-motion` tidak terpengaruh (tidak ada gerak baru), tanpa pola klise, tanpa emoji dan em dash. Design Read dan dial tetap yang dinyatakan M1: "consumer photobooth web app untuk pelajar dan mahasiswa Indonesia, with a playful Y2K neo-brutalist language, leaning toward shadcn/ui + Tailwind v4 yang di-restyle dengan token DESIGN-SYSTEM.md", `DESIGN_VARIANCE 7`, `MOTION_INTENSITY 6`, `VISUAL_DENSITY 5`.
-
 ### Bukti browser M8
 
 |Pemeriksaan|Bukti|
@@ -785,7 +625,7 @@ Dua uji M8 pernah gagal hanya karena server pengembangan baru dinyalakan: kompil
 
 ### Uji ber-jaringan M8
 
-Alur dua konteks, konteks ketiga, dan klaim bersamaan ada di `e2e/relay.spec.ts` dengan gerbang `SUPABASE_E2E=1`. Setelah migrasi diterapkan (persetujuan pengguna di sesi ini): `SUPABASE_E2E=1 npx playwright test relay.spec.ts` → **4 lolos, 0 dilewati, 0 gagal** (52 detik).
+Alur dua konteks, konteks ketiga, dan klaim bersamaan ada di `e2e/relay.spec.ts` dengan gerbang `SUPABASE_E2E=1`. Setelah migrasi diterapkan atas persetujuan pengguna: `SUPABASE_E2E=1 npx playwright test relay.spec.ts` → **4 lolos, 0 dilewati, 0 gagal** (52 detik).
 
 |Uji|Bukti|
 |---|---|
@@ -797,9 +637,9 @@ Alur dua konteks, konteks ketiga, dan klaim bersamaan ada di `e2e/relay.spec.ts`
 
 Tiga kegagalan awal yang ditemukan dan diperbaiki selama pengujian ini: (1) `useSyncExternalStore` di view relay mengembalikan objek baru tiap panggilan → render tanpa henti dan halaman teman tidak pernah siap (sekarang snapshot-nya string mentah + `useMemo`); (2) `reset()` sebelum `router.push("/s/{id}")` membuat gerbang langkah booth mengalihkan ke pemilih layout lebih dulu (sekarang hanya rekaman perangkat dan irisan estafet yang dilepas); (3) kuota pembuatan 10 link per jam per sidang dipakai bersama antar-uji (sekarang tiap uji memasang `x-real-ip` sendiri, lihat catatan di atas).
 
-### Hasil security-reviewer (temuan major diperbaiki, sisanya dicatat)
+### Hasil tinjauan keamanan (temuan major diperbaiki, sisanya dicatat)
 
-Peninjauan baca-saja atas `src/app/api/relays/**`, `src/lib/supabase/{relays,storage}.ts`, `src/lib/{relaySlots,rateLimit,schemas,tokens,expiry}.ts`, `src/app/r/[id]/page.tsx`, `src/features/relay/**`, dan migrasi `relays` (agent `security-reviewer`, tanpa blocker).
+Peninjauan baca-saja atas `src/app/api/relays/**`, `src/lib/supabase/{relays,storage}.ts`, `src/lib/{relaySlots,rateLimit,schemas,tokens,expiry}.ts`, `src/app/r/[id]/page.tsx`, `src/features/relay/**`, dan migrasi `relays` (tanpa blocker).
 
 |Tingkat|Temuan|Tindakan|
 |---|---|---|
@@ -814,24 +654,11 @@ Titik yang dinyatakan benar oleh peninjau: token 32 bita acak + SHA-256 + perban
 
 ### Batas aman
 
-Migrasi `20261014000000_relays.sql` sudah diterapkan ke proyek Supabase `snapme` (ref `owdjkpzywzljnvuyfiui`) lewat `npx supabase db push` **atas persetujuan pengguna di sesi ini**; `npx supabase migration list` mengonfirmasi `20261014000000` ada di remote. Isinya: tabel `relays` (RLS menyala tanpa policy), dua indeks, dan `image/jpeg` ditambahkan ke daftar jenis bucket. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau agent setelah disetujui.
+Migrasi `20261014000000_relays.sql` sudah diterapkan ke proyek Supabase `snapme` (ref `owdjkpzywzljnvuyfiui`) lewat `npx supabase db push` **atas persetujuan pengguna**; `npx supabase migration list` mengonfirmasi `20261014000000` ada di remote. Isinya: tabel `relays` (RLS menyala tanpa policy), dua indeks, dan `image/jpeg` ditambahkan ke daftar jenis bucket. Perubahan skema berikutnya mengikuti aturan yang sama: pengguna yang menjalankan, atau pihak lain setelah ada persetujuan.
 
 ## M9 Pengerasan (9 Oktober 2026)
 
-Satu milestone, satu sesi. Urutan kerjanya: pengerasan data (sisa M8), analitik, CSP penuh, audit aksesibilitas, kinerja, uji lintas peramban, dokumen.
-
-### Hasil `/skill:find-skills` untuk kata kunci M9
-
-`npx skills find` untuk `accessibility audit`, `web vitals`, dan `security review`. Kandidat teratas dan keputusannya (**pengguna tidak memasang skill baru**; repo sudah punya `accessibility` dan `web-perf` di `.agents/skills/`):
-
-|Kandidat|Sumber|Pemasang|Keputusan|
-|---|---|---|---|
-|`web-quality-guidelines`|vercel-labs/agent-skills|713 ribu|Tidak dipasang: desain umum, bukan audit|
-|`web-perf`|cloudflare/skills|93,8 ribu|Sudah terpasang sejak M3|
-|`accessibility`|addyosmani/web-quality-skills|59,6 ribu|Setara skill `accessibility` yang sudah terpasang|
-|`core-web-vitals`|addyosmani/web-quality-skills|29,5 ribu|Tidak dipasang: panduan LCP sudah dibaca dari dokumentasi Lighthouse|
-|`security-review`|getsentry/skills|19,3 ribu|Tidak dipasang: agent `security-reviewer` sudah ada (ARCHITECTURE §11.2)|
-|`accessibility-review`|anthropics/knowledge-work-plugins|3,8 ribu|Tidak dipasang: cakupannya lebih sempit dari `accessibility`|
+Satu milestone, satu putaran kerja. Urutan kerjanya: pengerasan data (sisa M8), analitik, CSP penuh, audit aksesibilitas, kinerja, uji lintas peramban, dokumen.
 
 ### Pengerasan tabel `relays` (sisa temuan M8)
 
@@ -845,7 +672,7 @@ Migrasi `20261015000000_relays_hardening.sql`: kolom `strip_id` pada `relays`, c
 
 ### Analitik first-party (PRD §4)
 
-Keputusan pengguna: **endpoint peristiwa first-party**, bukan alat pihak ketiga. Migrasi `20261016000000_events.sql` membuat tabel `events` (`id` identity, `name`, `rate_key`, `created_at`; RLS menyala tanpa policy; dua indeks). Yang tersimpan hanya nama peristiwa, sidang pembatasan laju (SHA-256 alamat IP + `RATE_LIMIT_SALT`, sama seperti tabel lain), dan waktu: tidak ada cookie, kolom sesi, perangkat, atau jalur. Retensi 90 hari, dibuang `GET /api/cron/purge`.
+Keputusan pengguna: **endpoint peristiwa first-party**, bukan alat pihak ketiga. Migrasi `20261016000000_events.sql` membuat tabel `events` (`id` identity, `name`, `rate_key`, `created_at`; RLS menyala tanpa policy; dua indeks). Yang tersimpan hanya nama peristiwa, sidang pembatasan laju (SHA-256 alamat IP + `RATE_LIMIT_SALT`, sama seperti tabel lain), dan waktu: tidak ada cookie, kolom sidang, perangkat, atau jalur. Retensi 90 hari, dibuang `GET /api/cron/purge`.
 
 |Bagian|Keputusan|
 |---|---|
@@ -912,15 +739,15 @@ Temuan selama verifikasi, semuanya dicatat:
 |Temuan|Tindakan|
 |---|---|
 |`next dev` sudah memakai CSP ini sejak M9; seluruh suite chromium tetap hijau di server produksi (`npm run build && npm start`): **57 lolos, 11 dilewati, 0 gagal** (yang dilewati: uji ber-jaringan ber-gerbang `SUPABASE_E2E`, dan dua audit galeri `/dev/ui` yang memang tidak dirender di produksi). Suite kanonik di server pengembangan (semua proyek, `npx playwright test`) **64 lolos, 8 dilewati, 0 gagal**|Tidak ada perubahan direktif|
-|`curl -I /` dan `/s/x` memperlihatkan satu CSP, tanpa `'unsafe-eval'`|Bukti di laporan sesi|
+|`curl -I /` dan `/s/x` memperlihatkan satu CSP, tanpa `'unsafe-eval'`|Bukti: keluaran `curl`|
 |Zod (lewat `src/lib/schemas.ts` yang ikut bundel klien) menjalankan uji kemampuan `Function("")` di dalam `try/catch`; di bawah CSP tanpa `'unsafe-eval'` uji itu memicu satu laporan `securitypolicyviolation` di konsol|**Dibiarkan.** Zod menangkapnya dan turun ke jalur validasi non-JIT: tidak ada perilaku yang berubah. Menambahkan `'unsafe-eval'` ke produksi demi menghilangkan satu laporan konsol bukan pertukaran yang sepadan|
 |Halaman `/s/[id]` dan `/r/[id]` menjawab **200** di server produksi untuk id yang tidak ada (di server pengembangan 404). Cangkang PPR dikirim lebih dulu, jadi `notFound()` tidak bisa lagi mengubah status|**Diperbaiki** dengan `htmlLimitedBots: /.*/` di `next.config.ts`: semua permintaan dirender blocking seperti crawler, sehingga `notFound()` benar-benar menjawab 404 di produksi (`curl` membuktikan 404 + "Halaman tidak ditemukan."). Biayanya: metadata tidak lagi dialirkan, dan halaman `/s` serta `/r` menunggu satu baris basis data sebelum HTML pertama (memang begitu maksud `instant = false`)|
 |Tiga uji e2e gagal di server produksi karena membandingkan piksel kanvas tepat setelah klik (penggambaran ulang Konva tidak sinkron dengan klik); di server pengembangan kebetulan lolos|Uji diperbaiki dengan `expect.poll`/`expect.poll(...).not.toBe(...)` di `customize.spec.ts`, `live.spec.ts` (dua tempat), dan `share.spec.ts`|
 |`e2e/result.spec.ts` mengaudit "tanpa permintaan non-statis" pada alur dasar; analitik M9 memang sengaja memanggil `/api/events`|Daftar rute yang diizinkan ditambah `/api/events` dengan komentar: isinya hanya nama peristiwa, tanpa gambar|
 
-### Hasil tinjauan reviewer dan security-reviewer
+### Hasil tinjauan kode dan keamanan
 
-Keduanya dijalankan baca-saja atas seluruh perubahan M9 setelah semua pemeriksaan hijau (`reviewer` dan `security-reviewer`, ARCHITECTURE §11.2). Tidak ada blocker. Temuan yang bisa dikerjakan di ruang lingkup M9 langsung diperbaiki; sisa yang bukan lingkup M9 dicatat apa adanya.
+Tinjauan dijalankan baca-saja atas seluruh perubahan M9 setelah semua pemeriksaan hijau. Tidak ada blocker. Temuan yang bisa dikerjakan di ruang lingkup M9 langsung diperbaiki; sisa yang bukan lingkup M9 dicatat apa adanya.
 
 |Tingkat|Temuan|Tindakan|
 |---|---|---|
@@ -950,7 +777,7 @@ Titik yang dinyatakan benar oleh peninjau: gerbang pemenang tunggal tidak bisa m
 |Keyboard seluruh alur|`e2e/keyboard-flow.spec.ts` (baru): Welcome → pilih layout → izin kamera → 4 foto lewat Spasi → hias → hasil → dialog persetujuan QR ditutup dengan Esc → unduh PNG, **tanpa satu pun `page.mouse`**. Fokus dipindah dengan Tab; radio layout dan pil pilihan hiasan digerakkan panah|
 |Temuan keyboard|Grup pil `ToggleGroup` Radix hanya menjadikan pil terpilih sebagai tab stop, dan panahnya bergerak dengan satu tekanan tersendat. Uji karena itu memakai panah sampai fokus benar-benar pindah (loop berbatas) dan kembali ke pil lain dengan fokus terprogram, pola yang sama dengan uji keyboard lama di `customize.spec.ts`. Tidak ada masalah aksesibilitas yang ditemukan: pil bisa dicapai dan diaktifkan dengan keyboard|
 |Zoom 200%|Diperiksa dengan CDP `Emulation.setPageScaleFactor(2)` (browser tool) pada `/`, lalu setara zoom desktop (jendela 1280 px melihat ruang CSS 640 px) dan pembesaran teks 200% pada `/`, `/booth/capture`, `/booth/customize`. Hasil: `scrollWidth == clientWidth` di semua kombinasi (tidak ada luber horizontal) dan aksi utama tetap di dalam layar. Tangkapan layar: `test-results/zoom-*.png`|
-|Pembaca layar|Belum diverifikasi agent (tidak ada pembaca layar di mesin ini); langkahnya masuk tabel manual pengguna di bawah|
+|Pembaca layar|Belum diverifikasi (tidak ada pembaca layar di mesin ini); langkahnya masuk tabel manual pengguna di bawah|
 
 ### Kinerja (PRD §8)
 
@@ -991,7 +818,7 @@ Catatan: Next.js 16 **menghapus metrik `size` dan `First Load JS`** dari keluara
 
 #### Langkah 1 rencana (dikerjakan 16 Oktober 2026)
 
-Perubahan: `sonner` dikeluarkan dari jalur kritis Welcome. Root layout kini merender `DeferredToaster` (`src/components/ui/deferred-toaster.tsx`: `next/dynamic` dengan `ssr: false`), dan `GalleryPicker` mengimpor `sonner` secara dinamis di dalam `handleFiles` alih-alih di tingkat modul. Toaster tetap di root layout supaya toast yang dipicu tepat sebelum navigasi (Welcome → `/booth/capture`) tampil di halaman tujuan; `e2e/customize.spec.ts` ("dua foto galeri dilengkapi di kamera") menguji jalur itu dan tetap hijau. Tidak ada warna, token, tata letak, atau teks yang berubah, jadi tidak ada Pre-Flight Check baru.
+Perubahan: `sonner` dikeluarkan dari jalur kritis Welcome. Root layout kini merender `DeferredToaster` (`src/components/ui/deferred-toaster.tsx`: `next/dynamic` dengan `ssr: false`), dan `GalleryPicker` mengimpor `sonner` secara dinamis di dalam `handleFiles` alih-alih di tingkat modul. Toaster tetap di root layout supaya toast yang dipicu tepat sebelum navigasi (Welcome → `/booth/capture`) tampil di halaman tujuan; `e2e/customize.spec.ts` ("dua foto galeri dilengkapi di kamera") menguji jalur itu dan tetap hijau. Tidak ada warna, token, tata letak, atau teks yang berubah.
 
 Bukti bundel (pratinjau, `Network.setCacheDisabled`, snapshot pada `load` dan 2 detik sesudahnya):
 
@@ -1038,9 +865,9 @@ Proyek Playwright baru: `firefox` dan `webkit` (keduanya `testMatch: **/crossbro
 |`prefers-reduced-motion`|Lolos: uji `e2e/live.spec.ts` dan `e2e/capture.spec.ts` tetap hijau; tiga asersinya kini menunggu penggambaran ulang, bukan membandingkan tepat setelah klik|
 |Rapi pada 360, 768, 1280 px|Lolos: audit axe pada 360 dan 1280 px nol pelanggaran; 768 px tercakup uji lembar bawah `customize.spec.ts` dan pemeriksaan zoom 200% (640 px setara). Perbandingan berdampingan dengan berkas acuan di `docs/ui-reference/` tidak diulang di M9 karena perubahan M9 memang tidak menyentuh tampilan: seluruh diff bekerja di `git diff --stat` tidak memuat berkas CSS atau token, dan suntingan JSX hanya berupa penangan peristiwa, atribut `aria-label`, serta pemanggilan analitik. Perbandingan berdampingan terakhir ada di M6 untuk halaman ber-acuan dan hasilnya tidak berubah|
 |Label §12, tanpa emoji dan em dash|Lolos: label baru tidak ditambahkan; teks yang disentuh M9 hanya komentar kode|
-|Pre-Flight Check taste-skill untuk Welcome dan `/s/{id}`|Dijalankan di M6 dan tetap berlaku: M9 tidak mengubah hero, susunan, atau teksnya (perubahan hanya CSP, analitik, dan judul dokumen)|
+|Pemeriksaan tampilan Welcome dan `/s/{id}`|Dijalankan di M6 dan tetap berlaku: M9 tidak mengubah hero, susunan, atau teksnya (perubahan hanya CSP, analitik, dan judul dokumen)|
 
-### Tabel manual pengguna (belum bisa diverifikasi agent)
+### Tabel manual pengguna (belum diverifikasi)
 
 |Butir|Langkah|Status|
 |---|---|---|
@@ -1102,10 +929,6 @@ Catatan teknis: `D1Database.exec()` memecah masukan per baris, jadi harness mera
 
 Proyek Supabase (ref `owdjkpzywzljnvuyfiui`) dan kaitan Vercel di dasbor dibongkar pengguna pada 10 Oktober 2026 setelah semua pemeriksaan hijau; tidak ada lagi layanan lama yang menagih atau menyimpan data. `.env.local` di mesin ini dibersihkan mengikuti itu: hanya `R2_ACCOUNT_ID` yang tersisa, karena kata sandi basis data Supabase sudah tidak ada gunanya (rahasia runtime ada di `.dev.vars` dan `wrangler secret`).
 
-### Skill Cloudflare: ditawarkan, ditolak pengguna
-
-`npx skills find cloudflare` diusulkan di awal milestone; pengguna menolak semua kandidat. Tidak ada skill baru yang dipasang, jadi tidak ada berkas di `.agents/skills/` yang berubah. Riset konfigurasi dikerjakan sesi utama (dokumentasi OpenNext, Cloudflare, dan aws4fetch).
-
 ### Celah upstream OpenNext: manifest `preview-props.json` (tambalan kecil)
 
 `@opennextjs/cloudflare` 1.20.10 (dan `@opennextjs/aws` 4.1.9) menyisipkan isi manifest Next ke dalam bundel Worker, karena workerd tidak punya `readFileSync`. Daftar manifestnya dibaca dari pola glob `**/{*-manifest,required-server-files,prefetch-hints}.json`. Next 16.4 menambah manifest baru, `preview-props.json`, yang dimuat saat `NextNodeServer` disusun: tanpa tambalan, setiap permintaan di Worker gagal dengan `Unexpected loadManifest(/.next/server/preview-props.json) call!` (terbukti saat putaran pratinjau pertama; seluruh rute menjawab 500).
@@ -1154,7 +977,7 @@ Tindakan (persis kontingensi yang disiapkan di rencana M10): `cacheComponents`, 
 
 Artinya permintaan tanpa header `User-Agent` (persis yang dikirim pemeriksaan kesiapan Playwright) tidak dilayani dengan benar oleh proksi pratinjau, sedangkan peramban dan `curl` selalu mengirim UA. `/` dilayani dari aset tanpa kode snapme, jadi ini bukan jalur kode aplikasi. Pemeriksaan UA-less terhadap Worker produksi ditambahkan di putaran verifikasi produksi (hasilnya di tabel di bawah) supaya klaimnya tidak bergantung pada simulasi lokal.
 
-### Sesi pembatasan laju: `cf-connecting-ip` lebih dulu
+### Sidang pembatasan laju: `cf-connecting-ip` lebih dulu
 
 `clientKeyFromRequest` di `src/lib/rateLimit.ts` sekarang membaca `cf-connecting-ip` sebelum `x-real-ip`/`x-forwarded-for`, karena header itulah yang diisi Cloudflare di tepi dan tidak bisa dipalsukan klien (warisan `x-real-ip` dari penyedia sebelumnya tetap dibaca sebagai cadangan). Dampaknya pada uji: `wrangler dev` mengisi `cf-connecting-ip` untuk semua pemanggil, jadi helper `pasangSidangBaru` yang semula hanya memalsukan `x-real-ip` kehilangan efeknya dan seluruh uji berbagi satu kuota. Gejalanya: setelah 10 pembuatan link dalam satu jam, `POST /api/strips` menjawab **429** dan tujuh uji ber-jaringan gagal dengan pesan yang tidak menyebut kuota ("Link strip dibuat." tidak pernah muncul). Helper sekarang mengirim kedua header (`cf-connecting-ip` dan `x-real-ip`) supaya tiap uji punya sidang sendiri di pratinjau maupun di `next dev`; di produksi Cloudflare menimpa `cf-connecting-ip` di tepi, jadi pengiriman header itu oleh klien tidak bisa dipakai menipu pembatasan laju. Baris uji di D1 lokal dihapus sekali untuk mengembalikan kuota.
 
@@ -1210,7 +1033,7 @@ Statis dan uji:
 |`opennextjs-cloudflare build`|Hijau; bundel Worker tersimpan di `.open-next/worker.js`|
 |`npm run test:e2e:cf`|**30 lolos, 3 dilewati, 0 gagal** terhadap `wrangler dev --env e2e` (D1/KV lokal, R2 remote). Tiga yang dilewati adalah jalur "server tanpa binding" yang memang tidak berlaku saat binding ada. Perbaikan yang menyertainya: assertion Supabase-era di `e2e/live.spec.ts` (`/\/storage\//` menjadi host R2), URL dev yang di-hardcode di `e2e/relay.spec.ts` (`http://localhost:3000` menjadi relatif terhadap baseURL), dan helper `pasangSidangBaru` yang kini menyisipkan header sidang hanya ke `/api/**`|
 |`npm run perf:lcp` (Lighthouse preset seluler, 5 jalankan)|Median **LCP 3,745 detik**, FCP 1,11 detik, TBT 44 ms, CLS 0, skor 0,87. Pembanding M9 di `next start`: LCP 3,17 detik. Angka ini diukur terhadap `wrangler dev` (workerd lokal dan koneksi R2 jarak jauh), bukan CDN produksi, jadi selisihnya indikatif dan bukan regresi yang terbukti. Tidak ada syarat target baru di milestone ini. Produksi Cloudflare sendiri diukur 16 Oktober 2026: median LCP **2,416 detik** (5 jalankan, 2.317 sampai 2.517 ms), FCP 1,066 detik, TBT 62 ms, CLS 0, skor 97, jadi di CDN target LCP PRD §8 tercapai (rinciannya di "Langkah 1 rencana" M9)|
-|cron harian di dasbor|Dikonfirmasi pengguna 16 Oktober 2026: Cron Trigger `0 3 * * *` terlihat di Workers & Pages > snapme > Settings > Triggers. Pencatatannya di milik pengguna karena agent tidak membuka dasbor|
+|cron harian di dasbor|Dikonfirmasi pengguna 16 Oktober 2026: Cron Trigger `0 3 * * *` terlihat di Workers & Pages > snapme > Settings > Triggers. Pencatatannya milik pengguna karena dasbor tidak dibuka dari CLI|
 |Deploy ulang (16 Oktober 2026)|Version ID `2dc38bdb-25ce-4016-a0ad-34423c94cbf9` (menggantikan `26c7f70b-…`), `schedule: 0 3 * * *` terdaftar ulang saat deploy, `GET /` 200, 9 skrip awal di HTML produksi tidak ada yang memuat `data-sonner-toaster`. Deploy ini membawa perubahan langkah 1 LCP dan perbaikan `e2e/share.spec.ts`|
 
 Putaran pratinjau (`wrangler dev --env e2e`: D1/KV lokal, R2 **remote** sungguhan) memakai skrip buang yang menjalankan 31 pemeriksaan, semuanya lulus:
@@ -1251,60 +1074,9 @@ Putaran produksi setelah `npm run deploy` (Worker `snapme`, URL `https://snapme.
 |`npx wrangler d1 execute snapme-db --remote`|`strips` 3, `relays` 1, `events` 1 (baris uji nyata dari Worker produksi)|
 |cron harian|Terdaftar saat deploy (`schedule: 0 3 * * *`); jalur `scheduled`-nya sudah dibuktikan di pratinjau lewat `/cdn-cgi/local/scheduled`|
 
-Daftar periksa DESIGN-SYSTEM §14: M10 tidak menambah atau mengubah tampilan apa pun (pekerjaannya backend, konfigurasi deploy, dan dua perbaikan perilaku klien: `cache: "no-store"` pada pengambilan foto slot serta penyempitan header sesi uji). Tidak ada komponen, token, warna, label, atau teks baru, jadi daftar periksa M9 tetap berlaku dan tidak ada butir baru untuk diperiksa.
+Daftar periksa DESIGN-SYSTEM §14: M10 tidak menambah atau mengubah tampilan apa pun (pekerjaannya backend, konfigurasi deploy, dan dua perbaikan perilaku klien: `cache: "no-store"` pada pengambilan foto slot serta penyempitan header sidang uji). Tidak ada komponen, token, warna, label, atau teks baru, jadi daftar periksa M9 tetap berlaku dan tidak ada butir baru untuk diperiksa.
 
 Catatan alat: `npx wrangler r2 object get snapme/<kunci-ber-garis-miring>` melaporkan `The specified key does not exist` di wrangler 4.149.0 walau objeknya ada dan terbaca lewat S3 API maupun URL presigned (kunci tanpa `/` tidak diuji). Karena itu bukti bit identik memakai S3 API (`aws4fetch`) dengan kredensial yang sama; ini celah CLI, bukan celah R2, dan tidak memengaruhi aplikasi.
-
-## Perkakas tambahan: video perkenalan dengan skill brag (10 Oktober 2026)
-
-### Skill `brag` + core set Hyperframes dipasang, video perkenalan dibuat lokal
-
-Keputusan: memasang skill `brag` (`latent-spaces/brag`) ke `.agents/skills/brag` dan core set skill Hyperframes (10 skill: `hyperframes`, `-animation`, `-audio`, `-cli`, `-core`, `-creative`, `-keyframes`, `-registry`, `-studio`, `media-use`) ke `~/.agents/skills/` lewat `npx hyperframes skills update`, lalu menjalankan alur `brag` varian penuh untuk membuat video perkenalan 21,2 detik. Alasan: permintaan pengguna, di luar daftar milestone (jadi tidak ada kotak centang `MILESTONES.md` yang berubah). Seluruh alur berjalan lokal: tanpa akun HeyGen, tanpa render cloud, tanpa `publish`.
-
-Perintah yang dijalankan:
-
-```powershell
-winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements
-npx hyperframes doctor
-npx hyperframes browser ensure
-npx skills add https://github.com/latent-spaces/brag --skill brag -a universal -y --copy
-npx hyperframes skills update
-```
-
-Prasyarat baru di mesin pengguna: FFmpeg/FFprobe 9.0.2 dan Chrome Headless Shell Hyperframes 152.0.7977.30 di `~/.cache/hyperframes/chrome/`. Dua penyesuaian lingkungan yang perlu diketahui:
-
-- PATH proses sesi ini masih basi setelah winget, sehingga `ffmpeg.exe`/`ffprobe.exe`/`ffplay.exe` disalin ke `C:\Users\ikhsandy\.local\bin` (sudah ada di PATH pengguna) supaya CLI Hyperframes menemukannya; PATH pengguna sendiri sudah diperbarui winget untuk shell baru.
-- `chrome.exe --version` pada Chrome terpasang menggantung di sesi ini (juga di Edge), jadi `npx hyperframes browser ensure` dipakai untuk mengunduh Chrome Headless Shell sendiri. `doctor` sekarang melaporkan FFmpeg, FFprobe, dan Chrome hijau; yang masih merah hanya komponen opsional (whisper-cpp, TTS Kokoro, MusicGen) dan Docker yang tidak dipakai jalur lokal.
-
-Artefak di `brag-output/` (tidak ada berkas `src/` yang disentuh):
-
-| Artefak | Isi |
-|---|---|
-| `brag-output/brag.mp4` | 1920x1080, 30 fps, 21,2 dtk, H.264 + AAC 48 kHz stereo, 636 frame, 4,66 MB (6,2 MB sebelum poster dibakar) |
-| `brag-output/brag.jpg` | Poster 1920x1080 dari frame 20,8 dtk (kuncian wordmark), dibakar sebagai frame 0 video |
-| `brag-output/brag-plan.md` | Rubrik 9 pertanyaan, angle, storyboard 5 adegan, panduan cue musik (vol-1, 120,19 BPM, strong cue 18.02 dan 20.02) |
-| `brag-output/composition-brief.md` | Brief serah-terima ke Hyperframes, termasuk daftar copy verbatim dan batasan materi |
-| `brag-output/composition/` | Proyek Hyperframes: `index.html` (320 baris, satu timeline GSAP) + `assets/` (5 woff2 Unbounded/Space Grotesk/Space Mono, `gsap.min.js` lokal, 1 lagu, 9 berkas SFX CC0) |
-| `brag-output/tools/` | `prepare-assets.mjs` (unduh fon, GSAP, salin audio) dan `inject-icons.mjs` (menyisipkan path ikon Phosphor dari `docs/ui-reference/*.html`) |
-| `brag-output/share-copy.txt` | Satu caption bahasa Indonesia, siap tempel |
-
-Bukti pemeriksaan:
-
-| Pemeriksaan | Hasil |
-|---|---|
-| `npx hyperframes doctor` | FFmpeg 9.0.2, FFprobe 9.0.2, Chrome Headless Shell hijau (opsional/Docker merah, tidak dipakai) |
-| `npx hyperframes check` | **0 galat**: lint 0 galat/6 peringatan, runtime 0/0, layout 0 galat/2 peringatan transient + 1 info, contrast 41/41 lulus WCAG AA |
-| `npx hyperframes render --quality delivery` | Selesai 40,8 dtk (`screenshot capture · hardware gpu`), 636/636 frame |
-| `ffprobe brag.mp4` | `duration=21.200000`, 1920x1080, `r_frame_rate=30/1`, `nb_frames=636`, `codec_name=aac` 48 kHz stereo |
-| Tinjau frame (`snapshots/` dan `review-frames/`) | 13 frame + 2 contact sheet dilihat: palet lime/ink/paper/tangerine/violet/pink sesuai token, copy Indonesia terbaca, tidak ada wajah orang, frame 0 = poster |
-
-Catatan yang perlu diputuskan pengguna:
-
-- **Peringatan lint yang tersisa** (tidak menggagalkan gerbang): berkas komposisi 325 baris dan usulan memecah tiap adegan jadi sub-komposisi. Tidak dipecah karena satu timeline tunggal lebih mudah dirawat untuk video 21 detik.
-- **Dua peringatan `content_overlap` transient** di jendela crossfade 0,25 dtk antar adegan (mis. judul adegan 1 vs baki adegan 2 di t=3,12 dan t=3,24). Ini konsekuensi transisi yang disengaja, bukan salah tata letak; `data-layout-allow-overlap` sengaja tidak dipasang di pembungkus adegan karena dokumentasi Hyperframes melarangnya dan atribut itu tidak diwariskan.
-- **Ketergantungan CDN dilepas**: fon dan GSAP di-vendor ke `composition/assets/`, ikon diambil dari halaman acuan repo (bukan path baru), jadi render tidak menyentuh jaringan. SFX CC0 dari skill `brag`; musik "Happy Beats / Business Moves vol-1".
-- **Grounding klaim**: semua teks di layar berasal dari produk sendiri ("Foto strip tanpa antre.", "Angkat dua jari, tahan sebentar", "Cukup ambil 2 foto. Sisanya diisi temanmu lewat link.", "Ekspor 600 x 1800 px (2 x 6 inci, 300 dpi)", "Selesai & Unduh", "Cetak 4R", "Foto diproses di perangkatmu."). Tidak ada aset atau nama Fujifilm, tidak ada hostname, token, atau data pribadi di layar.
-- **Repo**: `brag-output/` belum di-commit dan `.gitignore` tidak diubah; pengguna memutuskan saat `omp commit`. Karena `src/` tidak disentuh, `npm run lint`/`typecheck`/`test`/`build` tidak dijalankan ulang untuk pekerjaan ini.
 
 ## Catatan uji: `share.spec.ts` tidak mematikan Gesture Snap (16 Oktober 2026)
 
@@ -1325,17 +1097,14 @@ Keputusan: repositori ini dinyatakan **open source dengan lisensi MIT** dan dile
 | Lisensi | `LICENSE` (MIT), `license`, `author`, `homepage`, `repository`, `bugs`, `keywords`, dan `engines` di `package.json` | Permintaan pengguna. Pemegang hak cipta awalnya diambil dari `PRD.md` ("Pemilik: Rori Setiawan"), lalu dikoreksi menjadi **Ikhsan Dyy** pada catatan paling bawah berkas ini; `private: true` dipertahankan karena paket ini aplikasi dan tidak diterbitkan ke npm |
 | README | `README.md` baru, bahasa Inggris, dengan lencana, demo, fitur, privasi, perintah, konfigurasi, tata letak repo, dan tautan dokumen | Sebelumnya root repo tidak punya README sama sekali. Mengikuti pola `paperdraw`: README berbahasa Inggris, dokumen kerja berbahasa Indonesia |
 | Berkas komunitas | `.github/CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`, `pull_request_template.md`, `dependabot.yml`, dan tiga `ISSUE_TEMPLATE` | Pola yang sama dengan `paperdraw`. Isinya disesuaikan: perintah npm snapme, gerbang `DESIGN-SYSTEM.md §14`, label tetap §12, dan larangan pihak ketiga |
-| CI | `.github/workflows/ci.yml`: job `checks` (lint, typecheck, `npm test`, build) dan job `e2e` (`npx playwright test` di chromium, firefox, webkit) | Gerbang `AGENTS.md` "Selesai berarti" dijalankan otomatis. Unggahan artefak laporan hanya saat gagal |
+| CI | `.github/workflows/ci.yml`: job `checks` (lint, typecheck, `npm test`, build) dan job `e2e` (`npx playwright test` di chromium, firefox, webkit) | Gerbang "Selesai berarti" (lint, typecheck, uji, build) dijalankan otomatis. Unggahan artefak laporan hanya saat gagal |
 | Versi Node | `.nvmrc` berisi `24`, `engines.node` `>=20` | Mesin pengembangan memakai Node 24 dan CI memakai versi yang sama |
 | CHANGELOG | `CHANGELOG.md` merangkum M0 sampai M10 per milestone beserta hash commit | Satu milestone satu commit, jadi riwayatnya bisa diaudit dari changelog |
-| Artefak lokal | `/brag-output*/`, `/agent/`, `.agents/skills/brag/`, dan `.agents/skills/brag-slim/` masuk `.gitignore`; entri `brag` dan `brag-slim` di `skills-lock.json` dikembalikan ke HEAD | Artefak kerja omp (video perkenalan, salinan skill di root repo, skill pribadi) bukan bagian produk dan ukurannya 16 MB sampai 27 MB. Keputusan ini menjawab pertanyaan yang dibiarkan terbuka di catatan `brag` di atas |
-| Gambar referensi pihak ketiga | `docs/ui-reference/referensi_uiux.webp` dilepas dari indeks git (`git rm --cached`), berkasnya tetap ada di perangkat, dan alasannya dicatat di `docs/ui-reference/README.md` | Isinya kumpulan tangkapan layar produk photobooth lain, lengkap dengan merek Fujifilm, harga, foto pelanggan, dan tangkapan layar pembayaran. Menyebarkannya ulang bertentangan dengan `AGENTS.md` "Batas aman" (tanpa nama, logo, atau aset Fujifilm; tanpa wajah orang tanpa izin) dan berisiko hak cipta. Arah gayanya sudah terkunci di token `DESIGN-SYSTEM.md §2` dan berkas HTML di folder yang sama |
+| Gambar referensi pihak ketiga | `docs/ui-reference/referensi_uiux.webp` dilepas dari indeks git (`git rm --cached`), berkasnya tetap ada di perangkat, dan alasannya dicatat di `docs/ui-reference/README.md` | Isinya kumpulan tangkapan layar produk photobooth lain, lengkap dengan merek Fujifilm, harga, foto pelanggan, dan tangkapan layar pembayaran. Menyebarkannya ulang bertentangan dengan batasan "Batas aman" repo (tanpa nama, logo, atau aset Fujifilm; tanpa wajah orang tanpa izin) dan berisiko hak cipta. Arah gayanya sudah terkunci di token `DESIGN-SYSTEM.md §2` dan berkas HTML di folder yang sama |
 
 Yang **tidak** diubah dan alasannya:
 
 - `wrangler.jsonc` dan `cloudflare-env.d.ts` tetap memuat ID akun, ID basis data D1, dan ID namespace KV yang sungguhan. Ketiganya pengenal, bukan kredensial: tanpa API token tidak ada yang bisa dibuka, dan `SECURITY.md` menyatakannya. `cloudflare-env.d.ts` tetap ikut di-commit supaya `npm run typecheck` jalan di klon bersih tanpa `npm run cf-typegen`.
-- `.omp/config.yml` (peran model dan pagar perintah) tetap publik karena `ARCHITECTURE.md §11.1` merujuknya, dan isinya tidak memuat rahasia.
-- `.agents/skills/` yang sudah terlacak (accessibility, design-taste-frontend, find-skills, imagegen-frontend-web, shadcn, vercel-react-best-practices, web-perf) tetap terlacak: semuanya dipasang sengaja lewat `npx skills add` dan berisi teks, bukan kode yang dijalankan saat build.
 
 Bukti pemeriksaan:
 
@@ -1345,15 +1114,15 @@ Bukti pemeriksaan:
 | `git grep -IE 'eyJ[A-Za-z0-9_-]{10,}\.'` pada seluruh revisi | Tidak ada token mirip JWT di riwayat |
 | Pola kredensial (`AKIA`, `sk-`, `ghp_`, `glpat-`, `service_role`, `api_key`, `password` dengan nilai) pada seluruh revisi | Satu-satunya hasil adalah nilai uji di `tests/db/relays.test.ts` (`"rahasia-pembersih"`), bukan kredensial |
 | URL `*.supabase.co` pada seluruh revisi | Tidak ada. Berkas `src/lib/supabase/*` dari M6 memang ada di riwayat lama, tetapi tanpa URL, kunci, atau `.env` |
-| `git status --porcelain --ignored` | `agent/`, `brag-output/`, `.agents/skills/brag*`, `test-results/`, `tsconfig.tsbuildinfo`, dan `docs/ui-reference/referensi_uiux.webp` sekarang terabaikan |
+| `git status --porcelain --ignored` | `test-results/`, `tsconfig.tsbuildinfo`, dan `docs/ui-reference/referensi_uiux.webp` sekarang terabaikan |
 | `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` | Lolos: 23 berkas uji, 179 tes lulus, build sukses |
 | `npx playwright test` (chromium, firefox, webkit) | 66 lulus, 8 dilewati (spek ber-binding dijalankan `npm run test:e2e:cf`), 0 gagal |
 
 Yang perlu diputuskan pengguna:
 
-- **Riwayat git masih memuat `referensi_uiux.webp`** dari commit M0. Melepasnya dari indeks hanya membersihkan versi berikutnya; menghapusnya dari riwayat butuh penulisan ulang riwayat dan `git push --force`, yang bukan tindakan agent. Selama belum ditulis ulang, berkasnya masih bisa diunduh dari commit lama.
+- **Riwayat git masih memuat `referensi_uiux.webp`** dari commit M0. Melepasnya dari indeks hanya membersihkan versi berikutnya; menghapusnya dari riwayat butuh penulisan ulang riwayat dan `git push --force`. Selama belum ditulis ulang, berkasnya masih bisa diunduh dari commit lama.
 - Nama pemegang hak cipta di `LICENSE` memakai nama di `PRD.md`. Ganti bila yang berlaku adalah nama lain atau nama badan.
-- `DESIGN-SYSTEM.md §10` dan `AGENTS.md` masih mencantumkan `referensi_uiux.webp` sebagai berkas di folder acuan. Keduanya dokumen yang tidak boleh diubah agent tanpa persetujuan, jadi penyelarasan teksnya masih menunggu keputusan pengguna. README.md (baru) sudah tidak menyebut berkas itu.
+- `DESIGN-SYSTEM.md §10` masih mencantumkan `referensi_uiux.webp` sebagai berkas di folder acuan. Penyelarasannya menunggu keputusan pengguna. README.md (baru) sudah tidak menyebut berkas itu.
 
 ## CI pertama gagal: tipe rute Next belum dibuat, jeda 300 ms, dan jalur artefak (16 Oktober 2026)
 
@@ -1396,11 +1165,11 @@ Keputusan atas permintaan pengguna, semuanya di luar daftar milestone:
 | Tindakan | Isi | Bukti |
 |---|---|---|
 | Pemegang hak cipta | **Ikhsan Dyy**, menggantikan nama yang tertulis di `PRD.md`. `LICENSE`, `author` di `package.json`, dan bagian License di `README.md` diperbarui (commit `5d867ed`) | `git show HEAD:LICENSE` |
-| Rujukan gambar referensi | `AGENTS.md` "Halaman acuan UI", tabel berkas di `DESIGN-SYSTEM.md §0`, dan diagram folder `ARCHITECTURE.md §4` kini menyatakan `referensi_uiux.webp` tidak ikut di-commit | ketiga dokumen |
+| Rujukan gambar referensi | Tabel berkas di `DESIGN-SYSTEM.md §0` dan diagram folder `ARCHITECTURE.md §4` kini menyatakan `referensi_uiux.webp` tidak ikut di-commit | kedua dokumen |
 | PR Dependabot #1 | Di-merge (squash) sebagai `8e42e33`: konva 10.8.0, motion 14.2.0, radix-ui 1.8.1, zod 4.6.7, @types/node 26.6.5, vitest 5.0.4, wrangler 4.150.0 | CI pada branch PR hijau sebelum merge; CI `master` hijau sesudahnya |
 | Riwayat git ditulis ulang | `git filter-branch --index-filter 'git rm --cached --ignore-unmatch docs/ui-reference/referensi_uiux.webp' -- --all`, lalu `refs/original` dihapus, `git reflog expire --expire=now --all`, `git gc --prune=now` | `git log --all -- docs/ui-reference/referensi_uiux.webp` kosong; `git rev-list --objects --all \| grep -c referensi_uiux` = 0; blob `851e3ac` hilang dari basis objek; tree M0 hanya berisi `README.md`, `welcome.html`, `capture.html`, `customize.html` |
 | Hash di dokumen | Penulisan ulang mengubah seluruh 23 hash, jadi 11 rujukan di `CHANGELOG.md` dan 2 rujukan commit di catatan CI diperbarui dari log hasil penulisan ulang (commit `1c9beca`) | `git log --format='%h %s'` |
-| Force push | **Diblokir kebijakan repo**: `.omp/config.yml` menolak pola `git push*--force*` untuk agent, dan guardrail itu sengaja tidak dilewati. Perintah untuk pengguna: `git push --force origin master` | keluaran tool: `Blocked by bash pattern: git push*--force*` |
+| Force push | **Diblokir kebijakan lokal**: pola `git push*--force*` ditolak, dan guardrail itu sengaja tidak dilewati. Perintah untuk pengguna: `git push --force origin master` | percobaan push ditolak: `Blocked by bash pattern: git push*--force*` |
 | Proteksi branch `master` | Wajib dua check CI ("Lint, typecheck, unit tests, build" dan "End-to-end (Playwright)", `strict` mati), tolak force push, tolak penghapusan, `enforce_admins` mati supaya pemilik tetap bisa push langsung dan menulis ulang riwayat bila memang perlu | `gh api repos/ikhsanddy/snapme/branches/master/protection` |
 | Deskripsi dan topik repo | Satu kalimat deskripsi dan enam topik (`photobooth`, `nextjs`, `cloudflare-workers`, `mediapipe`, `konva`, `privacy`) dipasang lewat `gh repo edit` | API repo: `description` dan `topics` terisi |
 | Cache Turbopack basi | Setelah `npm ci` mengganti `node_modules`, `npm run build` gagal dengan 15 galat `Module not found: @vercel/turbopack-next/internal/font/google/font`. Itu cache `.next` yang basi, bukan regresi paket: dengan `.next` dihapus, build hijau (exit 0), dan CI pada commit yang sama juga hijau. Jadi: setelah `npm ci`, hapus `.next` bila build lokal mendadak gagal di `next/font` | dua jalankan `npm run build`: exit 1 dengan `.next` lama, exit 0 sesudah `rm -rf .next` |

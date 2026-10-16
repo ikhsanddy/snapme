@@ -11,7 +11,7 @@ Acuan pasti tampilan snapme. Buka berkas HTML langsung di browser (klik dua kali
 
 Catatan:
 
-- `referensi_uiux.webp` **tidak ikut di-commit** (ada di `.gitignore`). Isinya kumpulan tangkapan layar produk photobooth lain beserta merek dan foto pelanggannya, jadi tidak boleh disebarkan ulang bersama repo ini (AGENTS.md "Batas aman"). Berkasnya tetap ada di perangkat pengguna sebagai arah gaya; token di `DESIGN-SYSTEM.md §2` sudah memuat arah itu dan berkas HTML di folder ini menggantikannya untuk pekerjaan harian.
+- `referensi_uiux.webp` **tidak ikut di-commit** (ada di `.gitignore`). Isinya kumpulan tangkapan layar produk photobooth lain beserta merek dan foto pelanggannya, jadi tidak boleh disebarkan ulang bersama repo ini. Berkasnya tetap ada di perangkat pengguna sebagai arah gaya; token di `DESIGN-SYSTEM.md §2` sudah memuat arah itu dan berkas HTML di folder ini menggantikannya untuk pekerjaan harian.
 - Token dan aturan ada di `DESIGN-SYSTEM.md`. Bila berkas di sini berbeda dengan dokumen itu, dokumen itu yang menang.
 - Gaya ditulis inline dengan nilai mentah supaya mudah dibaca. Di kode produk selalu pakai token dan komponen.
 - `capture.html` dan `customize.html` memakai mesin templat kecil di bagian bawah berkas untuk interaksinya. Itu bukan kode produk.
