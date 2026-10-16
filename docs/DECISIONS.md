@@ -138,7 +138,7 @@ Catatan dari penulisan uji:
 
 ### Aset wasm dan model
 
-- `public/mediapipe/wasm/` berisi enam berkas salinan `node_modules/@mediapipe/tasks-vision/wasm/` (`vision_wasm_internal.{js,wasm}`, `vision_wasm_module_internal.{js,wasm}`, `vision_wasm_nosimd_internal.{js,wasm}`). Disalin apa adanya, tidak ada CDN (ARCHITECTURE §4, §8). Berkas-berkas ini dikecualikan dari ESLint lewat `globalIgnores` karena ditulis Emscripten dan gagal aturan proyek (`require()`, alias `this`).
+- `public/mediapipe/wasm/` berisi enam berkas salinan `node_modules/@mediapipe/tasks-vision/wasm/` (`vision_wasm_internal.{js,wasm}`, `vision_wasm_module_internal.{js,wasm}`, `vision_wasm_nosimd_internal.{js,wasm}`). Disalin apa adanya, tidak ada CDN (ARCHITECTURE §4, §8). Berkas-berkas ini dikecualikan dari ESLint lewat `globalIgnores` karena ditulis Emscripten dan gagal aturan proyek (`require()`, alias `this`). Sejak pengecilan repo (17 Oktober 2026) penyalinannya dikerjakan `scripts/copy-mediapipe-wasm.mjs` dari `postinstall`, jadi enam berkas itu tidak lagi ikut di git; model di baris berikut tetap di-commit karena tidak bisa dibuat ulang dari paket.
 - `public/models/gesture_recognizer.task` (8.373.332 bita) diunduh dari URL resmi dokumentasi GestureRecognizer Web: `https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task`.
 - `FilesetResolver.forVisionTasks("/mediapipe/wasm")` dan `modelAssetPath: "/models/gesture_recognizer.task"`: tidak ada permintaan ke luar origin saat deteksi berjalan. Dibuktikan uji Playwright GS-01.
 
@@ -1104,7 +1104,7 @@ Keputusan: repositori ini dinyatakan **open source dengan lisensi MIT** dan dile
 
 Yang **tidak** diubah dan alasannya:
 
-- `wrangler.jsonc` dan `cloudflare-env.d.ts` tetap memuat ID akun, ID basis data D1, dan ID namespace KV yang sungguhan. Ketiganya pengenal, bukan kredensial: tanpa API token tidak ada yang bisa dibuka, dan `SECURITY.md` menyatakannya. `cloudflare-env.d.ts` tetap ikut di-commit supaya `npm run typecheck` jalan di klon bersih tanpa `npm run cf-typegen`.
+- `wrangler.jsonc` memuat ID akun, ID basis data D1, dan ID namespace KV yang sungguhan. Ketiganya pengenal, bukan kredensial: tanpa API token tidak ada yang bisa dibuka, dan `SECURITY.md` menyatakannya. `cloudflare-env.d.ts` dulu ikut di-commit supaya `npm run typecheck` jalan di klon bersih; sejak pengecilan repo (17 Oktober 2026) berkas itu justru tidak di-commit dan dibangun ulang dari `wrangler.jsonc`, jadi tidak ada salinan tipe yang bisa basi.
 
 Bukti pemeriksaan:
 
@@ -1179,3 +1179,15 @@ Verifikasi tip hasil penulisan ulang sebelum push: `npm run lint`, `npm run type
 
 Yang belum diverifikasi: isi kegagalan "Workers Builds: snapme", karena tautannya hanya bisa dibuka dari dasbor Cloudflare. Pilihannya memperbaiki build command-nya di dasbor atau melepas integrasi Git untuk Worker `snapme` dan membiarkan `npm run deploy` dari CLI seperti yang ditulis `ARCHITECTURE.md §3`.
 
+
+## Pengecilan repo dan nama aksesibel slider (17 Oktober 2026)
+
+| Keputusan | Alasan | Bukti |
+|---|---|---|
+| `cloudflare-env.d.ts` tidak lagi di-commit. `scripts/cf-typegen.mjs` membangkitkannya dari `wrangler.jsonc` lewat `postinstall` dan lewat `npm run cf-typegen`; tanpa `wrangler` terpasang, skrip berhenti dengan peringatan, bukan galat | Berkas 625 KB yang sepenuhnya turunan: isinya seluruh tipe runtime Cloudflare, termasuk katalog Workers AI, dan bisa basi setiap `wrangler.jsonc` berubah | klon bersih menjalankan `npm ci` lalu `npm run typecheck` dan `npm run build` tanpa langkah tambahan (lihat tabel verifikasi di bawah) |
+| Isi tipe itu mengikuti keadaan mesin: di repo yang punya `.dev.vars`, empat nama rahasia ikut tertulis; di klon tanpa `.dev.vars`, tidak. Keduanya lolos `npm run typecheck` dan `npm run build` karena kode membaca binding lewat seam `getBindings()` | Cermin dari keputusan di atas, bukan sesuatu yang dikejar: kalau kelak ada kode yang menyentuh `env.CRON_SECRET` secara bertipe, berkas `.dev.vars` (atau penanda tipe manual) menjadi syarat | `diff cloudflare-env.d.ts` antara repo dan klon bersih: 12 baris, semuanya nama rahasia dan hash header |
+| `public/mediapipe/wasm/` tidak lagi di-commit. `scripts/copy-mediapipe-wasm.mjs` menyalinnya dari paket yang dikunci lockfile, idempoten (berkas dengan ukuran sama tidak disalin ulang) | Enam berkas sekitar 39 MB, byte-identik dengan `node_modules/@mediapipe/tasks-vision/wasm` (dibandingkan sha256 seluruh berkas: sama), jadi menaruhnya di git hanya menggandakan bobot klon. Model gesture tetap di-commit | `sha256sum public/mediapipe/wasm/*` sebelum dilepas sama dengan `sha256sum node_modules/@mediapipe/tasks-vision/wasm/*`; setelah dihapus dari disk, `npm ci` mengembalikan enam berkas itu |
+| Gagang `Slider` menerima nama aksesibel dari prop root, dan galeri `/dev/ui` menamai kedua slidernya | Radix hanya menamai sendiri saat ada dua gagang atau lebih ("Minimum"/"Maximum"); dengan satu gagang `role="slider"` tanpa nama, dan axe melaporkannya sebagai `aria-input-field-name` tingkat serius di galeri 360 px | CI cabang dependabot 16 Oktober 2026 gagal dengan dua simpul itu; setelah perbaikan, `[role="slider"]` di `/dev/ui` membawa `aria-label` "Ukuran stiker" dan "Ukuran stiker, nonaktif", dan `npx playwright test e2e/a11y.spec.ts -g "galeri komponen"` hijau |
+| Diagram folder ARCHITECTURE §4 hanya menyebut `public/stickers/` | `public/frames/` memang tidak pernah dibuat: frame diwujudkan sebagai data warna di `src/features/editor/presets.ts` (keputusan M4) | `git ls-files public` |
+
+Yang **tidak** diubah: riwayat git masih memuat blob wasm dari M3. Melepasnya dari indeks hanya membersihkan versi berikutnya; mengecilkan klon butuh penulisan ulang riwayat dan `git push --force`. Diukur `git count-objects -vH`: paketnya 12,15 MiB untuk seluruh riwayat, karena wasm terkompresi baik, jadi labanya hanya beberapa MiB sementara 29 rujukan hash pendek di `CHANGELOG.md` dan berkas ini akan ikut berubah. Pekerjaan itu ditunda sampai ada alasan lain untuk menulis ulang riwayat.

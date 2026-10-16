@@ -46,7 +46,7 @@ Useful entry points:
 | `npm run preview` | OpenNext build, then `wrangler dev` on port 8787 |
 | `npm run preview:e2e` | Same, with the `e2e` wrangler env for network tests |
 | `npm run deploy` | Build and deploy the Worker (maintainer action; needs Cloudflare credentials) |
-| `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` |
+| `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` (generated on install too) |
 | `npm run lint` | ESLint |
 | `npm run typegen` | Generate the Next.js route types (`LayoutProps`, `PageProps`) without a full build |
 | `npm run typecheck` | Route types, then `tsc --noEmit` |

@@ -110,9 +110,9 @@ snapme/
 │  ├─ DECISIONS.md               catatan keputusan dan pustaka yang ditambah
 │  └─ ui-reference/              acuan pasti UI: welcome.html, capture.html, customize.html
 ├─ public/
-│  ├─ mediapipe/wasm/            disalin dari node_modules/@mediapipe/tasks-vision/wasm
+│  ├─ mediapipe/wasm/            disalin dari paket saat pemasangan, tidak di git
 │  ├─ models/gesture_recognizer.task
-│  ├─ frames/  stickers/
+│  ├─ stickers/
 ├─ src/
 │  ├─ app/
 │  │  ├─ page.tsx                Welcome (komponen server, statis)

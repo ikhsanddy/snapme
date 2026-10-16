@@ -263,8 +263,17 @@ export default function DevUiPage() {
 
           <Section title="Slider">
             <Row label="Bawaan dan nonaktif">
-              <Slider defaultValue={[40]} className="max-w-xs" />
-              <Slider defaultValue={[20]} disabled className="max-w-xs" />
+              <Slider
+                defaultValue={[40]}
+                aria-label="Ukuran stiker"
+                className="max-w-xs"
+              />
+              <Slider
+                defaultValue={[20]}
+                disabled
+                aria-label="Ukuran stiker, nonaktif"
+                className="max-w-xs"
+              />
             </Row>
           </Section>
 

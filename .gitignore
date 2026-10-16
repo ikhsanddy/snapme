@@ -52,6 +52,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Cloudflare binding types: derived from wrangler.jsonc by `npm run cf-typegen`,
+# which `postinstall` runs (docs/DECISIONS.md).
+cloudflare-env.d.ts
+
+# MediaPipe wasm: copied from the lockfile-pinned package by
+# scripts/copy-mediapipe-wasm.mjs. The gesture model stays committed.
+public/mediapipe/wasm/
+
 # Next.js regenerates AGENTS.md locally when a coding agent is present, so it must never be committed.
 /AGENTS.md
 

@@ -110,7 +110,7 @@ End-to-end tests need a browser once: `npx playwright install chromium`.
 | `npm run preview` | Production-fidelity preview: OpenNext build, then `wrangler dev` on 8787 |
 | `npm run preview:e2e` | Same, with the `e2e` wrangler env (remote R2) for network tests |
 | `npm run deploy` | OpenNext build, then deploy the Worker (requires Cloudflare credentials) |
-| `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` |
+| `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` (generated on install too) |
 | `npm run lint` | ESLint |
 | `npm run typegen` | Generate the Next.js route types (`LayoutProps`, `PageProps`) without a full build |
 | `npm run typecheck` | Route types, then `tsc --noEmit` |
@@ -128,6 +128,7 @@ End-to-end tests need a browser once: `npx playwright install chromium`.
 | `.dev.vars.example` | Yes | Template for the runtime secrets: `CRON_SECRET`, `RATE_LIMIT_SALT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` |
 | `.env.local` | No | Your copy of `.env.example`; also used by `next build` |
 | `.dev.vars` | No | Your copy of `.dev.vars.example`, read by `wrangler dev` |
+| `cloudflare-env.d.ts` | No | Binding types derived from `wrangler.jsonc`; `npm ci` and `npm run cf-typegen` generate it |
 
 Secrets never belong in the repository. Locally they live in the ignored `.dev.vars`; in production
 they are set with `wrangler secret put` or in the Cloudflare dashboard. See
@@ -145,7 +146,7 @@ they are set with `wrangler secret put` or in the Cloudflare dashboard. See
 | `tests` | Vitest units, component tests, and `tests/db` route tests on real bindings |
 | `e2e` | Playwright specs, including the fake-camera flow and the privacy assertion |
 | `migrations` | D1 migrations |
-| `public` | Self-hosted MediaPipe wasm and model, sticker assets |
+| `public` | Sticker assets and the self-hosted gesture model; the MediaPipe wasm is copied from `node_modules` on install |
 | `docs/ui-reference` | The three reference pages that fix the layout of Welcome, Ambil Foto, and Hias Strip |
 | `docs/DECISIONS.md` | Every engineering decision, with the evidence behind it |
 

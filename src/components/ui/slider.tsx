@@ -10,6 +10,12 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  /* Nama aksesibel diteruskan ke tiap gagang, bukan ke wadahnya: Radix hanya
+     memberi nama sendiri saat ada dua gagang atau lebih ("Minimum"/"Maximum"),
+     jadi dengan satu gagang `role="slider"` akan tanpa nama dan lolos sebagai
+     pelanggaran `aria-input-field-name`. DESIGN-SYSTEM §11: tidak ada kontrol
+     tanpa nama aksesibel. */
+  "aria-label": ariaLabel,
   ...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
   const _values = React.useMemo(
@@ -48,6 +54,7 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
+          aria-label={ariaLabel}
           className="relative block size-5 shrink-0 rounded-pill border-2 border-ink bg-paper outline-none select-none transition-colors duration-[120ms] focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-violet disabled:pointer-events-none disabled:opacity-50"
         />
       ))}

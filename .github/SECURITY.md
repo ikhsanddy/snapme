@@ -63,8 +63,8 @@ No credential, token, or private key is stored in this repository.
 - Runtime secrets, meaning `CRON_SECRET`, `RATE_LIMIT_SALT`, `R2_ACCESS_KEY_ID`, and
   `R2_SECRET_ACCESS_KEY`, live in the ignored `.dev.vars` locally (template in
   `.dev.vars.example`), and in `wrangler secret put` or the Cloudflare dashboard in production.
-- `R2_ACCOUNT_ID` is not a secret. It appears in `.env.example`, `wrangler.jsonc`, and
-  `cloudflare-env.d.ts`, because it is needed to build the CSP and to presign requests.
+- `R2_ACCOUNT_ID` is not a secret. It appears in `.env.example` and `wrangler.jsonc`, because it is
+  needed to build the CSP and to presign requests.
 - The Cloudflare resource IDs in `wrangler.jsonc` (account ID, D1 database ID, KV namespace ID) are
   identifiers, not credentials: on their own they grant no access to the account or its data. Real
   access needs an API token, which is never committed.
