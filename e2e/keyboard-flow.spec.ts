@@ -44,24 +44,45 @@ async function tabKe(page: Page, nama: string, batas = 120): Promise<void> {
   throw new Error(`Tab tidak sampai ke "${nama}" dalam ${batas} langkah`)
 }
 
-/** Menekan panah sampai elemen dengan nama aksesibel itu benar-benar fokus.
+/** Nama pil pilihan di rel kiri Hias, urut dari kiri ke kanan. */
+const PIL_HIAS: readonly string[] = ["Frame", "Efek", "Stiker"]
+
+/** Menggeser fokus pil hiasan dengan panah, satu pil tiap langkah.
+ *
  *  Grup pil pilihan hiasan memperlakukan Tab sebagai masuk ke grupnya, jadi
- *  pindah antar-pil memang lewat panah. Fokus Radix bergerak dengan satu
- *  tekanan yang tersendat (tekanan pertama menyegerakan tab stop-nya), jadi
- *  batasnya dilebihkan daripada jumlah pil. */
+ *  perpindahan antar-pil memang lewat panah. Tiap langkah diulang sampai fokus
+ *  benar-benar sampai di pil tujuan langkah itu, karena dua hal: Radix
+ *  memindahkan fokus roving-nya setelah render berikutnya, dan satu tekanan
+ *  pertama setelah `focus()` tersedot untuk menyegerakan tab stop-nya. Menekan
+ *  panah beruntun lalu berharap fokusnya pindah pernah gagal di runner CI: 12
+ *  tekanan habis tanpa satu pun berpindah, dan galatnya muncul di langkah
+ *  hiasan ini. */
 async function panahKe(
   page: Page,
-  nama: string,
-  tombol: "ArrowRight" | "ArrowLeft",
-  batas = 12
+  ke: string,
+  tombol: "ArrowRight" | "ArrowLeft"
 ): Promise<void> {
-  for (let langkah = 0; langkah < batas; langkah += 1) {
-    await page.keyboard.press(tombol)
-    if ((await namaFokus(page)) === nama) {
-      return
-    }
+  const arah = tombol === "ArrowRight" ? 1 : -1
+  let kini = await namaFokus(page)
+  if (!PIL_HIAS.includes(kini)) {
+    throw new Error(`Fokus awal bukan pil hiasan: "${kini}"`)
   }
-  throw new Error(`Panah ${tombol} tidak sampai ke "${nama}"`)
+  while (kini !== ke) {
+    const berikut = PIL_HIAS[PIL_HIAS.indexOf(kini) + arah]
+    if (berikut === undefined) {
+      throw new Error(`Panah ${tombol} tidak punya pil berikutnya dari "${kini}"`)
+    }
+    const pilKini = page.getByRole("radio", { name: kini })
+    const pilBerikut = page.getByRole("radio", { name: berikut })
+    await expect(async () => {
+      /* Fokus dipasang ulang tiap percobaan: kalau fokusnya jatuh ke badan
+         halaman, tekanan panah tidak melakukan apa pun. */
+      await pilKini.focus()
+      await page.keyboard.press(tombol)
+      await expect(pilBerikut).toBeFocused({ timeout: 1_000 })
+    }).toPass({ timeout: 15_000 })
+    kini = berikut
+  }
 }
 
 test.beforeEach(async ({ page }) => {
