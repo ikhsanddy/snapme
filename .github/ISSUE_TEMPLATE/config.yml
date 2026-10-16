@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Live instance
+    url: https://snapme.ikhsandyy-dev.workers.dev
+    about: Try the hosted snapme in your browser before filing an issue.
+  - name: Architecture and stack
+    url: https://github.com/ikhsanddy/snapme/blob/master/ARCHITECTURE.md
+    about: Read how snapme is built, tested, and deployed.
+  - name: Security vulnerability reporting
+    url: https://github.com/ikhsanddy/snapme/security/advisories/new
+    about: Report security problems privately, never in a public issue.

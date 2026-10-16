@@ -2,6 +2,31 @@
   "name": "snapme",
   "version": "0.1.0",
   "private": true,
+  "description": "Browser photobooth: camera, poses, strip decoration, download or print. Gesture Snap, Strip Estafet, and Strip Hidup with QR.",
+  "license": "MIT",
+  "author": "Rori Setiawan <https://github.com/ikhsanddy>",
+  "homepage": "https://github.com/ikhsanddy/snapme#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ikhsanddy/snapme.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ikhsanddy/snapme/issues"
+  },
+  "keywords": [
+    "photobooth",
+    "photo-strip",
+    "nextjs",
+    "cloudflare-workers",
+    "mediapipe",
+    "gesture-recognition",
+    "konva",
+    "webcam",
+    "privacy-first"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

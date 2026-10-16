@@ -1,0 +1,74 @@
+name: Feature Request
+description: Suggest an idea or enhancement for snapme.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Describing the problem first makes it much easier to judge a proposed solution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What is hard or missing today, and for whom?
+      placeholder: When a group takes photos together, ...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about, and why they seem worse.
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part does this touch?
+      description: Pick the closest area of the product.
+      options:
+        - Capture and Gesture Snap
+        - Layouts and export, including 4R printing
+        - Decorating the strip
+        - Strip Hidup and the QR link
+        - Strip Estafet between two people
+        - Privacy, storage, or expiry
+        - Accessibility or interface text
+        - Documentation, tooling, or something else
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Fit with the current scope
+      description: |
+        The PRD keeps some things out of v1 on purpose: accounts, payments, real-time booths, AI face
+        filters or generated images, relays of more than two people, native apps, and a template CMS.
+        If your idea leans on one of those, say so, or point at what changed to make it worth revisiting.
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Mockups, sketches, or links that help. Do not attach photos of people without their consent.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Submission checklist
+      description: Please confirm the following before submitting.
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I removed credentials, tokens, secrets, private links, and personal data from everything I pasted or attached.
+          required: true
