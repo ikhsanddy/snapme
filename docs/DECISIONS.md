@@ -1322,7 +1322,7 @@ Keputusan: repositori ini dinyatakan **open source dengan lisensi MIT** dan dile
 
 | Keputusan | Isi | Alasan |
 |---|---|---|
-| Lisensi | `LICENSE` (MIT, "Copyright (c) 2026 Rori Setiawan"), `license`, `author`, `homepage`, `repository`, `bugs`, `keywords`, dan `engines` di `package.json` | Permintaan pengguna. Pemegang hak cipta diambil dari `PRD.md` ("Pemilik: Rori Setiawan"); `private: true` dipertahankan karena paket ini aplikasi dan tidak diterbitkan ke npm |
+| Lisensi | `LICENSE` (MIT), `license`, `author`, `homepage`, `repository`, `bugs`, `keywords`, dan `engines` di `package.json` | Permintaan pengguna. Pemegang hak cipta awalnya diambil dari `PRD.md` ("Pemilik: Rori Setiawan"), lalu dikoreksi menjadi **Ikhsan Dyy** pada catatan paling bawah berkas ini; `private: true` dipertahankan karena paket ini aplikasi dan tidak diterbitkan ke npm |
 | README | `README.md` baru, bahasa Inggris, dengan lencana, demo, fitur, privasi, perintah, konfigurasi, tata letak repo, dan tautan dokumen | Sebelumnya root repo tidak punya README sama sekali. Mengikuti pola `paperdraw`: README berbahasa Inggris, dokumen kerja berbahasa Indonesia |
 | Berkas komunitas | `.github/CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`, `pull_request_template.md`, `dependabot.yml`, dan tiga `ISSUE_TEMPLATE` | Pola yang sama dengan `paperdraw`. Isinya disesuaikan: perintah npm snapme, gerbang `DESIGN-SYSTEM.md §14`, label tetap §12, dan larangan pihak ketiga |
 | CI | `.github/workflows/ci.yml`: job `checks` (lint, typecheck, `npm test`, build) dan job `e2e` (`npx playwright test` di chromium, firefox, webkit) | Gerbang `AGENTS.md` "Selesai berarti" dijalankan otomatis. Unggahan artefak laporan hanya saat gagal |
