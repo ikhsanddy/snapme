@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 
 import { expect, test, type Page } from "@playwright/test"
 
-import { masukHias, masukHiasDenganQr, pasangSidangBaru } from "./helpers"
+import { masukHias, masukHiasDenganQr, matikanGesture, pasangSidangBaru } from "./helpers"
 
 /* M6 (SH-04 sampai SH-06): link strip dan QR.
 
@@ -17,6 +17,15 @@ const PERLU_PROYEK =
 /* Uji jalur 503 hanya bermakna saat server belum punya binding, dan `.dev.vars`
    adalah penanda tunggalnya di mesin ini. */
 const ADA_DEV_VARS = existsSync(".dev.vars")
+
+/* Konvensi yang sama dengan spek lain (lihat helpers.ts): Gesture Snap
+   dimatikan lewat localStorage. Di Chromium headless tanpa GPU, inferensi
+   MediaPipe menahan main thread beberapa ratus milidetik per bingkai, dan alur
+   kamera empat foto di berkas ini bisa melewati batas 30 detik uji saat mesin
+   sedang sibuk. Perilaku gesture sendiri diuji `gesture.spec.ts`. */
+test.beforeEach(async ({ page }) => {
+  await matikanGesture(page)
+})
 
 /** Sidik jari kanvas penyunting: cukup untuk membuktikan ada yang berubah. */
 async function sidikJariKanvas(page: Page): Promise<number> {
