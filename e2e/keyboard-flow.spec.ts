@@ -117,7 +117,23 @@ test("seluruh alur selesai hanya dengan keyboard", async ({ page }) => {
 
   /* Spasi di area kamera memotret, empat kali. */
   for (let nomor = 1; nomor <= 4; nomor += 1) {
+    /* Mesin keadaan hanya menerima `SHOOT` pada fase siap, dan jeda 300 ms
+       setelah tiap foto (GS-04) membuat Spasi yang datang lebih awal hilang
+       tanpa jejak: hitung mundur tidak pernah muncul. Tombol jepret yang aktif
+       adalah penanda fase siap, jadi ditunggu lebih dulu. Di runner CI tanpa
+       GPU, jeda itu berlomba dengan `expect` penghitung foto dan tekanannya
+       kadang jatuh di dalamnya. */
+    await expect(page.getByRole("button", { name: "Ambil foto" })).toBeEnabled()
+
     await tabKe(page, "Area kamera")
+    /* `handleKeyDown` mengabaikan Spasi yang datang dari elemen anak
+       (`event.target !== event.currentTarget`), jadi fokusnya dipastikan ada
+       di kontainer area kamera sebelum Spasi ditekan. Memfokuskan elemen
+       terprogram sudah dipakai di bawah untuk pil hiasan. */
+    const areaKamera = page.getByRole("group", { name: "Area kamera" })
+    await areaKamera.focus()
+    await expect(areaKamera).toBeFocused()
+
     await page.keyboard.press("Space")
     await expect(page.getByTestId("countdown")).toBeVisible()
     await expect(page.getByTestId("countdown")).toHaveCount(0)
