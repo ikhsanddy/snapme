@@ -271,10 +271,12 @@ Agent tidak bisa memverifikasi deteksi gesture dengan kamera palsu: kamera palsu
 
 |Perangkat|Browser|Cahaya|Berhasil dari 10|Catatan|
 |---|---|---|---|---|
-| | | | | |
-| | | | | |
+|HP (pengguna)|tidak dirinci|tidak dirinci|tidak dihitung; pengguna melaporkan "bisa"|Laporan pengguna 16 Oktober 2026|
+|Laptop|-|-|belum diuji|Tidak dilaporkan pengguna|
 
 Ambang akhir yang dipakai: skor 0,6, tahan 800 ms, jeda 1.500 ms, interval 80 ms. Bila hasil uji manual menunjukkan lemah, ubah hanya `src/features/gesture/thresholds.ts` (satu berkas konstanta, ARCHITECTURE §6) dan ulangi tabel di atas.
+
+Laporan pengguna 16 Oktober 2026 hanya menyebut "sudah saya coba di HP dan hasilnya bisa", tanpa jumlah keberhasilan dari 10 percobaan dan tanpa uji laptop. Ambang karena itu **tidak diubah**: tidak ada keluhan deteksi yang perlu dijawab angka baru, dan menurunkan ambang tanpa data akan menaikkan risiko pemicu tak sengaja. M3 dicentang atas konfirmasi pengguna itu, dengan dua kekurangan yang dicatat apa adanya: jumlah "berhasil dari 10" dan uji laptop tidak tersedia.
 
 
 ## M4 Hias strip (9 Oktober 2026)
@@ -956,7 +958,7 @@ Alat: Lighthouse 13 dengan preset bawaan seluler (CPU 4× lebih lambat, jaringan
 
 |Ukuran|Target PRD §8|Hasil|Selisih|
 |---|---|---|---|
-|LCP Welcome|di bawah 2,5 detik|**3,17 detik** (median tujuh jalankan di server produksi: 3028 sampai 3188 ms; angka terakhir 3062 ms)|**+670 ms, belum tercapai**|
+|LCP Welcome|di bawah 2,5 detik|**3,17 detik** (median tujuh jalankan di server produksi **lokal** `next start`: 3028 sampai 3188 ms; angka terakhir 3062 ms)|**+670 ms di server lokal**; di produksi Cloudflare targetnya tercapai (median 2,4 detik, lihat "Langkah 1 rencana" di bawah)|
 |Skor kinerja Lighthouse|—|92 sampai 94|—|
 |FCP / TBT / CLS|—|917 ms / 76 sampai 116 ms / 0|—|
 |Ekspor strip sampai siap unduh|di bawah 2 detik|**895 sampai 971 ms** (median 922 ms dari enam jalankan `e2e/perf.spec.ts` di server produksi; jalankan di server pengembangan 1135 ms)|Tercapai|
@@ -969,6 +971,8 @@ Rencana untuk selisih 670 ms (dipilih pengguna sebelum dianggap selesai):
 1. **Kurangi JS Welcome.** Terukur: 182 KB dari 304 KB total. Dua potongan terbesar 71 KB (runtime React/Next) dan 45 KB (kerangka + UI bersama). Kandidat: pindahkan `<Toaster />` dari root layout ke layout booth (sonner tidak dipakai Welcome), dan muat `GalleryPicker` di belakang interaksi seperti `CustomizeEditor`.
 2. **Uji di perangkat sungguhan** (HP Android kelas menengah + 4G) sebelum mengubah desain. Preset seluler Lighthouse mensimulasikan 4G *lambat* (1,6 Mbps, RTT 150 ms), lebih pesimistis daripada definisi "4G" di PRD; median di perangkat sungguhan bisa saja sudah di bawah 2,5 detik.
 3. **Bila masih lewat:** hero `display-xl` memakai `-webkit-text-stroke` dan `text-shadow` keras yang mahal digambar. Menggantinya adalah perubahan DESIGN-SYSTEM, jadi harus diusulkan ke pengguna dulu, bukan dikerjakan diam-diam.
+
+Status 16 Oktober 2026: langkah 1 dikerjakan, dan setelah pengukuran di produksi targetnya ternyata sudah tercapai di sana sehingga langkah 2 dan 3 tidak diperlukan untuk memenuhi target. Rincian, angka, dan bukti bundelnya di subbagian "Langkah 1 rencana" di bawah.
 
 Ukuran bundel per rute (transfer terkompresi, cache dimatikan, server produksi):
 
@@ -984,6 +988,31 @@ Ukuran bundel per rute (transfer terkompresi, cache dimatikan, server produksi):
 |`/r/{id}` (404)|238 KB|14 KB|91 KB|27 KB|371 KB|
 
 Catatan: Next.js 16 **menghapus metrik `size` dan `First Load JS`** dari keluaran `next build` (dokumentasinya menyebut keduanya tidak akurat untuk arsitektur server-driven). Karena itu tabel di atas diukur dari peramban sungguhan (`performance.getEntriesByType("resource")` dengan `Network.setCacheDisabled`), bukan disalin dari keluaran build. Yang tetap terjaga: modul kamera/gesture (301 KB) dan Konva (307 KB) hanya muncul di rutenya sendiri, dan uji "konva tidak ikut termuat di `/` dan `/booth/capture`" tetap hijau.
+
+#### Langkah 1 rencana (dikerjakan 16 Oktober 2026)
+
+Perubahan: `sonner` dikeluarkan dari jalur kritis Welcome. Root layout kini merender `DeferredToaster` (`src/components/ui/deferred-toaster.tsx`: `next/dynamic` dengan `ssr: false`), dan `GalleryPicker` mengimpor `sonner` secara dinamis di dalam `handleFiles` alih-alih di tingkat modul. Toaster tetap di root layout supaya toast yang dipicu tepat sebelum navigasi (Welcome → `/booth/capture`) tampil di halaman tujuan; `e2e/customize.spec.ts` ("dua foto galeri dilengkapi di kamera") menguji jalur itu dan tetap hijau. Tidak ada warna, token, tata letak, atau teks yang berubah, jadi tidak ada Pre-Flight Check baru.
+
+Bukti bundel (pratinjau, `Network.setCacheDisabled`, snapshot pada `load` dan 2 detik sesudahnya):
+
+|Ukuran|Sebelum|Sesudah|
+|---|---|---|
+|JS sebelum `load`|165,9 KB (8 berkas)|153,9 KB (7 berkas)|
+|Chunk sonner|9,9 KB, diunduh sebelum `load`|9,9 KB (`3o_zaba4nwz_y.js`, 35.924 bita mentah), mulai 844 ms, sesudah `loadEventEnd` 823 ms|
+|JS sampai 2 detik sesudah `load`|179,1 KB|181,2 KB|
+
+Ukuran transfer per jenis (CSS, fon) tidak berubah. Di HTML produksi (9 skrip awal) tidak satu pun chunk memuat `data-sonner-toaster`.
+
+Lighthouse preset seluler, lima jalankan per sel, angka median:
+
+|Target|LCP sebelum|LCP sesudah|FCP sesudah|TBT sesudah|CLS sesudah|Skor sesudah|
+|---|---|---|---|---|---|---|
+|Produksi (`https://snapme.ikhsandyy-dev.workers.dev`)|2.388 ms|2.416 ms|1.066 ms|62 ms|0|97 (sebelum 98)|
+|Pratinjau Cloudflare (`wrangler dev`)|3.737 ms|3.680 ms|1.104 ms|51 ms|0|88 (sebelum 87)|
+
+Kesimpulan yang bisa dipertanggungjawabkan: **target LCP Welcome PRD §8 tercapai di produksi** (median 2,4 detik terhadap batas 2,5 detik), dan itu berlaku juga sebelum langkah 1. Dua angka lama berasal dari server lokal, bukan CDN: 3,17 detik dari `next start` dan 3,745 detik dari `wrangler dev`. Keduanya melebih-lebihkan selisihnya, jadi kalimat "selisih 670 ms" di bagian atas harus dibaca sebagai sifat server lokal. Langkah 1 tetap dikerjakan dan hasilnya nyata pada jalur kritis (JS sebelum `load` turun 12,0 KB dan chunk sonner tidak lagi ikut pra-`load`), tetapi tidak mengubah median produksi secara terukur: sebaran antarjalankan produksi 2.317 sampai 2.517 ms, jadi selisih 28 ms antara sebelum dan sesudah ada di dalam derau. Lima jalankan produksi "sebelum" memuat satu pencilan 3.897 ms pada jalankan pertama (cache kosong di mesin uji), yang tidak menggeser mediannya.
+
+Langkah 2 (uji di perangkat sungguhan) dan langkah 3 (mengganti `-webkit-text-stroke`/`text-shadow` hero, perubahan DESIGN-SYSTEM) karena itu **tidak diperlukan** untuk memenuhi target ini; keduanya tetap tersedia sebagai rencana lanjutan bila pengukuran di perangkat nyata kelak menunjukkan sebaliknya.
 
 ### Uji lintas peramban
 
@@ -1015,11 +1044,11 @@ Proyek Playwright baru: `firefox` dan `webkit` (keduanya `testMatch: **/crossbro
 
 |Butir|Langkah|Status|
 |---|---|---|
-|Gesture Snap (M3)|Buka `npm run dev`, pilih layout, izinkan kamera, angkat dua jari dan tahan 0,8 detik → hitung mundur mulai; telapak untuk ulang foto terakhir; jempol setelah semua slot terisi untuk lanjut ke hias. Uji di cahaya redup dan terang|Menunggu pengguna (tabel M3 di atas masih kosong)|
+|Gesture Snap (M3)|Buka `npm run dev`, pilih layout, izinkan kamera, angkat dua jari dan tahan 0,8 detik → hitung mundur mulai; telapak untuk ulang foto terakhir; jempol setelah semua slot terisi untuk lanjut ke hias. Uji di cahaya redup dan terang|Dikonfirmasi pengguna 16 Oktober 2026 di HP (rincian di tabel M3)|
 |Chrome Android / Safari iOS / Edge dan Firefox sungguhan|Buka `/`, jalankan alur galeri sampai unduh di tiap peramban, catat yang gagal. Mesin WebKit dan Gecko sudah tercakup otomatis oleh proyek `webkit` dan `firefox`; yang belum diperiksa adalah sentuhan, kamera sungguhan, dan unduhan di perangkat|Menunggu pengguna|
-|QR pada cetakan asli (M9 "Selesai bila")|`npm run dev`, buat strip dengan "QR di strip" menyala, tekan "Cetak 4R" pada kertas 4R, lalu pindai QR-nya dengan kamera HP → harus membuka `/s/{id}` dan menampilkan stripnya. Ulangi sekali di kertas biasa untuk membandingkan|Menunggu pengguna|
+|QR pada cetakan asli (M9 "Selesai bila")|`npm run dev`, buat strip dengan "QR di strip" menyala, tekan "Cetak 4R" pada kertas 4R, lalu pindai QR-nya dengan kamera HP → harus membuka `/s/{id}` dan menampilkan stripnya. Ulangi sekali di kertas biasa untuk membandingkan|Lolos: dikonfirmasi pengguna 16 Oktober 2026, QR cetakan terbaca kamera HP (printer/kertas tidak dirinci)|
 |Pembaca layar|NVDA (Windows) atau VoiceOver (macOS) atau TalkBack (Android): jalankan alur dasar, periksa hitung mundur dan penghitung foto terumumkan (`aria-live`), HUD gesture terbaca (`role="status"`), dan padanan daftar stiker bisa dipakai tanpa kanvas|Menunggu pengguna|
-|Deploy ke Vercel|PowerShell: `npm i -g vercel`, `vercel login`, `vercel link`, `vercel env add NEXT_PUBLIC_SUPABASE_URL`, `vercel env add SUPABASE_SERVICE_ROLE_KEY`, `vercel env add CRON_SECRET`, `vercel env add RATE_LIMIT_SALT`, lalu `vercel deploy --prod`. `vercel.json` sudah memuat cron pembersih harian. Setelah live: jalankan sekali alur dasar dan sekali buat link, periksa `/api/cron/purge` dijalankan cron, dan catat LCP produksi|Menunggu pengguna (agent tidak men-deploy)|
+|Deploy|Digantikan M10: Worker Cloudflare `snapme` ter-deploy (lihat Bukti verifikasi M10)|Selesai lewat M10|
 
 ## M10 Migrasi Cloudflare (9 Oktober 2026)
 
@@ -1180,7 +1209,9 @@ Statis dan uji:
 |`npm run build`|Hijau; `/s/[id]` dan `/r/[id]` keluar sebagai rute dinamis (ƒ) karena PPR dilepas di bagian di atas|
 |`opennextjs-cloudflare build`|Hijau; bundel Worker tersimpan di `.open-next/worker.js`|
 |`npm run test:e2e:cf`|**30 lolos, 3 dilewati, 0 gagal** terhadap `wrangler dev --env e2e` (D1/KV lokal, R2 remote). Tiga yang dilewati adalah jalur "server tanpa binding" yang memang tidak berlaku saat binding ada. Perbaikan yang menyertainya: assertion Supabase-era di `e2e/live.spec.ts` (`/\/storage\//` menjadi host R2), URL dev yang di-hardcode di `e2e/relay.spec.ts` (`http://localhost:3000` menjadi relatif terhadap baseURL), dan helper `pasangSidangBaru` yang kini menyisipkan header sidang hanya ke `/api/**`|
-|`npm run perf:lcp` (Lighthouse preset seluler, 5 jalankan)|Median **LCP 3,745 detik**, FCP 1,11 detik, TBT 44 ms, CLS 0, skor 0,87. Pembanding M9 di `next start`: LCP 3,17 detik. Angka ini diukur terhadap `wrangler dev` (workerd lokal dan koneksi R2 jarak jauh), bukan CDN produksi, jadi selisihnya indikatif dan bukan regresi yang terbukti. Tidak ada syarat target baru di milestone ini|
+|`npm run perf:lcp` (Lighthouse preset seluler, 5 jalankan)|Median **LCP 3,745 detik**, FCP 1,11 detik, TBT 44 ms, CLS 0, skor 0,87. Pembanding M9 di `next start`: LCP 3,17 detik. Angka ini diukur terhadap `wrangler dev` (workerd lokal dan koneksi R2 jarak jauh), bukan CDN produksi, jadi selisihnya indikatif dan bukan regresi yang terbukti. Tidak ada syarat target baru di milestone ini. Produksi Cloudflare sendiri diukur 16 Oktober 2026: median LCP **2,416 detik** (5 jalankan, 2.317 sampai 2.517 ms), FCP 1,066 detik, TBT 62 ms, CLS 0, skor 97, jadi di CDN target LCP PRD §8 tercapai (rinciannya di "Langkah 1 rencana" M9)|
+|cron harian di dasbor|Dikonfirmasi pengguna 16 Oktober 2026: Cron Trigger `0 3 * * *` terlihat di Workers & Pages > snapme > Settings > Triggers. Pencatatannya di milik pengguna karena agent tidak membuka dasbor|
+|Deploy ulang (16 Oktober 2026)|Version ID `2dc38bdb-25ce-4016-a0ad-34423c94cbf9` (menggantikan `26c7f70b-…`), `schedule: 0 3 * * *` terdaftar ulang saat deploy, `GET /` 200, 9 skrip awal di HTML produksi tidak ada yang memuat `data-sonner-toaster`. Deploy ini membawa perubahan langkah 1 LCP dan perbaikan `e2e/share.spec.ts`|
 
 Putaran pratinjau (`wrangler dev --env e2e`: D1/KV lokal, R2 **remote** sungguhan) memakai skrip buang yang menjalankan 31 pemeriksaan, semuanya lulus:
 
@@ -1223,3 +1254,64 @@ Putaran produksi setelah `npm run deploy` (Worker `snapme`, URL `https://snapme.
 Daftar periksa DESIGN-SYSTEM §14: M10 tidak menambah atau mengubah tampilan apa pun (pekerjaannya backend, konfigurasi deploy, dan dua perbaikan perilaku klien: `cache: "no-store"` pada pengambilan foto slot serta penyempitan header sesi uji). Tidak ada komponen, token, warna, label, atau teks baru, jadi daftar periksa M9 tetap berlaku dan tidak ada butir baru untuk diperiksa.
 
 Catatan alat: `npx wrangler r2 object get snapme/<kunci-ber-garis-miring>` melaporkan `The specified key does not exist` di wrangler 4.149.0 walau objeknya ada dan terbaca lewat S3 API maupun URL presigned (kunci tanpa `/` tidak diuji). Karena itu bukti bit identik memakai S3 API (`aws4fetch`) dengan kredensial yang sama; ini celah CLI, bukan celah R2, dan tidak memengaruhi aplikasi.
+
+## Perkakas tambahan: video perkenalan dengan skill brag (10 Oktober 2026)
+
+### Skill `brag` + core set Hyperframes dipasang, video perkenalan dibuat lokal
+
+Keputusan: memasang skill `brag` (`latent-spaces/brag`) ke `.agents/skills/brag` dan core set skill Hyperframes (10 skill: `hyperframes`, `-animation`, `-audio`, `-cli`, `-core`, `-creative`, `-keyframes`, `-registry`, `-studio`, `media-use`) ke `~/.agents/skills/` lewat `npx hyperframes skills update`, lalu menjalankan alur `brag` varian penuh untuk membuat video perkenalan 21,2 detik. Alasan: permintaan pengguna, di luar daftar milestone (jadi tidak ada kotak centang `MILESTONES.md` yang berubah). Seluruh alur berjalan lokal: tanpa akun HeyGen, tanpa render cloud, tanpa `publish`.
+
+Perintah yang dijalankan:
+
+```powershell
+winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements
+npx hyperframes doctor
+npx hyperframes browser ensure
+npx skills add https://github.com/latent-spaces/brag --skill brag -a universal -y --copy
+npx hyperframes skills update
+```
+
+Prasyarat baru di mesin pengguna: FFmpeg/FFprobe 9.0.2 dan Chrome Headless Shell Hyperframes 152.0.7977.30 di `~/.cache/hyperframes/chrome/`. Dua penyesuaian lingkungan yang perlu diketahui:
+
+- PATH proses sesi ini masih basi setelah winget, sehingga `ffmpeg.exe`/`ffprobe.exe`/`ffplay.exe` disalin ke `C:\Users\ikhsandy\.local\bin` (sudah ada di PATH pengguna) supaya CLI Hyperframes menemukannya; PATH pengguna sendiri sudah diperbarui winget untuk shell baru.
+- `chrome.exe --version` pada Chrome terpasang menggantung di sesi ini (juga di Edge), jadi `npx hyperframes browser ensure` dipakai untuk mengunduh Chrome Headless Shell sendiri. `doctor` sekarang melaporkan FFmpeg, FFprobe, dan Chrome hijau; yang masih merah hanya komponen opsional (whisper-cpp, TTS Kokoro, MusicGen) dan Docker yang tidak dipakai jalur lokal.
+
+Artefak di `brag-output/` (tidak ada berkas `src/` yang disentuh):
+
+| Artefak | Isi |
+|---|---|
+| `brag-output/brag.mp4` | 1920x1080, 30 fps, 21,2 dtk, H.264 + AAC 48 kHz stereo, 636 frame, 4,66 MB (6,2 MB sebelum poster dibakar) |
+| `brag-output/brag.jpg` | Poster 1920x1080 dari frame 20,8 dtk (kuncian wordmark), dibakar sebagai frame 0 video |
+| `brag-output/brag-plan.md` | Rubrik 9 pertanyaan, angle, storyboard 5 adegan, panduan cue musik (vol-1, 120,19 BPM, strong cue 18.02 dan 20.02) |
+| `brag-output/composition-brief.md` | Brief serah-terima ke Hyperframes, termasuk daftar copy verbatim dan batasan materi |
+| `brag-output/composition/` | Proyek Hyperframes: `index.html` (320 baris, satu timeline GSAP) + `assets/` (5 woff2 Unbounded/Space Grotesk/Space Mono, `gsap.min.js` lokal, 1 lagu, 9 berkas SFX CC0) |
+| `brag-output/tools/` | `prepare-assets.mjs` (unduh fon, GSAP, salin audio) dan `inject-icons.mjs` (menyisipkan path ikon Phosphor dari `docs/ui-reference/*.html`) |
+| `brag-output/share-copy.txt` | Satu caption bahasa Indonesia, siap tempel |
+
+Bukti pemeriksaan:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npx hyperframes doctor` | FFmpeg 9.0.2, FFprobe 9.0.2, Chrome Headless Shell hijau (opsional/Docker merah, tidak dipakai) |
+| `npx hyperframes check` | **0 galat**: lint 0 galat/6 peringatan, runtime 0/0, layout 0 galat/2 peringatan transient + 1 info, contrast 41/41 lulus WCAG AA |
+| `npx hyperframes render --quality delivery` | Selesai 40,8 dtk (`screenshot capture · hardware gpu`), 636/636 frame |
+| `ffprobe brag.mp4` | `duration=21.200000`, 1920x1080, `r_frame_rate=30/1`, `nb_frames=636`, `codec_name=aac` 48 kHz stereo |
+| Tinjau frame (`snapshots/` dan `review-frames/`) | 13 frame + 2 contact sheet dilihat: palet lime/ink/paper/tangerine/violet/pink sesuai token, copy Indonesia terbaca, tidak ada wajah orang, frame 0 = poster |
+
+Catatan yang perlu diputuskan pengguna:
+
+- **Peringatan lint yang tersisa** (tidak menggagalkan gerbang): berkas komposisi 325 baris dan usulan memecah tiap adegan jadi sub-komposisi. Tidak dipecah karena satu timeline tunggal lebih mudah dirawat untuk video 21 detik.
+- **Dua peringatan `content_overlap` transient** di jendela crossfade 0,25 dtk antar adegan (mis. judul adegan 1 vs baki adegan 2 di t=3,12 dan t=3,24). Ini konsekuensi transisi yang disengaja, bukan salah tata letak; `data-layout-allow-overlap` sengaja tidak dipasang di pembungkus adegan karena dokumentasi Hyperframes melarangnya dan atribut itu tidak diwariskan.
+- **Ketergantungan CDN dilepas**: fon dan GSAP di-vendor ke `composition/assets/`, ikon diambil dari halaman acuan repo (bukan path baru), jadi render tidak menyentuh jaringan. SFX CC0 dari skill `brag`; musik "Happy Beats / Business Moves vol-1".
+- **Grounding klaim**: semua teks di layar berasal dari produk sendiri ("Foto strip tanpa antre.", "Angkat dua jari, tahan sebentar", "Cukup ambil 2 foto. Sisanya diisi temanmu lewat link.", "Ekspor 600 x 1800 px (2 x 6 inci, 300 dpi)", "Selesai & Unduh", "Cetak 4R", "Foto diproses di perangkatmu."). Tidak ada aset atau nama Fujifilm, tidak ada hostname, token, atau data pribadi di layar.
+- **Repo**: `brag-output/` belum di-commit dan `.gitignore` tidak diubah; pengguna memutuskan saat `omp commit`. Karena `src/` tidak disentuh, `npm run lint`/`typecheck`/`test`/`build` tidak dijalankan ulang untuk pekerjaan ini.
+
+## Catatan uji: `share.spec.ts` tidak mematikan Gesture Snap (16 Oktober 2026)
+
+Gejala: `npm run test:e2e:cf` gagal di `[cloudflare] › share.spec.ts:43:7` ("sakelar QR menyalakan kotak QR di kanvas dan pemberitahuan izin"). Dua jalankan penuh gagal pada langkah berbeda di uji yang sama (`page.waitForURL("**/booth/customize")` di `masukHias`, lalu `expect(sakelar).toBeChecked()`), keduanya dengan `Test timeout of 30000ms exceeded`; menjalankan `share.spec.ts` sendirian selalu hijau.
+
+Isolasi: setiap berkas spek lain mematikan Gesture Snap lewat `matikanGesture` di `test.beforeEach` (a11y, capture, customize, live, relay, result, session). `share.spec.ts` satu-satunya yang tidak, jadi alur kamera empat fotonya menjalankan model MediaPipe di Chromium headless tanpa GPU. Inferensi gesture menahan main thread, dan uji 30 detik itu melewati batasnya saat mesin sibuk (spek ini berjalan terakhir di proyek `cloudflare`, sesudah estafet).
+
+Bukti ini bukan regresi kode baru: dengan perubahan langkah 1 LCP di-`git stash`, `npm run test:e2e:cf` pada kode sebelum perubahan gagal pada uji yang sama, di langkah yang berbeda lagi.
+
+Perbaikan: `test.beforeEach` + `matikanGesture` di `e2e/share.spec.ts`, sama seperti spek lain. Cakupan gesture tidak berkurang: `e2e/gesture.spec.ts` tetap menguji model dimuat dari origin sendiri tanpa membawa gambar, sakelar mati, pilihan diingat, dan jalur gagal muat. Setelah perbaikan, `npm run test:e2e:cf` hijau dua kali berturut-turut (30 lolos, 3 dilewati, 0 gagal).
