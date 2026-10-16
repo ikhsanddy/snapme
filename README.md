@@ -173,7 +173,7 @@ respectful per the [Code of Conduct](.github/CODE_OF_CONDUCT.md).
 
 ## License
 
-snapme is open source under the [MIT License](LICENSE). Copyright (c) 2026 Rori Setiawan.
+snapme is open source under the [MIT License](LICENSE). Copyright (c) 2026 Ikhsan Dyy.
 
 Third-party dependencies keep their own licenses (MediaPipe under Apache-2.0, and the rest as
 listed in `package.json` and their own repositories). snapme is an independent project: no name,

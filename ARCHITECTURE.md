@@ -111,7 +111,7 @@ snapme/
 ├─ .agents/skills/               find-skills dan taste-skill (§11.3)
 ├─ docs/
 │  ├─ DECISIONS.md               catatan keputusan dan pustaka yang ditambah
-│  └─ ui-reference/              acuan pasti UI: welcome.html, capture.html, customize.html, referensi_uiux.webp
+│  └─ ui-reference/              acuan pasti UI: welcome.html, capture.html, customize.html
 ├─ public/
 │  ├─ mediapipe/wasm/            disalin dari node_modules/@mediapipe/tasks-vision/wasm
 │  ├─ models/gesture_recognizer.task

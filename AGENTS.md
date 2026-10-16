@@ -24,7 +24,7 @@ Tiga berkas HTML mandiri berikut adalah acuan pasti susunan, ukuran, dan keadaan
 | Ambil Foto | `docs/ui-reference/capture.html` | `/booth/capture` |
 | Hias Strip | `docs/ui-reference/customize.html` | `/booth/customize` |
 
-Gambar arah gaya: `docs/ui-reference/referensi_uiux.webp`. Halaman lain disusun dari kerangka dan komponen yang sama (DESIGN-SYSTEM §5, §9).
+Gambar arah gaya: `docs/ui-reference/referensi_uiux.webp`. Berkasnya **tidak ikut di-commit** dan tidak boleh disebarkan ulang (berkas pihak ketiga; alasannya di `docs/ui-reference/README.md`). Halaman lain disusun dari kerangka dan komponen yang sama (DESIGN-SYSTEM §5, §9).
 
 Berkas acuan menulis gaya inline dengan nilai mentah dan memakai mesin templat kecil untuk interaksinya. Keduanya jangan disalin ke produk: pakai token, komponen, dan pustaka di ARCHITECTURE §3. Bila berkas acuan berbeda dengan DESIGN-SYSTEM.md, DESIGN-SYSTEM.md yang menang dan perbedaannya dilaporkan.
 

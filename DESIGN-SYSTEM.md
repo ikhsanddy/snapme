@@ -9,7 +9,7 @@ Acuan visual, semuanya di `docs/ui-reference/`:
 | `welcome.html` | Halaman acuan Welcome | `/` |
 | `capture.html` | Halaman acuan Ambil Foto, bisa diklik (hitung mundur, gesture, ulang) | `/booth/capture` |
 | `customize.html` | Halaman acuan Hias Strip, bisa diklik (frame, efek, stiker, sakelar) | `/booth/customize` |
-| `referensi_uiux.webp` | Gambar referensi gaya (kios photobooth Y2K) | |
+| `referensi_uiux.webp` | Gambar referensi gaya (kios photobooth Y2K). **Tidak ikut di-commit**: berkas pihak ketiga, alasannya di `docs/ui-reference/README.md` | |
 
 Tiga berkas HTML itu mandiri (buka langsung di browser) dan menjadi **acuan pasti** susunan, ukuran, dan keadaan tiap halaman. Dokumen ini menjadi acuan pasti token dan aturan. Bila keduanya berbeda, dokumen ini yang menang dan perbedaannya dilaporkan. Berkas HTML menulis gaya inline dengan nilai mentah supaya terbaca jelas: di kode produk nilai itu selalu diganti token (§13) dan komponen (§9). Gambar referensi dipakai sebagai arah gaya saja: nama, logo, dan aset Fujifilm tidak boleh dipakai.
 

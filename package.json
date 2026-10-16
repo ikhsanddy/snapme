@@ -4,7 +4,7 @@
   "private": true,
   "description": "Browser photobooth: camera, poses, strip decoration, download or print. Gesture Snap, Strip Estafet, and Strip Hidup with QR.",
   "license": "MIT",
-  "author": "Rori Setiawan <https://github.com/ikhsanddy>",
+  "author": "Ikhsan Dyy <https://github.com/ikhsanddy>",
   "homepage": "https://github.com/ikhsanddy/snapme#readme",
   "repository": {
     "type": "git",
