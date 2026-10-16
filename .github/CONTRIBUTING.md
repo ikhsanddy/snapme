@@ -49,7 +49,8 @@ Useful entry points:
 | `npm run deploy` | Build and deploy the Worker (maintainer action; needs Cloudflare credentials) |
 | `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` |
 | `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run typegen` | Generate the Next.js route types (`LayoutProps`, `PageProps`) without a full build |
+| `npm run typecheck` | Route types, then `tsc --noEmit` |
 | `npm test` | Vitest: units, components, and route tests against real D1, R2, and KV |
 | `npx playwright test` | End-to-end tests against the dev server |
 | `npm run test:e2e:cf` | End-to-end tests against the Cloudflare preview |
