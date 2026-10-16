@@ -11,7 +11,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
 
 ### Added
 
-**M0 Fondasi** (`251b7fe`)
+**M0 Fondasi** (`1988139`)
 
 - Next.js App Router project with TypeScript, Tailwind v4, and shadcn/ui components restyled through
   the design tokens
@@ -19,7 +19,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
   at `/dev/ui`
 - Vitest, Playwright, ESLint, and the `wrangler` toolchain wired into npm scripts
 
-**M1 Welcome dan kerangka booth** (`ca490fd`)
+**M1 Welcome dan kerangka booth** (`7a0872e`)
 
 - Welcome page with one primary action, and the three feature panels where the Gesture Snap panel is
   the widest
@@ -27,7 +27,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
   bottom on narrow screens
 - Layout picker for Strip 4, Strip 3, and Grid 2x2
 
-**M2 Kamera** (`9dd5f04`)
+**M2 Kamera** (`880bc00`)
 
 - Camera permission screen shown before the browser dialog, with the gallery picker as the fallback
   when permission is refused
@@ -36,7 +36,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
 - Countdown capture from the shutter button or Space, single flash, shot tray with per-slot retakes,
   and camera selection when a device has more than one
 
-**M3 Gesture Snap** (`67b8b31`, `e544c2c`)
+**M3 Gesture Snap** (`89a5aea`, `40dc887`)
 
 - Self-hosted MediaPipe wasm and gesture model, loaded only after camera permission and never on the
   Welcome route
@@ -46,14 +46,14 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
   `Thumb_Up` to move on once every slot is filled
 - A network assertion that no request carrying image data leaves the capture step
 
-**M4 Hias strip** (`e544c2c`)
+**M4 Hias strip** (`40dc887`)
 
 - Konva strip canvas with 6 frames, 7 effects, and 12 stickers that can be dragged, rotated, scaled,
   and deleted
 - Short text line and date, keyboard controls for every decor item, and a list equivalent for screen
   readers so the canvas is not the only way to reach them
 
-**M5 Hasil dan cetak** (`6b9e6f9`)
+**M5 Hasil dan cetak** (`771ea64`)
 
 - PNG export at 600 x 1800 (2 x 6 inches at 300 dpi) without metadata, named
   `snapme-YYYYMMDD-HHmm.png`
@@ -61,7 +61,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
 - Session persistence in IndexedDB, restored after a reload, with "Mulai dari awal" to clear it
 - Gallery picker for JPEG, PNG, WebP, and HEIC where the browser supports it
 
-**M6 Link strip dan QR** (`1308ac6`)
+**M6 Link strip dan QR** (`b4372be`)
 
 - Consent dialog before the first upload, naming what is uploaded, who can see it, and when it is
   deleted
@@ -70,7 +70,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
 - Strip page at `/s/{id}`, `noindex` and `no-referrer`, with a delete token kept on the device
 - QR placed in the strip footer at 168 px, so it survives a 300 dpi print
 
-**M7 Strip Hidup** (`8e45863`)
+**M7 Strip Hidup** (`099d70a`)
 
 - Ten 480 px frames captured during the last 1.5 seconds of each countdown, without delaying the
   still photo
@@ -78,7 +78,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
 - Clip export as WebM or MP4 following what the browser supports, with the button hidden when
   recording is unavailable
 
-**M8 Strip Estafet** (`707f83b`)
+**M8 Strip Estafet** (`292ca73`)
 
 - Relay link at `/r/{id}` for two people on two devices: the creator fills the odd slots, the friend
   fills the rest, and the friend's preview carries a 35% shadow overlay of the creator's photos
@@ -90,7 +90,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
 
 ### Changed
 
-**M9 Pengerasan** (`cfaad79`)
+**M9 Pengerasan** (`ee4ae8e`)
 
 - Full CSP, `Permissions-Policy`, `X-Content-Type-Options`, and no-referrer rules on private pages
 - Rate limits: exact strip and relay quotas counted in the database, and an hourly analytics budget
@@ -100,7 +100,7 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
   countdown, and status text beside every color-coded state
 - Cross-browser test projects for WebKit and Gecko
 
-**M10 Migrasi Cloudflare** (`cb75c6c`)
+**M10 Migrasi Cloudflare** (`1a2d64a`)
 
 - Backend moved from the previous hosted stack to Cloudflare Workers with the OpenNext adapter, so
   the whole app, the API routes, and the daily purge job run as one Worker

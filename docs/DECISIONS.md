@@ -1357,7 +1357,7 @@ Yang perlu diputuskan pengguna:
 
 ## CI pertama gagal: tipe rute Next belum dibuat, jeda 300 ms, dan jalur artefak (16 Oktober 2026)
 
-Gejala: run pertama di GitHub Actions (`38905443112`, commit `f917c8d`) merah di kedua job. Job `checks` berhenti di langkah Typecheck dengan dua galat yang sama: `src/app/booth/layout.tsx(9,44): error TS2304: Cannot find name 'LayoutProps'` dan `src/app/layout.tsx(37,50)`. Job `e2e` berhenti di `e2e/keyboard-flow.spec.ts:122` (`seluruh alur selesai hanya dengan keyboard`): `getByTestId('countdown')` tidak pernah muncul dalam 15 detik; sisanya 66 lulus, 7 dilewati, 0 galat lain.
+Gejala: run pertama di GitHub Actions (`38905443112`, commit `46faf03`) merah di kedua job. Job `checks` berhenti di langkah Typecheck dengan dua galat yang sama: `src/app/booth/layout.tsx(9,44): error TS2304: Cannot find name 'LayoutProps'` dan `src/app/layout.tsx(37,50)`. Job `e2e` berhenti di `e2e/keyboard-flow.spec.ts:122` (`seluruh alur selesai hanya dengan keyboard`): `getByTestId('countdown')` tidak pernah muncul dalam 15 detik; sisanya 66 lulus, 7 dilewati, 0 galat lain.
 
 Tiga sebab, terpisah:
 
@@ -1373,7 +1373,7 @@ Retry Playwright sengaja **tidak** dipasang: uji yang gagal diperbaiki sebabnya,
 
 ## CI kedua: langkah panah pil hiasan (16 Oktober 2026)
 
-Gejala: run `38916264025` (commit `ffc4a81`). Job `checks` **hijau** (perbaikan `next typegen` bekerja). Job `e2e` masih merah, tetapi di tempat lain: `Error: Panah ArrowRight tidak sampai ke "Stiker"` dari `panahKe` (`e2e/keyboard-flow.spec.ts:64`, dipanggil dari baris 157). Langkah pemotretan yang sebelumnya gagal kini lulus; sisanya 66 lulus, 7 dilewati, 1 gagal.
+Gejala: run `38916264025` (commit `36cd264`). Job `checks` **hijau** (perbaikan `next typegen` bekerja). Job `e2e` masih merah, tetapi di tempat lain: `Error: Panah ArrowRight tidak sampai ke "Stiker"` dari `panahKe` (`e2e/keyboard-flow.spec.ts:64`, dipanggil dari baris 157). Langkah pemotretan yang sebelumnya gagal kini lulus; sisanya 66 lulus, 7 dilewati, 1 gagal.
 
 Sebab: `panahKe` yang lama menekan panah sampai 12 kali berturut-turut lalu membandingkan nama fokus. Fokus roving Radix berpindah pada render berikutnya, jadi tekanan beruntun bisa habis tanpa satu pun berpindah. Ini bukan cacat produk: alur yang sama lulus di mesin pengembangan, dan lulus juga saat seluruh suite berjalan. Yang berbeda hanya beban runner.
 
