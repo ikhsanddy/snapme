@@ -1,0 +1,97 @@
+name: Bug Report
+description: File a bug report to help us improve snapme.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please give enough detail to reproduce the problem. Never paste credentials, tokens, or private links into an issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happens
+      description: A clear description of the bug and which step it breaks.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where does it happen
+      description: Which screen or route, for example the Welcome page, Ambil Foto, Hias Strip, Hasil, a strip link, or a relay link.
+      placeholder: e.g. /booth/capture, after the second shot
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact steps that lead to the problem.
+      placeholder: |
+        1. Open snapme and allow the camera
+        2. Choose "Strip 4 foto"
+        3. Take two photos
+        4. See the error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: How was snapme run?
+      description: Select how you reached the app.
+      options:
+        - Hosted instance (https://snapme.ikhsandyy-dev.workers.dev)
+        - Local dev (npm run dev)
+        - Local preview (npm run preview, Cloudflare bindings)
+        - Other self-hosted build
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      description: The browser and version you used.
+      placeholder: e.g. Chrome 141, Firefox 144, Safari 26
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and camera
+      description: The device and camera, since camera behavior varies. Say "no camera" if you used the gallery picker.
+      placeholder: e.g. Pixel 7a, rear camera, Chrome Android
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output or error text
+      description: Paste any message from the browser console. Remove credentials, tokens, and private links first.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: visuals
+    attributes:
+      label: Screenshots or recordings
+      description: Drag and drop images that show the problem. Do not attach photos of people without their consent, and do not attach a strip link that belongs to someone else.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Submission checklist
+      description: Please confirm the following before submitting.
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I removed credentials, tokens, secrets, private strip links, and personal data from everything I pasted or attached.
+          required: true

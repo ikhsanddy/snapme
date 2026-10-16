@@ -1315,3 +1315,43 @@ Isolasi: setiap berkas spek lain mematikan Gesture Snap lewat `matikanGesture` d
 Bukti ini bukan regresi kode baru: dengan perubahan langkah 1 LCP di-`git stash`, `npm run test:e2e:cf` pada kode sebelum perubahan gagal pada uji yang sama, di langkah yang berbeda lagi.
 
 Perbaikan: `test.beforeEach` + `matikanGesture` di `e2e/share.spec.ts`, sama seperti spek lain. Cakupan gesture tidak berkurang: `e2e/gesture.spec.ts` tetap menguji model dimuat dari origin sendiri tanpa membawa gambar, sakelar mati, pilihan diingat, dan jalur gagal muat. Setelah perbaikan, `npm run test:e2e:cf` hijau dua kali berturut-turut (30 lolos, 3 dilewati, 0 gagal).
+
+## Repositori publik: lisensi MIT, permukaan repo, dan artefak lokal (16 Oktober 2026)
+
+Keputusan: repositori ini dinyatakan **open source dengan lisensi MIT** dan dilengkapi permukaan repo yang layak dibaca orang luar, tanpa menyentuh kode produk. Pekerjaan ini di luar daftar milestone, jadi tidak ada kotak centang `MILESTONES.md` yang berubah.
+
+| Keputusan | Isi | Alasan |
+|---|---|---|
+| Lisensi | `LICENSE` (MIT, "Copyright (c) 2026 Rori Setiawan"), `license`, `author`, `homepage`, `repository`, `bugs`, `keywords`, dan `engines` di `package.json` | Permintaan pengguna. Pemegang hak cipta diambil dari `PRD.md` ("Pemilik: Rori Setiawan"); `private: true` dipertahankan karena paket ini aplikasi dan tidak diterbitkan ke npm |
+| README | `README.md` baru, bahasa Inggris, dengan lencana, demo, fitur, privasi, perintah, konfigurasi, tata letak repo, dan tautan dokumen | Sebelumnya root repo tidak punya README sama sekali. Mengikuti pola `paperdraw`: README berbahasa Inggris, dokumen kerja berbahasa Indonesia |
+| Berkas komunitas | `.github/CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`, `pull_request_template.md`, `dependabot.yml`, dan tiga `ISSUE_TEMPLATE` | Pola yang sama dengan `paperdraw`. Isinya disesuaikan: perintah npm snapme, gerbang `DESIGN-SYSTEM.md §14`, label tetap §12, dan larangan pihak ketiga |
+| CI | `.github/workflows/ci.yml`: job `checks` (lint, typecheck, `npm test`, build) dan job `e2e` (`npx playwright test` di chromium, firefox, webkit) | Gerbang `AGENTS.md` "Selesai berarti" dijalankan otomatis. Unggahan artefak laporan hanya saat gagal |
+| Versi Node | `.nvmrc` berisi `24`, `engines.node` `>=20` | Mesin pengembangan memakai Node 24 dan CI memakai versi yang sama |
+| CHANGELOG | `CHANGELOG.md` merangkum M0 sampai M10 per milestone beserta hash commit | Satu milestone satu commit, jadi riwayatnya bisa diaudit dari changelog |
+| Artefak lokal | `/brag-output*/`, `/agent/`, `.agents/skills/brag/`, dan `.agents/skills/brag-slim/` masuk `.gitignore`; entri `brag` dan `brag-slim` di `skills-lock.json` dikembalikan ke HEAD | Artefak kerja omp (video perkenalan, salinan skill di root repo, skill pribadi) bukan bagian produk dan ukurannya 16 MB sampai 27 MB. Keputusan ini menjawab pertanyaan yang dibiarkan terbuka di catatan `brag` di atas |
+| Gambar referensi pihak ketiga | `docs/ui-reference/referensi_uiux.webp` dilepas dari indeks git (`git rm --cached`), berkasnya tetap ada di perangkat, dan alasannya dicatat di `docs/ui-reference/README.md` | Isinya kumpulan tangkapan layar produk photobooth lain, lengkap dengan merek Fujifilm, harga, foto pelanggan, dan tangkapan layar pembayaran. Menyebarkannya ulang bertentangan dengan `AGENTS.md` "Batas aman" (tanpa nama, logo, atau aset Fujifilm; tanpa wajah orang tanpa izin) dan berisiko hak cipta. Arah gayanya sudah terkunci di token `DESIGN-SYSTEM.md §2` dan berkas HTML di folder yang sama |
+
+Yang **tidak** diubah dan alasannya:
+
+- `wrangler.jsonc` dan `cloudflare-env.d.ts` tetap memuat ID akun, ID basis data D1, dan ID namespace KV yang sungguhan. Ketiganya pengenal, bukan kredensial: tanpa API token tidak ada yang bisa dibuka, dan `SECURITY.md` menyatakannya. `cloudflare-env.d.ts` tetap ikut di-commit supaya `npm run typecheck` jalan di klon bersih tanpa `npm run cf-typegen`.
+- `.omp/config.yml` (peran model dan pagar perintah) tetap publik karena `ARCHITECTURE.md §11.1` merujuknya, dan isinya tidak memuat rahasia.
+- `.agents/skills/` yang sudah terlacak (accessibility, design-taste-frontend, find-skills, imagegen-frontend-web, shadcn, vercel-react-best-practices, web-perf) tetap terlacak: semuanya dipasang sengaja lewat `npx skills add` dan berisi teks, bukan kode yang dijalankan saat build.
+
+Bukti pemeriksaan:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `git log --all --diff-filter=A -- .dev.vars .env.local` | Kosong: kedua berkas tidak pernah masuk riwayat git |
+| `git grep -IE 'eyJ[A-Za-z0-9_-]{10,}\.'` pada seluruh revisi | Tidak ada token mirip JWT di riwayat |
+| Pola kredensial (`AKIA`, `sk-`, `ghp_`, `glpat-`, `service_role`, `api_key`, `password` dengan nilai) pada seluruh revisi | Satu-satunya hasil adalah nilai uji di `tests/db/relays.test.ts` (`"rahasia-pembersih"`), bukan kredensial |
+| URL `*.supabase.co` pada seluruh revisi | Tidak ada. Berkas `src/lib/supabase/*` dari M6 memang ada di riwayat lama, tetapi tanpa URL, kunci, atau `.env` |
+| `git status --porcelain --ignored` | `agent/`, `brag-output/`, `.agents/skills/brag*`, `test-results/`, `tsconfig.tsbuildinfo`, dan `docs/ui-reference/referensi_uiux.webp` sekarang terabaikan |
+| `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` | Lolos: 23 berkas uji, 179 tes lulus, build sukses |
+| `npx playwright test` (chromium, firefox, webkit) | 66 lulus, 8 dilewati (spek ber-binding dijalankan `npm run test:e2e:cf`), 0 gagal |
+
+Yang perlu diputuskan pengguna:
+
+- **Riwayat git masih memuat `referensi_uiux.webp`** dari commit M0. Melepasnya dari indeks hanya membersihkan versi berikutnya; menghapusnya dari riwayat butuh penulisan ulang riwayat dan `git push --force`, yang bukan tindakan agent. Selama belum ditulis ulang, berkasnya masih bisa diunduh dari commit lama.
+- Nama pemegang hak cipta di `LICENSE` memakai nama di `PRD.md`. Ganti bila yang berlaku adalah nama lain atau nama badan.
+- `DESIGN-SYSTEM.md §10` dan `AGENTS.md` masih mencantumkan `referensi_uiux.webp` sebagai berkas di folder acuan. Keduanya dokumen yang tidak boleh diubah agent tanpa persetujuan, jadi penyelarasan teksnya masih menunggu keputusan pengguna. README.md (baru) sudah tidak menyebut berkas itu.
+

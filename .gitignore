@@ -51,3 +51,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# omp working artifacts: brag marketing output, the stray skill copy it left at
+# the repo root, and the personal brag skills (see docs/DECISIONS.md).
+/brag-output*/
+/agent/
+.agents/skills/brag/
+.agents/skills/brag-slim/
+
+# Third-party style reference kept locally only: the webp is a collage of
+# another product's screens as well as its brand and customers, so it is not
+# redistributed with this repo (docs/ui-reference/README.md).
+docs/ui-reference/referensi_uiux.webp
