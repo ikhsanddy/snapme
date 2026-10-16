@@ -9,46 +9,6 @@
 # - Cek nilai efektif dari root repo:  omp config get modelRoles
 # - File ini tidak boleh berisi API key atau token.
 
-# ── Model Roles ──────────────────────────────────────────────────────────────
-# Disalin dari tangkapan layar tab Roles di model hub (Alt+M) per 8 Okt 2026.
-# Akhiran `:high` / `:max` / `:auto` adalah level thinking role tersebut.
-# Selama sebuah role ditulis di sini, perubahan role itu lewat model hub
-# tersimpan ke config global dan TIDAK berlaku di proyek ini. Untuk mengubahnya,
-# edit file ini.
-modelRoles:
-  # Chat roles
-  default: opencode-go/deepseek-v4.1-flash # sesi utama; level "max" diatur defaultThinkingLevel di bawah
-  smol: deepseek/deepseek-flash:high # subagent scout/sonic, pekerjaan ringan
-  slow: google-antigravity/gemini-3.8-flash:high # subagent reviewer, /review
-  vision: google-antigravity/gemini-3.8-flash:high # membaca gambar referensi dan tangkapan layar
-  plan: zai/glm-5.3:max # Plan mode (/plan)
-  commit: google-antigravity/gemini-3.7-flash:auto # `omp commit`
-  tiny: google-antigravity/gemini-3.7-flash:auto # judul sesi dan klasifikasi kecil
-  memory: deepseek/deepseek-flash:high # hanya terpakai bila memory.backend diaktifkan
-  task: opencode-go/deepseek-v4.1-flash:max # subagent `task` (pekerja umum, termasuk UI)
-  advisor: google-antigravity/gemini-3.8-flash:medium # pengawas; butuh advisor.enabled di bawah
-
-  # Model-kind roles
-  image: google-antigravity/gemini-3-pro-image # generate_image: stiker dan seni frame
-  # web, speech, dan dictation sengaja tidak ditulis: di hub ketiganya berstatus
-  # "auto" (web/parallel, local/kokoro, local/parakeet-tdt-0.6b-v3).
-  # judge juga tidak ditulis: di hub belum diisi.
-
-# Level thinking untuk role `default`. Model hub menyimpan level milik DEFAULT
-# di key ini, bukan sebagai akhiran pada modelRoles.default.
-defaultThinkingLevel: max
-
-# Urutan Ctrl+P (lencana "loop 1/2/3" di hub).
-cycleOrder: [smol, default, slow]
-
-# ── Advisor ──────────────────────────────────────────────────────────────────
-# Role ADVISOR tidak berjalan tanpa ini (default omp: false). Advisor memakai
-# kuota modelnya sendiri di setiap giliran. Matikan per sesi dengan
-# `/advisor off`, atau ubah `enabled` menjadi false untuk mematikannya di
-# proyek ini.
-advisor:
-  enabled: true
-
 # ── Skill ────────────────────────────────────────────────────────────────────
 # find-skills dan taste-skill dipasang ke .agents/skills/ (ARCHITECTURE §11.3).
 # Nilai di bawah sama dengan default omp; ditulis supaya config global yang
