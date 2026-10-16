@@ -1371,3 +1371,21 @@ Tambahan: unggahan artefak gagal dengan "No files were found with the provided p
 
 Retry Playwright sengaja **tidak** dipasang: uji yang gagal diperbaiki sebabnya, bukan ditutupi. Kalau nanti muncul flake baru tanpa sebab yang jelas, retry boleh dipertimbangkan sebagai jaring sementara dengan catatan di sini.
 
+## CI kedua: langkah panah pil hiasan (16 Oktober 2026)
+
+Gejala: run `38916264025` (commit `ffc4a81`). Job `checks` **hijau** (perbaikan `next typegen` bekerja). Job `e2e` masih merah, tetapi di tempat lain: `Error: Panah ArrowRight tidak sampai ke "Stiker"` dari `panahKe` (`e2e/keyboard-flow.spec.ts:64`, dipanggil dari baris 157). Langkah pemotretan yang sebelumnya gagal kini lulus; sisanya 66 lulus, 7 dilewati, 1 gagal.
+
+Sebab: `panahKe` yang lama menekan panah sampai 12 kali berturut-turut lalu membandingkan nama fokus. Fokus roving Radix berpindah pada render berikutnya, jadi tekanan beruntun bisa habis tanpa satu pun berpindah. Ini bukan cacat produk: alur yang sama lulus di mesin pengembangan, dan lulus juga saat seluruh suite berjalan. Yang berbeda hanya beban runner.
+
+Perbaikan yang dikerjakan:
+
+| Perubahan | Alasan |
+|---|---|
+| `panahKe` berjalan satu pil tiap langkah: satu tekanan, lalu asersi bahwa pil tujuan langkah itu benar-benar fokus, diulang lewat `expect(...).toPass` sampai 15 detik | Tekanan yang hilang dicoba lagi, bukan dihitung sebagai kemajuan. Asersi per langkah juga menangkap fokus yang melompat dua pil |
+| Fokus pil asal dipasang ulang di dalam tiap percobaan | Kalau fokusnya jatuh ke badan halaman, tekanan panah tidak melakukan apa pun dan percobaan sebelumnya hanya menghabiskan jatah |
+| Urutan pil dibaca dari DOM (pil yang sedang fokus), bukan dari asumsi pil pertama | Walker-nya benar dari keadaan mana pun, jadi tekanan panah yang datang lebih awal dari tempat lain tidak merusaknya |
+
+Bukti: satu tekanan panah nyasar disisipkan sementara sebelum pemanggilan `panahKe` untuk menguji daya pulihnya, dan uji tetap mendarat di pil Stiker (3 dari 3 jalankan berulang lulus); setelah tekanan nyasar dilepas, 3 jalankan berulang dan seluruh suite hijau (66 lulus, 8 dilewati, 0 gagal), `npm run lint` dan `npm run typecheck` hijau.
+
+Pola yang terbaca dari dua kegagalan CI berturut-turut di uji yang sama: input keyboard yang datang sebelum render atau transisi selesai dianggap hilang oleh aplikasi, bukan salah. Uji yang menekan tombol lalu langsung mengasersi keadaan berikutnya sebaiknya menunggu keadaan antara, seperti yang kini dilakukan di langkah pemotretan dan langkah panah.
+
