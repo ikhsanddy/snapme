@@ -1,8 +1,8 @@
-import { getBindings } from "@/lib/cloudflare"
-import { markStripDeleted, selectStrip } from "@/lib/db/strips"
-import { deletedGraceExpiry, isExpired } from "@/lib/expiry"
-import { deleteObjects } from "@/lib/r2/storage"
-import { verifyToken } from "@/lib/tokens"
+import { getBindings } from "@/server/cloudflare"
+import { markStripDeleted, selectStrip } from "@/server/db/strips"
+import { deletedGraceExpiry, isExpired } from "@/server/expiry"
+import { deleteObjects } from "@/server/r2/storage"
+import { verifyToken } from "@/server/tokens"
 
 /* ARCHITECTURE §7: DELETE /api/strips/[id] menghapus berkas lalu menandai
    barisnya. Token hapus datang lewat header dan hanya hash-nya ada di basis

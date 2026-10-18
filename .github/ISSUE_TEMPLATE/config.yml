@@ -4,7 +4,7 @@ contact_links:
     url: https://snapme.ikhsandyy-dev.workers.dev
     about: Try the hosted snapme in your browser before filing an issue.
   - name: Architecture and stack
-    url: https://github.com/ikhsanddy/snapme/blob/master/ARCHITECTURE.md
+    url: https://github.com/ikhsanddy/snapme/blob/master/docs/ARCHITECTURE.md
     about: Read how snapme is built, tested, and deployed.
   - name: Security vulnerability reporting
     url: https://github.com/ikhsanddy/snapme/security/advisories/new

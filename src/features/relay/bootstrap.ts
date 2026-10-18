@@ -34,7 +34,7 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
  *  `no-store` ia gagal dengan "Failed to fetch" dan foto pembuat tidak pernah
  *  masuk ke sesi teman (SE-05, bukti di `docs/DECISIONS.md` M10). URL-nya
  *  berumur pendek, jadi memang tidak layak di-cache. */
-export async function fetchSlotShots(
+async function fetchSlotShots(
   slotPhotos: SlotPhoto[]
 ): Promise<{ index: number; shot: Shot }[]> {
   const loaded = await Promise.all(

@@ -3,6 +3,7 @@
 import type { LayoutId } from "@/lib/layouts"
 import { RELAY_SLOT_BYTE_LIMIT, RELAY_SLOT_MIME } from "@/lib/schemas"
 import type { RelayRole } from "@/lib/relaySlots"
+import { messageFrom, putToSignedUrl, type SignedUpload } from "@/lib/http"
 
 /* M8 (SE-01 sampai SE-09): panggilan jaringan alur estafet. Hanya berkas ini
    yang berbicara dengan rute estafet dan bucket dari sisi klien, sama seperti
@@ -13,23 +14,18 @@ import type { RelayRole } from "@/lib/relaySlots"
    belum ada: rute complete menjawab 422 beserta URL unggah untuk slot yang
    kurang, dan RelaySlotsNeededError membawa daftar itu ke pemanggil. */
 
-export interface RelayUploadTarget {
-  path: string
-  url: string
-}
-
-export interface RelaySlotUpload extends RelayUploadTarget {
+interface RelaySlotUpload extends SignedUpload {
   index: number
 }
 
-export interface CreatedRelay {
+interface CreatedRelay {
   id: string
   hostToken: string
   expiresAt: string | null
   uploads: RelaySlotUpload[]
 }
 
-export interface ClaimedRelay {
+interface ClaimedRelay {
   guestToken: string
   relay: {
     id: string
@@ -43,7 +39,7 @@ export interface CompletedRelay {
   stripId: string
   /** Ada saat estafetnya baru dituntaskan atau drafnya diterbitkan ulang. */
   deleteToken?: string
-  upload?: RelayUploadTarget
+  upload?: SignedUpload
   /** Ada saat strip estafetnya sudah selesai lebih dulu. */
   expiresAt?: string | null
 }
@@ -53,20 +49,6 @@ const CLAIM_FAILED = "Giliran belum bisa diambil. Coba lagi sebentar lagi."
 const COMPLETE_FAILED =
   "Estafet belum bisa diselesaikan. Coba lagi sebentar lagi."
 const DELETE_FAILED = "Estafet belum bisa dihapus. Coba lagi sebentar lagi."
-
-/** Pesan dari server sudah berbahasa Indonesia (DESIGN-SYSTEM §12); pesan
- *  cadangan dipakai bila badan responsnya bukan JSON yang diharapkan. */
-async function messageFrom(response: Response, fallback: string): Promise<string> {
-  try {
-    const body = (await response.json()) as { error?: unknown }
-    if (typeof body.error === "string" && body.error !== "") {
-      return body.error
-    }
-  } catch {
-    /* Bukan JSON: pakai pesan cadangan. */
-  }
-  return fallback
-}
 
 /** Slot teman belum lengkap di Storage: rute complete mengirim URL unggah
  *  pengganti bersama galatnya, dan pemanggil mengunggah dari foto yang ada di
@@ -94,7 +76,7 @@ export async function createRelay(layoutId: LayoutId): Promise<CreatedRelay> {
 }
 
 export async function uploadRelaySlot(
-  upload: RelayUploadTarget,
+  upload: SignedUpload,
   blob: Blob
 ): Promise<void> {
   /* Pra-cek klien: batas 1 MB rute tetap pagar sebenarnya, tapi berkas yang
@@ -102,14 +84,12 @@ export async function uploadRelaySlot(
   if (blob.size > RELAY_SLOT_BYTE_LIMIT) {
     throw new Error("Fotonya terlalu besar. Ambil ulang fotonya.")
   }
-  const response = await fetch(upload.url, {
-    method: "PUT",
-    headers: { "Content-Type": RELAY_SLOT_MIME },
-    body: blob,
-  })
-  if (!response.ok) {
-    throw new Error("Fotonya belum bisa diunggah. Coba lagi sebentar lagi.")
-  }
+  await putToSignedUrl(
+    upload,
+    blob,
+    RELAY_SLOT_MIME,
+    "Fotonya belum bisa diunggah. Coba lagi sebentar lagi."
+  )
 }
 
 export async function claimRelay(id: string): Promise<ClaimedRelay> {

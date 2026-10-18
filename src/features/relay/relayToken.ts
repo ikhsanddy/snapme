@@ -7,7 +7,7 @@
 
 const KEY_PREFIX = "snapme:relay-token:"
 
-export interface StoredRelayToken {
+interface StoredRelayToken {
   role: "host" | "guest"
   token: string
 }

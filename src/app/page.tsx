@@ -11,7 +11,7 @@ import {
 } from "@phosphor-icons/react/ssr"
 
 import { SiteHeader } from "@/components/site/SiteHeader"
-import { GalleryPicker } from "@/components/site/GalleryPicker"
+import { GalleryPicker } from "@/features/gallery/GalleryPicker"
 import { SessionStartPing } from "@/features/metrics/SessionStartPing"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

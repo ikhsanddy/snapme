@@ -13,6 +13,10 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    /* Letak bawaan `tsconfig.tsbuildinfo` adalah root repo, di samping
+       `tsconfig.json`. Petanya ke dalam `.next/` supaya root hanya berisi
+       berkas yang memang disunting manusia; `.next/` sudah diabaikan git. */
+    "tsBuildInfoFile": "./.next/cache/tsconfig.tsbuildinfo",
     "plugins": [
       {
         "name": "next"

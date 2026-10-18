@@ -29,7 +29,7 @@ const ANCHOR_STROKE = 2
 const ANCHOR_RADIUS = 8
 const BORDER_STROKE = 3
 
-export interface StripCanvasProps {
+interface StripCanvasProps {
   layoutId: LayoutId
   stageRef: RefObject<KonvaStage | null>
   groupRef: RefObject<KonvaGroup | null>

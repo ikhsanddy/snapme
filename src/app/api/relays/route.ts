@@ -1,5 +1,5 @@
-import { getBindings } from "@/lib/cloudflare"
-import { insertRelay } from "@/lib/db/relays"
+import { getBindings } from "@/server/cloudflare"
+import { insertRelay } from "@/server/db/relays"
 import {
   clientKeyFromRequest,
   countRecentCreations,
@@ -7,12 +7,12 @@ import {
   CREATE_WINDOW_MS,
   isCrossSite,
   rateKeyFor,
-} from "@/lib/rateLimit"
-import { presignPut } from "@/lib/r2/presign"
-import { relayExpiry } from "@/lib/expiry"
+} from "@/server/rateLimit"
+import { presignPut } from "@/server/r2/presign"
+import { relayExpiry } from "@/server/expiry"
 import { relaySlotsFor } from "@/lib/relaySlots"
 import { CREATE_RELAY_SCHEMA, RELAY_SLOT_MIME, relaySlotPath } from "@/lib/schemas"
-import { hashToken, newDeleteToken, newRelayId } from "@/lib/tokens"
+import { hashToken, newDeleteToken, newRelayId } from "@/server/tokens"
 
 /* M8 (SE-01, SE-02): POST /api/relays membuat baris estafet `waiting` dan URL
    unggah bertanda tangan untuk slot pembuat saja. Pola dan alasan teknisnya

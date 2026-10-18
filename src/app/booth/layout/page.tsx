@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { Check } from "@phosphor-icons/react"
 
-import { BoothPanel } from "@/components/booth/BoothPanel"
+import { BoothPanel } from "@/features/booth/BoothPanel"
 import { Button } from "@/components/ui/button"
 import { LAYOUTS, type LayoutId } from "@/lib/layouts"
 import { cn } from "@/lib/utils"

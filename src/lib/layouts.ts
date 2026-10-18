@@ -12,7 +12,7 @@ export interface Rect {
   height: number
 }
 
-export interface StripLayout {
+interface StripLayout {
   id: LayoutId
   label: string
   shotCount: number

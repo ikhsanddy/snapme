@@ -27,7 +27,7 @@ export interface LiveStageHandle {
   record(loops?: number): Promise<RecordedLiveVideo | null>
 }
 
-export interface LiveStageProps {
+interface LiveStageProps {
   layoutId: LayoutId
   shots: (Shot | null)[]
   frame: FramePreset

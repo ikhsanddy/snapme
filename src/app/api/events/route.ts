@@ -1,8 +1,8 @@
 import { z } from "zod"
 
 import { EVENT_BATCH_MAX, EVENT_NAMES } from "@/lib/analyticsEvents"
-import { getBindings } from "@/lib/cloudflare"
-import { insertEvents } from "@/lib/db/events"
+import { getBindings } from "@/server/cloudflare"
+import { insertEvents } from "@/server/db/events"
 import {
   bumpEventsBudget,
   clientKeyFromRequest,
@@ -10,7 +10,7 @@ import {
   isCrossSite,
   rateKeyFor,
   readEventsBudget,
-} from "@/lib/rateLimit"
+} from "@/server/rateLimit"
 
 /* PRD §4 dan ARCHITECTURE §8: analitik first-party, tanpa pelacak pihak
    ketiga. Klien mengirim sendBeacon ke rute ini, dan yang disimpan hanya nama

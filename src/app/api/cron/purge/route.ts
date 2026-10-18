@@ -1,11 +1,11 @@
-import { getBindings } from "@/lib/cloudflare"
-import { purgeExpired } from "@/lib/purge"
+import { getBindings } from "@/server/cloudflare"
+import { purgeExpired } from "@/server/purge"
 
 /* ARCHITECTURE §7: GET /api/cron/purge adalah pemicu manual pembersih, dengan
    `Authorization: Bearer $CRON_SECRET`. Pembersih harian yang sesungguhnya
    dipanggil Cron Trigger Workers lewat `scheduled` di worker.ts (tanpa HTTP
    dan tanpa rahasia bersama); rute ini tinggal membungkus badan yang sama
-   (lib/purge.ts), jadi kedua jalur membersihkan dengan aturan yang identik. */
+   (server/purge.ts), jadi kedua jalur membersihkan dengan aturan yang identik. */
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET

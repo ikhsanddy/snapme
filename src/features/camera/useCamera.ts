@@ -12,7 +12,7 @@ import { useBoothStore } from "@/stores/booth"
 
 export type CameraErrorReason = "denied" | "unavailable"
 
-export const REQUESTED_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 } } as const
+const REQUESTED_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 } } as const
 
 const PERMISSION_ERRORS = ["NotAllowedError", "SecurityError"]
 

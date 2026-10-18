@@ -4,7 +4,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore dihasilkan saat build OpenNext
 import { default as handler } from "./.open-next/worker.js";
-import { purgeExpired } from "./src/lib/purge";
+import { purgeExpired } from "./src/server/purge";
 
 /* M10: Worker kustom OpenNext. `fetch` ditangani keluaran build OpenNext,
    sedangkan Cron Trigger memanggil `scheduled` langsung di sini, tanpa HTTP

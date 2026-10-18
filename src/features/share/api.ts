@@ -2,6 +2,7 @@
 
 import type { LayoutId } from "@/lib/layouts"
 import { LIVE_MIME_TYPES, STILL_MIME, type LiveKind } from "@/lib/schemas"
+import { messageFrom, putToSignedUrl, type SignedUpload } from "@/lib/http"
 
 /* M6 (SH-04, SH-06): panggilan jaringan alur bagikan. Hanya berkas ini yang
    berbicara dengan rute server dan bucket dari sisi klien.
@@ -12,36 +13,17 @@ import { LIVE_MIME_TYPES, STILL_MIME, type LiveKind } from "@/lib/schemas"
    hasilnya. Jenis isi ikut ditandatangani di URL, jadi header PUT-nya wajib
    sama dengan yang dipakai server saat menandatangani. */
 
-export interface StripUpload {
-  path: string
-  url: string
-}
-
-export interface CreatedStrip {
+interface CreatedStrip {
   id: string
   deleteToken: string
-  upload: StripUpload
+  upload: SignedUpload
   /** M7: ada bila klip Strip Hidup ikut diminta; unggahannya best-effort. */
-  liveUpload?: StripUpload
+  liveUpload?: SignedUpload
 }
 
 const CREATE_FAILED = "Link belum bisa dibuat. Coba lagi sebentar lagi."
 const COMPLETE_FAILED = "Strip belum bisa diselesaikan. Coba lagi sebentar lagi."
 const DELETE_FAILED = "Strip belum bisa dihapus. Coba lagi sebentar lagi."
-
-/** Pesan dari server sudah berbahasa Indonesia (DESIGN-SYSTEM §12); pesan
- *  cadangan dipakai bila badan responsnya bukan JSON yang diharapkan. */
-async function messageFrom(response: Response, fallback: string): Promise<string> {
-  try {
-    const body = (await response.json()) as { error?: unknown }
-    if (typeof body.error === "string" && body.error !== "") {
-      return body.error
-    }
-  } catch {
-    /* Bukan JSON: pakai pesan cadangan. */
-  }
-  return fallback
-}
 
 export async function requestStrip(
   layoutId: LayoutId,
@@ -60,32 +42,21 @@ export async function requestStrip(
 
 const UPLOAD_FAILED = "Fotonya belum bisa diunggah. Coba lagi sebentar lagi."
 
-async function uploadToSignedUrl(upload: StripUpload, blob: Blob, contentType: string): Promise<void> {
-  const response = await fetch(upload.url, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: blob,
-  })
-  if (!response.ok) {
-    throw new Error(UPLOAD_FAILED)
-  }
-}
-
 export async function uploadStripStill(
-  upload: StripUpload,
+  upload: SignedUpload,
   blob: Blob
 ): Promise<void> {
-  await uploadToSignedUrl(upload, blob, STILL_MIME)
+  await putToSignedUrl(upload, blob, STILL_MIME, UPLOAD_FAILED)
 }
 
 /** M7 (SH-03): klip Strip Hidup memakai jalur unggah yang sama; kegagalannya
  *  tidak pernah menghalangi strip diam. */
 export async function uploadStripLive(
-  upload: StripUpload,
+  upload: SignedUpload,
   blob: Blob,
   kind: LiveKind
 ): Promise<void> {
-  await uploadToSignedUrl(upload, blob, LIVE_MIME_TYPES[kind])
+  await putToSignedUrl(upload, blob, LIVE_MIME_TYPES[kind], UPLOAD_FAILED)
 }
 
 export async function completeStrip(id: string): Promise<{ expiresAt: string | null }> {

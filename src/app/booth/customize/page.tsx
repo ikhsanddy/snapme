@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import dynamic from "next/dynamic"
 import { Check } from "@phosphor-icons/react"
 
-import { BoothPanel } from "@/components/booth/BoothPanel"
+import { BoothPanel } from "@/features/booth/BoothPanel"
 import { Badge } from "@/components/ui/badge"
 import { track } from "@/lib/analytics"
 import { countFilled, useBoothStore, useRequireShots } from "@/stores/booth"

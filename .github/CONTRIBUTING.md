@@ -31,10 +31,10 @@ Useful entry points:
 
 | Path | What to read first |
 | --- | --- |
-| `PRD.md` | What is being built, with priorities and acceptance criteria |
-| `DESIGN-SYSTEM.md` | Tokens, components, layout, accessibility, review checklist |
-| `ARCHITECTURE.md` | Stack, structure, routes, data model, testing, workflow |
-| `MILESTONES.md` | The work order and the acceptance criteria of each milestone |
+| `docs/PRD.md` | What is being built, with priorities and acceptance criteria |
+| `docs/DESIGN-SYSTEM.md` | Tokens, components, layout, accessibility, review checklist |
+| `docs/ARCHITECTURE.md` | Stack, structure, routes, data model, testing, workflow |
+| `docs/MILESTONES.md` | The work order and the acceptance criteria of each milestone |
 | `docs/ui-reference` | The reference pages that fix the layout of each booth screen |
 
 ## Available commands
@@ -69,10 +69,20 @@ These rules are not negotiable in a pull request:
 
 - Comments, identifiers, filenames, and commit messages are in English, following
   [Conventional Commits](https://www.conventionalcommits.org/). Interface text and the working
-  documents (`PRD.md`, `DESIGN-SYSTEM.md`, `ARCHITECTURE.md`, `MILESTONES.md`, `docs/`) are in
-  Indonesian.
+  documents (`docs/PRD.md`, `docs/DESIGN-SYSTEM.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`)
+  are in Indonesian.
+- The repository root holds only entry points and tool configs (`worker.ts`, `next.config.ts`,
+  `wrangler.jsonc`, the test and lint configs, `package.json`). Documents go to `docs/`, tests to
+  `tests/` (units) and `tests/e2e/` (Playwright), hand-applied Cloudflare resources to `infra/`.
+  Before opening a pull request, `npx tsc --noEmit` must leave no build artifact in the root.
 - One milestone per commit. `MILESTONES.md` is the only source of milestones; do not start the next
   one unsolicited.
+- Screens are owned by features, so a screen never has two homes. `src/app` holds routes only
+  (`page.tsx`, `layout.tsx`, `route.ts`, `globals.css`). `src/components/ui` holds the shadcn/ui
+  primitives as the CLI writes them, `src/components/site` holds only the shell shared by the site
+  pages and the booth (wordmark, header), and every product component lives inside its feature at
+  `src/features/<area>` next to the logic it renders. `src/server` must never be imported by a
+  client bundle (`tests/security`), and `src/lib` holds only modules both sides may use.
 - Use what already exists before writing something: a platform feature, the stack table in
   `ARCHITECTURE.md §3`, then a component from shadcn/ui or an npm package. Writing it yourself is
   reserved for the product-specific components in `DESIGN-SYSTEM.md §9`, and the reason belongs in

@@ -1,10 +1,10 @@
-import { getBindings } from "@/lib/cloudflare"
-import { cancelRelay, selectRelay } from "@/lib/db/relays"
-import { relaySlotsOf } from "@/lib/db/rows"
-import { markStripDeleted, selectStripForRelay } from "@/lib/db/strips"
-import { deletedGraceExpiry, isExpired } from "@/lib/expiry"
-import { deleteObjects } from "@/lib/r2/storage"
-import { verifyToken } from "@/lib/tokens"
+import { getBindings } from "@/server/cloudflare"
+import { cancelRelay, selectRelay } from "@/server/db/relays"
+import { relaySlotsOf } from "@/server/db/rows"
+import { markStripDeleted, selectStripForRelay } from "@/server/db/strips"
+import { deletedGraceExpiry, isExpired } from "@/server/expiry"
+import { deleteObjects } from "@/server/r2/storage"
+import { verifyToken } from "@/server/tokens"
 
 /* M8 (SE-09): DELETE /api/relays/[id] membatalkan estafet dan menghapus
    berkasnya. Satu permintaan menghapus semuanya: berkas slot, strip hasilnya

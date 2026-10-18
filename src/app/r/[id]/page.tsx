@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button"
 import type { SlotPhoto } from "@/features/relay/bootstrap"
 import { RelayCompleteView } from "@/features/relay/RelayCompleteView"
 import { RelayJoinView } from "@/features/relay/RelayJoinView"
-import { getBindings } from "@/lib/cloudflare"
-import { selectRelay } from "@/lib/db/relays"
-import { relaySlotsOf } from "@/lib/db/rows"
-import { isExpired } from "@/lib/expiry"
+import { getBindings } from "@/server/cloudflare"
+import { selectRelay } from "@/server/db/relays"
+import { relaySlotsOf } from "@/server/db/rows"
+import { isExpired } from "@/server/expiry"
 import { LAYOUTS, type LayoutId } from "@/lib/layouts"
-import { presignGet } from "@/lib/r2/presign"
+import { presignGet } from "@/server/r2/presign"
 
 /* M8 (SE-04 sampai SE-07, SE-08): halaman gabung estafet. Komponen server,
    `noindex` lewat metadata, dan berkas slot diambil lewat URL presigned R2

@@ -24,7 +24,7 @@ const BASE_URL = `http://localhost:${PORT}`
 process.env.CLOUDFLARE_E2E = "1"
 
 export default defineConfig({
-  testDir: "e2e",
+  testDir: "tests/e2e",
   projects: [
     {
       name: "cloudflare",

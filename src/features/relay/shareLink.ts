@@ -5,7 +5,7 @@
    klip menjadi cadangannya. Pemanggil yang menerjemahkan hasilnya menjadi
    pesan di antarmuka. */
 
-export type ShareOutcome = "shared" | "copied" | "failed"
+type ShareOutcome = "shared" | "copied" | "failed"
 
 export async function shareLink(
   url: string,

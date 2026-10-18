@@ -8,10 +8,10 @@ import { SiteHeader } from "@/components/site/SiteHeader"
 import { Button } from "@/components/ui/button"
 import { LiveStripVideo } from "@/features/live/LiveStripVideo"
 import { StripOwnerActions } from "@/features/share/StripOwnerActions"
-import { getBindings } from "@/lib/cloudflare"
-import { selectStrip } from "@/lib/db/strips"
-import { isExpired } from "@/lib/expiry"
-import { presignGet } from "@/lib/r2/presign"
+import { getBindings } from "@/server/cloudflare"
+import { selectStrip } from "@/server/db/strips"
+import { isExpired } from "@/server/expiry"
+import { presignGet } from "@/server/r2/presign"
 
 /* SH-05: halaman strip yang dibuka dari QR atau link pribadi. Komponen server,
    `noindex` lewat metadata, dan berkasnya diambil lewat URL presigned R2

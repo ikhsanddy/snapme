@@ -21,7 +21,7 @@ const DB_NAME = "snapme-session"
 const STORE = "state"
 const KEY = "current"
 
-export interface SessionRecord {
+interface SessionRecord {
   version: typeof SESSION_VERSION
   layoutId: LayoutId | null
   shots: (Shot | null)[]

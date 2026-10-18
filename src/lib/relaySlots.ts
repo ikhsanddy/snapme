@@ -10,7 +10,7 @@ import { LAYOUTS, type LayoutId } from "@/lib/layouts"
 
 export type RelayRole = "host" | "guest"
 
-export interface RelaySlotOwner {
+interface RelaySlotOwner {
   index: number
   owner: RelayRole
 }

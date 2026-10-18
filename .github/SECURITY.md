@@ -24,7 +24,7 @@ Include what you can of the following:
 
 - What the problem is and what an attacker could do with it.
 - Reproduction steps, or a minimal proof of concept.
-- Which part is affected: a page, an API route, the Worker, or a library in `src/lib`.
+- Which part is affected: a page, an API route, the Worker, or a module in `src/lib` or `src/server`.
 - Any proposed fix.
 
 ## Response Expectations
@@ -43,8 +43,8 @@ give the maintainer a reasonable window to ship a fix before publishing details.
   and expiry enforcement
 - Privacy of user images: anything that causes an image to leave the device without the consent
   dialog, or to remain readable after its expiry
-- Server-side validation in `src/app/api` and the seams in `src/lib` (`db`, `r2`, `cloudflare`,
-  `purge`, `tokens`)
+- Server-side validation in `src/app/api` and the server modules in `src/server` (`db`, `r2`,
+  `cloudflare`, `purge`, `tokens`, `rateLimit`, `expiry`)
 
 ### Out of Scope
 

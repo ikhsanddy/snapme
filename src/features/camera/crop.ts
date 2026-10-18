@@ -2,7 +2,7 @@
    Fungsi murni: dipakai kamera (FR-05) dan pemuatan foto galeri (FR-13), dan
    diuji tanpa DOM. */
 
-export interface CropRect {
+interface CropRect {
   x: number
   y: number
   width: number

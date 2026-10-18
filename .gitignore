@@ -67,3 +67,9 @@ public/mediapipe/wasm/
 # another product's screens as well as its brand and customers, so it is not
 # redistributed with this repo (docs/ui-reference/README.md).
 docs/ui-reference/referensi_uiux.webp
+
+# /brag output: the plan, the Hyperframes composition, and the rendered video.
+# Derived from the app and from the skill's own assets, and the video alone is
+# megabytes, so it stays out of git like the other derived assets. `git add -f`
+# if a run ever needs to be committed.
+/brag-output*/

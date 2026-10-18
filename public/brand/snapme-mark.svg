@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="snapme">
+  <rect x="1.5" y="1.5" width="61" height="61" rx="16" fill="#FFFDF7" stroke="#141414" stroke-width="3"/>
+  <g transform="translate(32 31.5) scale(0.9) translate(-32 -39.7)">
+    <g stroke="#141414" stroke-width="3.3" stroke-linejoin="round">
+      <g transform="rotate(-28 32 52.5)"><rect x="18" y="22" width="28" height="32" rx="3" fill="#5038D6"/></g>
+      <g transform="rotate(-10 32 52.5)"><rect x="18" y="22" width="28" height="32" rx="3" fill="#F0562B"/></g>
+      <g transform="rotate(10 32 52.5)"><rect x="18" y="22" width="28" height="32" rx="3" fill="#F2479B"/></g>
+    </g>
+    <g transform="rotate(28 32 52.5)">
+      <rect x="18" y="22" width="28" height="32" rx="3" fill="#FFFDF7" stroke="#141414" stroke-width="3.3"/>
+      <rect x="22" y="26" width="20" height="20" rx="2" fill="#C3F53C"/>
+      <path d="M32 29 L34.6 34.4 L40 37 L34.6 39.6 L32 45 L29.4 39.6 L24 37 L29.4 34.4 Z" fill="#141414"/>
+      <rect x="22" y="48.5" width="12" height="3" rx="1.5" fill="#141414"/>
+    </g>
+  </g>
+</svg>

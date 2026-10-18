@@ -1,10 +1,10 @@
-import { getBindings } from "@/lib/cloudflare"
-import { claimRelayOnce, selectRelay } from "@/lib/db/relays"
-import { relaySlotsOf } from "@/lib/db/rows"
-import { isExpired } from "@/lib/expiry"
-import { deleteObjects, verifyStoredFile } from "@/lib/r2/storage"
+import { getBindings } from "@/server/cloudflare"
+import { claimRelayOnce, selectRelay } from "@/server/db/relays"
+import { relaySlotsOf } from "@/server/db/rows"
+import { isExpired } from "@/server/expiry"
+import { deleteObjects, verifyStoredFile } from "@/server/r2/storage"
 import { RELAY_SLOT_BYTE_LIMIT, RELAY_SLOT_MIME } from "@/lib/schemas"
-import { hashToken, newDeleteToken } from "@/lib/tokens"
+import { hashToken, newDeleteToken } from "@/server/tokens"
 
 /* M8 (SE-06): POST /api/relays/[id]/claim mengambil giliran mengisi slot
    teman. Sekali saja, dijamin basis data bukan klien: UPDATE-nya bersyarat

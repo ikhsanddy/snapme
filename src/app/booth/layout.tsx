@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import { Stepper } from "@/components/booth/Stepper"
+import { Stepper } from "@/features/booth/Stepper"
 import { Wordmark } from "@/components/site/Wordmark"
 import { SessionSync } from "@/features/session/SessionSync"
 

@@ -1,5 +1,5 @@
-import { getBindings } from "@/lib/cloudflare"
-import { insertStrip } from "@/lib/db/strips"
+import { getBindings } from "@/server/cloudflare"
+import { insertStrip } from "@/server/db/strips"
 import {
   clientKeyFromRequest,
   countRecentCreations,
@@ -7,8 +7,8 @@ import {
   CREATE_WINDOW_MS,
   isCrossSite,
   rateKeyFor,
-} from "@/lib/rateLimit"
-import { presignPut } from "@/lib/r2/presign"
+} from "@/server/rateLimit"
+import { presignPut } from "@/server/r2/presign"
 import {
   CREATE_STRIP_SCHEMA,
   LIVE_MIME_TYPES,
@@ -16,7 +16,7 @@ import {
   stripLivePath,
   stripStillPath,
 } from "@/lib/schemas"
-import { hashToken, newDeleteToken, newStripId } from "@/lib/tokens"
+import { hashToken, newDeleteToken, newStripId } from "@/server/tokens"
 
 /* ARCHITECTURE §7: POST /api/strips membuat baris `draft` dan satu URL unggah
    bertanda tangan (M10: presigned PUT ke R2). Berkasnya tidak melewati rute

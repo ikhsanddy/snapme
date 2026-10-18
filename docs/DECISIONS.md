@@ -1191,3 +1191,193 @@ Yang belum diverifikasi: isi kegagalan "Workers Builds: snapme", karena tautanny
 | Diagram folder ARCHITECTURE §4 hanya menyebut `public/stickers/` | `public/frames/` memang tidak pernah dibuat: frame diwujudkan sebagai data warna di `src/features/editor/presets.ts` (keputusan M4) | `git ls-files public` |
 
 Yang **tidak** diubah: riwayat git masih memuat blob wasm dari M3. Melepasnya dari indeks hanya membersihkan versi berikutnya; mengecilkan klon butuh penulisan ulang riwayat dan `git push --force`. Diukur `git count-objects -vH`: paketnya 12,15 MiB untuk seluruh riwayat, karena wasm terkompresi baik, jadi labanya hanya beberapa MiB sementara 29 rujukan hash pendek di `CHANGELOG.md` dan berkas ini akan ikut berubah. Pekerjaan itu ditunda sampai ada alasan lain untuk menulis ulang riwayat.
+
+
+## Pembersihan repo dan batas server (18 Oktober 2026)
+
+Sesudah 0.1.0, seluruh repo diaudit untuk mencari berkas yang tidak terpakai, lalu strukturnya
+dirapikan. Tidak ada perilaku produk yang berubah; pagar ujinya sama seperti sebelumnya.
+
+### Audit: apa yang ternyata tidak ada
+
+| Diperiksa | Cara | Hasil |
+|---|---|---|
+| Modul yatim | Graf impor dari seluruh titik masuk (`src/app`, `tests/`, `e2e/`, `scripts/`, konfigurasi), spesifier relatif dan alias `@/` diselesaikan | Nol berkas `src/**` yang tidak terjangkau |
+| Aset yatim | Nama berkas di `public/` dicocokkan dengan `STICKERS` di `presets.ts` dan `gesture_recognizer.task` di `gestureSource.ts` | 12 stiker, 12 entri; satu-satunya aset lain adalah wasm MediaPipe yang disalin saat pemasangan |
+| Dependensi nganggur | Tiap nama di `package.json` dicari di seluruh kode, skrip, dan konfigurasi | Nol. `shadcn` memang dipakai saat runtime lewat `@import "shadcn/tailwind.css"`, dan `lighthouse` dipakai skrip `perf:lcp` |
+| Sisa pekerjaan | `TODO`, `FIXME`, `HACK`, penanda "sementara" di `src/`, `scripts/`, `tests/`, `e2e/` | Nol |
+| Berkas di disk yang tidak dilacak git | `git status --porcelain --ignored` | Semuanya hasil turunan (`next-env.d.ts`, `cloudflare-env.d.ts`, `tsconfig.tsbuildinfo`, `public/mediapipe/`) atau rahasia lokal; tidak ada sampah |
+
+Kesimpulan: yang bisa dihapus bukan berkas, melainkan duplikasi dan ekspor yang tidak dipakai siapa
+pun.
+
+### Keputusan
+
+| Keputusan | Alasan | Bukti |
+|---|---|---|
+| Modul khusus server pindah ke `src/server/` (`cloudflare.ts`, `db/`, `r2/`, `purge.ts`, `rateLimit.ts`, `tokens.ts`, `expiry.ts`); `src/lib/` tinggal modul yang boleh dipakai klien dan server | Batas klien-server sebelumnya hanya daftar nama yang disimpan di dalam uji (`@/lib/cloudflare`, `@/lib/db/`, ...): modul server baru tidak terjaga sampai namanya ditambahkan. Sekarang batasnya satu folder | `tests/security/client-bundle-secrecy.test.ts` menelusuri spesifier impor tiap berkas `"use client"` dan menolak apa pun yang menuju `src/server/`, termasuk jalur relatif. Dibuktikan sanggup gagal: berkas probe ber-`"use client"` dengan impor `@/server/cloudflare` dan dengan impor `../server/cloudflare` sama-sama dilaporkan, lalu probe dihapus |
+| `tests/` dicerminkan ke `src/` (`app/api`, `components/{ui,booth}`, `features/*`, `lib`, `server`, `stores`) plus `security/` untuk pagar lintas repo, dan `support/` untuk harness | Dua puluh tiga berkas dalam satu folder datar menyulitkan pencarian berkas uji untuk satu modul; nama berkasnya sendiri sudah mengandung area (`editor-store`, `hold-detector`) | `find tests -type d`: 16 folder (8 tingkat atas), dan tiap berkas uji mengimpor modul `src/` pada jalur yang sama dengan tempat berkasnya |
+| Bantuan rute bersama pindah ke `tests/support/route.ts`: bentuk permintaan JSON, permintaan bearer, konteks rute, sidang pembatasan laju, dan pengosongan bucket | Empat bantuan yang sama disalin ke tiga berkas uji, dan salinannya sudah menyimpang: `strips.test.ts` memaginasi daftar bucket, `relays.test.ts` tidak, sehingga sisa objek di atas 1000 buah bisa membuat uji "berkas hilang" lulus palsu | `tests/app/api/*` hijau dengan 62 kasus sesudah penggabungan (sama dengan sebelum) |
+| `messageFrom` dan PUT ke URL presigned dijadikan satu di `src/lib/http.ts`; `RelayUploadTarget` dan `StripUpload` menjadi satu tipe `SignedUpload` | Keduanya disalin utuh ke `features/relay/api.ts` dan `features/share/api.ts`; hanya nama tetapnya yang berbeda | `tsc --noEmit` hijau setelah `StripUpload` dan `RelayUploadTarget` hilang dari repo (`grep -r` kosong) |
+| Sidik jari kanvas e2e menjadi satu fungsi `canvasChecksum` di `e2e/helpers.ts` | Tiga salinan dengan dua langkah cuplik berbeda (97 dan 997) dan dua penanda kanvas-hilang (-1 dan 0) untuk pekerjaan yang sama | `grep -rn sidikJariKanvas e2e` kosong; `customize.spec.ts` dan `live.spec.ts` memakai langkah 97 seperti sebelumnya, `share.spec.ts` ikut 97 |
+| Helper kamera di `e2e/gesture.spec.ts` dihapus, memakai `e2e/helpers.ts` | Komentarnya menyebut "disalin dari `capture.spec.ts`", padahal sumbernya sudah pindah ke `helpers.ts` di M3; salinannya juga kehilangan percobaan ulang `toPass` yang membuat alur tahan server yang baru dinyalakan | `npx playwright test e2e/gesture.spec.ts` (lihat tabel verifikasi) |
+| `src/features/gallery/muatFotoGaleri.ts` menjadi `loadGalleryPhotos.ts` | Satu-satunya nama berkas produk yang tidak berbahasa Inggris, sementara CONTRIBUTING mewajibkan berkas berbahasa Inggris; `privasi/page.tsx` tetap karena itu URL | `git mv` lalu `grep -rn muatFotoGaleri src`: kosong; pemanggilnya satu, `GalleryPicker.tsx` (impor dinamis) |
+| `--color-pink-700` dihapus dari `globals.css` dan dari tabel palet serta tabel kontras `DESIGN-SYSTEM §2` | Didefinisikan dan didokumentasikan, tetapi tidak dipakai satu komponen pun. §2 melarang `pink` untuk teks di bawah 24 px, dan larangan itu tetap berlaku tanpa token pengganti | `grep -rn pink-700` sebelum penghapusan: hanya definisi dan dua baris dokumen; sesudahnya kosong |
+| Konstanta yang hanya dipakai di berkasnya tidak lagi diekspor: `REQUESTED_SIZE`, `PUT_URL_SECONDS`, `GET_URL_SECONDS`, `fetchSlotShots`, `masukAmbilFotoLayout`, `lengkapiEmpatFoto` | Nama itu ikut terlihat sebagai API modul padahal tidak ada pemanggil di luar berkasnya | `grep -r` tiap nama: hanya definisi dan pemakaian di berkas yang sama |
+| Setiap komponen `src/components/ui` mengimpor `cn` dari `@/lib/utils` | Sepuluh komponen mengimpor langsung dari paket `cn`, tujuh lewat `@/lib/utils`; `components.json` menunjuk `@/lib/utils` sebagai alias, jadi berkas yang ditambah lewat `shadcn add` selalu memakai jalur itu | `grep -rn 'from "cn"' src` kosong |
+
+### Struktur folder akar
+
+Root hanya menyisakan titik masuk dan konfigurasi alat. Empat dokumen kerja, satu berkas
+infrastruktur, dan satu pohon uji dipindahkan; tidak ada berkas yang dihapus, semuanya `git mv`
+sehingga riwayatnya ikut.
+
+| Keputusan | Alasan | Bukti |
+|---|---|---|
+| `PRD.md`, `DESIGN-SYSTEM.md`, `ARCHITECTURE.md`, dan `MILESTONES.md` pindah ke `docs/` | Root memuat lima dokumen panjang dengan pembaca berbeda, dan `docs/` sudah ada untuk itu. Karena keempatnya kini bersebelahan dengan `docs/DECISIONS.md`, rujukan antar dokumen yang ditulis sebagai nama telanjang (`PRD.md §7`) tetap benar tanpa disunting | `git mv`; tautan yang menunjuk dari luar `docs/` hanya ada di `README.md`, `CHANGELOG.md`, `.github/CONTRIBUTING.md`, dan `.github/ISSUE_TEMPLATE/config.yml`, semuanya diperbarui ke `docs/...` |
+| `r2-cors.json` pindah ke `infra/` | Itu satu-satunya sumber daya Cloudflare yang dipasang tangan, bukan hasil build (`wrangler r2 bucket cors put`), jadi tempatnya bukan di root bersama titik masuk aplikasi | `grep -rn r2-cors src tests scripts package.json`: kosong, jadi tidak ada kode yang bergantung pada jalurnya |
+| `e2e/` pindah ke `tests/e2e/` | Dua akar uji membuat pertanyaan "di mana ujinya" punya dua jawaban. Sekarang satu akar: `tests/**/*.test.{ts,tsx}` untuk Vitest dan `tests/e2e/*.spec.ts` untuk Playwright, dengan `tests/support/` dan `tests/e2e/helpers.ts` sama-sama di dalamnya | `npx playwright test --list` menemukan seluruh 14 berkas dari lokasi baru; `npm test` tetap 23 berkas dan 179 kasus |
+| `tsconfig.tsbuildinfo` ditulis ke `.next/cache/` lewat `tsBuildInfoFile` | Artefak sekitar 900 KB di root yang sepenuhnya turunan. `.gitignore` sudah mengabaikannya, jadi ini soal kerapian, bukan kebocoran | `npx tsc --noEmit` hijau dan berkasnya muncul di `.next/cache/`; root tidak lagi memuatnya |
+| Aturan akar ditulis di `.github/CONTRIBUTING.md` ("Repository conventions") | Tanpa aturan tertulis, root akan terisi berkas lepas lagi pada milestone berikutnya | Bagian itu menyebut apa yang boleh di root, tujuan `docs/`, `tests/`, `tests/e2e/`, dan `infra/`, serta syarat tidak ada artefak build yang tertinggal |
+
+Yang **tidak** diubah: entri `MILESTONES.md` dan entri `docs/DECISIONS.md` sebelum ini masih menyebut
+jalur lama (`tests/db/`, `src/lib/db/`, `e2e/`, `r2-cors.json` di root). Keduanya catatan sejarah per
+milestone; peta folder yang berlaku ada di `ARCHITECTURE.md §4` dan di tabel "Repository layout" pada
+`README.md`.
+
+### Verifikasi
+
+| Perintah | Hasil |
+|---|---|
+| `npm run lint` | hijau, tanpa peringatan |
+| `npm run typecheck` | hijau |
+| `npm test` | 23 berkas, **179 lulus, 0 gagal, 0 dilewati** |
+| `npx vitest run tests/app/api` | 3 berkas, 62 kasus hijau di atas D1/R2/KV miniflare |
+| `npm run build` | hijau |
+| `npx opennextjs-cloudflare build` | hijau, `.open-next/worker.js` dihasilkan (membuktikan impor `./src/server/purge` di `worker.ts` benar-benar terbundel) |
+| `npx playwright test --list` | 74 uji dalam 14 berkas ditemukan dari `testDir` baru (`tests/e2e`), termasuk proyek firefox dan webkit |
+| `npx playwright test customize.spec.ts capture.spec.ts --project=chromium` | **17 lulus, 0 gagal** (1,3 menit) di dev server: membuktikan `tests/e2e/helpers.ts` yang dipindah, `FIXTURE_DIR` baru, dan `testDir` baru benar-benar dipakai saat berjalan |
+| `npx tsc --noEmit` (bagian dari `npm run typecheck`) | hijau; `tsconfig.tsbuildinfo` muncul di `.next/cache/`, dan `ls` root tidak lagi memuatnya |
+| `ls` root | 8 folder (`docs`, `infra`, `migrations`, `public`, `scripts`, `src`, `tests`, `.github`) dan 25 berkas: 3 hasil generate (`AGENTS.md`, `next-env.d.ts`, `cloudflare-env.d.ts`), 2 rahasia lokal (`.dev.vars`, `.env.local`), sisanya titik masuk dan konfigurasi alat |
+| `npx playwright test --project=chromium` | **60 lulus, 8 dilewati, 0 gagal** (2,3 menit). Yang dilewati: uji ber-jaringan di balik gerbang `CLOUDFLARE_E2E`, satu uji jalur 503 karena `.dev.vars` ada di mesin ini, dan uji galeri `/dev/ui` yang hanya bermakna di server produksi |
+| `npx playwright test --project=firefox` | 3 lulus, 0 gagal (`crossbrowser.spec.ts`) |
+| `npx playwright test --project=webkit` | 3 gagal, semuanya di peluncuran peramban (`browserContext.newPage: Target page, context or browser has been closed`), bukan di asersi. Bukan akibat perubahan ini: skrip mandiri `webkit.launch()` dari `playwright-core` juga gagal di mesin ini, sementara `firefox.launch()` jalan |
+
+Catatan lingkungan: sekali di mesin Windows ini tiga berkas `tests/app/api/*` gagal di `beforeAll`
+(`Cannot read properties of undefined (reading 'dispose')`) saat `npm test` berjalan berdampingan
+dengan `tsc` dan `eslint`; ketiga instans miniflare-nya boot bersamaan dan berebut sumber daya.
+Dijalankan sendiri (dua kali) seluruh suite hijau, dan `npx vitest run tests/app/api` selalu hijau.
+Jadi ini rebutan sumber daya, bukan cacat uji.
+
+## Pembersihan lanjutan: komponen pindah ke fiturnya (18 Oktober 2026)
+
+Putaran kedua audit hari yang sama. Yang pertama membereskan batas server, pohon uji, dan akar repo;
+yang ini membereskan penempatan komponen produk dan sisa permukaan ekspor. Tidak ada perilaku produk
+yang berubah.
+
+### Audit: apa yang ternyata tidak ada lagi
+
+| Diperiksa | Cara | Hasil |
+|---|---|---|
+| Modul yatim | Graf impor dari seluruh titik masuk (`src/app/**` yang berupa `page`/`layout`/`route`/`not-found`, `worker.ts`, konfigurasi, `tests/`, `scripts/`), spesifier relatif dan alias `@/` diselesaikan lewat compiler TypeScript | 167 dari 169 berkas terjangkau. Dua sisanya bukan kode: `next-env.d.ts` (dibangkitkan Next) dan `src/app/globals.css`, yang diimpor `app/layout.tsx` sebagai efek samping dan diselesaikan bundler, bukan resolver modul |
+| Modul yang hanya dipakai uji | Graf impor kedua dengan akar hanya berkas produksi | Nol. Tidak ada modul `src/**` yang hidupnya bergantung pada uji |
+| Modul yatim di pohon uji | Graf impor ketiga dari `tests/` dan `scripts/` | Nol |
+| Ekspor tanpa pemanggil | Nama ekspor tiap berkas `src/**` dicocokkan dengan seluruh berkas lain (kode, skrip, konfigurasi) | 26 simbol dan 2 alias tipe. Sisanya terpakai; `src/components/ui` dikecualikan dengan sengaja (lihat keputusan di bawah) |
+| Kode mati di dalam berkas | `npx tsc --noEmit --noUnusedLocals --noUnusedParameters` | Nol temuan |
+| Token dan utilitas CSS mati | Setiap `@utility` di `globals.css` dan setiap token `@theme` dicocokkan dengan kelas yang benar-benar dipakai komponen | Nol. Delapan utilitas (`stage-grid`, `page-container`, `checker-ribbon`, `display-xl`, `display-lg`, `heading`, `title`, `ring-selected`) dan seluruh token punya pemakai |
+| Aset yatim | Nama berkas di `public/stickers` dan `public/models` dicocokkan dengan `STICKERS` di `presets.ts` dan jalur model di `gestureSource.ts` | 12 stiker berpasangan 1:1 dengan 12 entri; satu-satunya aset lain adalah wasm MediaPipe hasil salinan saat pemasangan |
+| Dependensi nganggur | Tiap nama di `package.json` dicari di kode, gaya CSS, dan konfigurasi | Nol. `shadcn` dipakai runtime lewat `@import "shadcn/tailwind.css"` di `globals.css`, `@tailwindcss/turbopack` lewat `next.config.ts`, `tw-animate-css` lewat `@import` |
+| Sisa pekerjaan | `TODO`, `FIXME`, `HACK`, penanda "sementara" di `src/`, `tests/`, `scripts/` | Nol |
+| Berkas di disk yang tidak dilacak git | `git status --porcelain --ignored` | Hanya hasil turunan (`next-env.d.ts`, `cloudflare-env.d.ts`, `.next/`, `public/mediapipe/`, `test-results/`) dan rahasia lokal (`.dev.vars`, `.env.local`); tidak ada sampah |
+
+Kesimpulan putaran kedua sama dengan putaran pertama, dan itu alasan strukturnya yang diubah: yang
+masih bisa dibersihkan bukan berkas, melainkan penempatan komponen dan permukaan ekspor. Sapuan
+terakhir menemukan satu hal baru: `tests/support/route.ts` mengekspor `ASAL_UJI` yang hanya dipakai
+di dalam berkasnya sendiri.
+
+### Keputusan
+
+| Keputusan | Alasan | Bukti |
+|---|---|---|
+| Komponen produk keluar dari `src/components/booth` ke fitur pemiliknya: `BoothPanel` dan `Stepper` ke `features/booth`, `CameraPicker` ke `features/camera`, `CameraStage`, `CountdownOverlay`, `ShutterButton`, `ShotTray` ke `features/capture`, `GestureHUD`, `GestureToggle` ke `features/gesture`, `RelayInviteCard` ke `features/relay` | Sebelumnya satu layar punya dua rumah: logikanya di `features/*`, komponennya di `components/booth`. Aturan lama "komponen khas produk di `components/booth`" juga tidak pernah menjelaskan mengapa `features/editor`, `features/share`, dan `features/relay` sudah menyimpan komponennya sendiri. Sekarang `components/` hanya memuat primitif shadcn (`ui/`) dan kerangka bersama (`site/`), dan satu layar punya satu rumah | `git mv` untuk seluruh berkas sehingga riwayatnya ikut; `grep -rn "@/components/booth" src tests` kosong; `npm run typecheck`, `npm run lint`, dan `npm test` hijau |
+| `ResultView`, `exportStrip.ts`, dan `sheet.ts` pindah dari `features/editor` ke `features/result` | Langkah editor adalah menghias; layar hasil adalah unduh, cetak, dan bagikan. Namanya pun sudah menyebut "result", dan berkasnya 611 baris di dalam folder yang isinya kanvas hias | Impor relatif yang menyeberang folder diubah ke alias (`@/features/editor/StripStage`, `@/features/editor/presets`), `tests/features/editor/export-filename.test.ts` pindah mengikuti modulnya ke `tests/features/result/` |
+| `GalleryPicker` pindah dari `components/site` ke `features/gallery` | Fitur galeri hanya berisi `loadGalleryPhotos.ts` yang satu-satunya pemanggil adalah komponen itu; memisahkannya membuat fitur tanpa wajah di pohon folder | Impor di `src/app/page.tsx` menjadi `@/features/gallery/GalleryPicker` |
+| Uji komponen ikut komponennya: `tests/features/gesture/gesture-hud.test.tsx`, `tests/features/capture/shot-tray.test.tsx`, `tests/features/result/export-filename.test.ts` | Cermin `tests/` ke `src/` baru berguna kalau berkas uji duduk di jalur yang sama dengan modulnya | 23 berkas uji, 179 kasus, semuanya hijau sesudah pemindahan |
+| Ekspor yang hanya dipakai di dalam berkasnya sendiri kehilangan kata kunci `export` (26 simbol, di antaranya `StripLayout`, `CropRect`, `ClipPlan`, `GESTURE_ACTIONS`, `SessionRecord`, `BoothSettings`), dan `ASAL_UJI` di `tests/support/route.ts` jadi konstanta lokal | Nama itu terlihat sebagai API modul padahal tidak ada pemanggil di luar berkasnya; pembaca berikutnya harus menelusuri seluruh repo untuk tahu | `grep -rn` tiap nama: hanya definisi dan pemakaian di berkas yang sama; `tsc --noEmit` hijau sebelum dan sesudah |
+| Dua alias tipe mati dihapus: `CreateStripPayload` dan `CreateRelayPayload` | Keduanya didefinisikan sebagai `z.infer` dari schema yang rutenya sudah memakai tipenya langsung; tidak ada satu pun pemakai | `grep -rn "CreateStripPayload\|CreateRelayPayload" .` (di luar `node_modules`): kosong sesudah penghapusan; `npm run typecheck` hijau |
+| `src/components/ui` **tidak** disentuh | Berkas itu keluaran CLI `shadcn add`, dan keputusan M1 mempertahankan bentuk keluarannya supaya penambahan komponen berikutnya tetap bisa dibandingkan dengan upstream. Ekspor seperti `DialogPortal` atau `useCarousel` yang belum dipakai aplikasi tetap ada karena itu bagian API primitifnya, bukan kode mati milik produk ini | `git status src/components/ui`: hanya berkas yang memang sudah disentuh milestone sebelumnya (impor `cn`), tidak ada yang baru di putaran ini |
+| Aturan penempatan ditulis di `ARCHITECTURE.md §4` dan di "Repository conventions" `.github/CONTRIBUTING.md` | Dua kali dalam satu hari pohon folder dirapikan; tanpa aturan tertulis, pohon ketiga akan lahir lagi pada milestone berikutnya, termasuk folder `components/booth` yang baru saja dibubarkan | Kedua dokumen menyebut: `src/app` hanya rute, `components/ui` hanya primitif CLI, `components/site` hanya kerangka bersama, komponen produk di `features/<area>` |
+
+Yang **tidak** diubah: `src/app/dev/ui/page.tsx` tetap ada. Galeri komponen itu memang hanya dirender
+di server pengembangan (`ARCHITECTURE §4`, `DESIGN-SYSTEM §10`), tetapi ia adalah alat kerja M1 yang
+masih dipakai untuk membandingkan komponen dengan berkas acuan di `docs/ui-reference/`, dan audit axe
+serta uji e2e-nya menyebut halaman itu. Menghapusnya berarti menghapus pemeriksaan, bukan sampah.
+Enam primitif UI yang hanya dipakai galeri itu (`card`, `carousel`, `skeleton`, `slider`, `tabs`,
+`tooltip`) karena itu ikut dipertahankan.
+
+Sisa yang diketahui tetapi **sengaja tidak dikerjakan** di putaran ini: nama pengenal di dalam
+`tests/` masih banyak yang berbahasa Indonesia (`masukHias`, `sidangLaju`, `kosongkanBucket`),
+sementara `CONTRIBUTING.md` mewajibkan pengenal berbahasa Inggris. Itu pekerjaan penamaan, bukan
+struktur, dan jumlahnya sekitar 150 pengenal yang tersebar di 20 berkas; menggantinya setengah jalan
+akan meninggalkan pohon yang lebih tidak konsisten daripada sebelum disentuh. Pindah berkas putaran
+ini sudah mengikuti aturan itu (tidak ada nama berkas baru yang berbahasa Indonesia).
+
+### Verifikasi
+
+| Perintah | Hasil |
+|---|---|
+| `npm run lint` | hijau, tanpa peringatan |
+| `npm run typecheck` | hijau (`next typegen` lalu `tsc --noEmit`) |
+| `npm test` | 23 berkas, **179 lulus, 0 gagal, 0 dilewati** |
+| `npm run build` | hijau; tabel rutenya tetap memuat kesebelas rute API dan delapan halaman, termasuk `/dev/ui` |
+| `npx tsc --noEmit --noUnusedLocals --noUnusedParameters` | nol temuan (dipakai untuk audit, bukan syarat CI) |
+| `npx playwright test tests/e2e/capture.spec.ts tests/e2e/customize.spec.ts tests/e2e/result.spec.ts tests/e2e/dev-ui.spec.ts tests/e2e/gesture.spec.ts tests/e2e/live.spec.ts --project=chromium` | **25 lulus, 1 dilewati, 0 gagal** (1,7 menit). Keenam berkas itu yang paling bergantung pada komponen yang dipindah: kamera, hias, hasil, galeri komponen, gesture, dan Strip Hidup. Yang dilewati adalah uji ber-jaringan di `live.spec.ts` (`test.skip(process.env.CLOUDFLARE_E2E !== "1", ...)`); galeri `/dev/ui` justru ikut dirender karena server ini server pengembangan, jadi uji a11y-nya tidak dilewati |
+
+
+## Lambang merek dan ikon turunannya (18 Oktober 2026)
+
+Permintaannya: lambang untuk snapme, kreatif karena produknya photobooth yang berwarna. Sebelum ini
+"lambang"-nya hanya kotak `violet` 40 px berisi ikon `Sparkle` dari Phosphor di dalam `Wordmark.tsx`,
+dan favicon-nya masih bawaan `create-next-app` (tiga bingkai bitmap, 15.086 bita).
+
+Lambang yang dipakai: ubin `paper` bergaris tepi `ink` berisi kipas empat kartu foto. Tiga kartu
+belakang `violet`, `tangerine`, `pink`; kartu depan `paper` bergaris tepi dengan bidang foto `lime`,
+satu sparkle `ink`, dan satu baris keterangan `ink`. Aturan lengkapnya di `DESIGN-SYSTEM.md §8`.
+
+| Keputusan | Alasan | Bukti |
+|---|---|---|
+| Kipas kartu foto, bukan kamera, bukan huruf, bukan ledakan flash | Produknya menghasilkan cetakan foto: kartunya adalah keluarannya sendiri, sedangkan ikon kamera sudah dipakai hampir semua aplikasi foto. Sparkle di kartu depan meneruskan ikon wordmark lama supaya mereknya tidak pindah total | Tiga arah digambar sebagai SVG lalu dirender pada 180, 96, 40, 22, dan 16 px di atas `lime` dan `ink`: kamera dengan ledakan delapan sinar (ubin `paper` dan ubin `violet`), kipas kartu foto (empat iterasi bentuk dan skala), dan ubin berisi satu kartu (dua iterasi). Kipas di dalam ubin `paper` dipakai karena satu-satunya yang tetap terbaca sebagai susunan kartu di 40 px |
+| Kartunya berbentuk cetakan foto (bidang foto hampir persegi, kaki lebar), bukan layar ponsel | Kartu 26 x 34 px yang ramping dengan bingkai tipis dan kaki sempit terbaca sebagai ponsel, bukan cetakan | Perbandingan render 180 px dari dua bentuk kartu: yang ramping (26 x 34 px, bidang foto 18 x 20 px, kaki 3 px) terbaca sebagai ponsel; yang dipakai (28 x 32 px, bidang 20 x 20 px, kaki lebar) terbaca sebagai cetakan |
+| Ubinnya `paper`, bukan `violet` | Lambang dipakai di tiga latar: panggung `lime`, panel `paper`, dan sebagai avatar persegi di luar aplikasi. Ubin `violet` membuat kartu belakang `violet` hilang ke latarnya; ubin `paper` sama dengan bahasa panel §1 (panel krem bergaris tepi hitam tebal) | Tangkapan 4x dari header saat aplikasi berjalan (`http://localhost:3000`): kartu belakang `violet` tetap terbaca karena ubinnya `paper` |
+| Warnanya hanya dari palet §2, datar, bergaris tepi `ink`, tanpa gradasi | §1 melarang gradasi sebagai hiasan dan mewajibkan garis tepi `ink` 2 sampai 3 px di semua komponen. Lambangnya bukan pengecualian | Kedua SVG hanya memuat `#141414`, `#FFFDF7`, `#C3F53C`, `#F0562B`, `#5038D6`, `#F2479B`; pada ukuran tampil 40 px garis tepi ubin 1,9 px dan garis kartu 2,1 px |
+| Lambangnya 64 x 64 di dalam kotak 64, dengan kipasnya diskalakan 0,9 dan digeser ke atas 0,5 | Pada skala 0,975 sudut kartu paling luar menyentuh garis tepi ubin sampai keduanya menyatu jadi satu gumpalan hitam; pada 0,9 masih ada jarak 3,6 satuan dan komposisinya tetap memenuhi lebar ubin | Rentang kipas pada skala 0,9 dihitung dari sudut kartunya: x 6,6 sampai 57,4 dan y 12,3 sampai 51,7, semuanya di dalam 3 sampai 61 |
+| Favicon memakai satu kartu besar, bukan kipasnya | Pada 16 px empat kartu yang bertumpuk menjadi bercak warna; bingkai 16 px terakhir kipasnya tidak lagi terbaca sebagai kartu | Tiga bingkai `favicon.ico` diperiksa pada 16, 32, dan 48 px dan diperbesar 5x dengan `nearest`: kipasnya bercak, satu kartunya tetap terbaca |
+| `src/app/favicon.ico` ditulis ulang dengan muatan PNG | Muatan PNG didukung Windows Vista ke atas dan seluruh peramban yang memasang favicon; berkas lama memakai bitmap mentah | 15.086 bita (tiga bingkai 48/32/16, bitmap, dari `create-next-app`) menjadi 4.610 bita; pembacaan direktori ICO memastikan tiga entri dan tanda muatan `89504e47` |
+| `apple-icon.png` dan `favicon.ico` **ikut di-commit**, berbeda dari `cloudflare-env.d.ts` dan `public/mediapipe/wasm` yang dibangkitkan saat pemasangan | Ukurannya 10,2 KB dan 4,6 KB, bukan ratusan megabita, sementara `next build` membacanya lewat konvensi berkas `app/`: menjadikan `sharp` syarat pemasangan untuk dua berkas sekecil itu menambah satu titik gagal tanpa menambah apa pun | `git status`: dua berkas itu muncul sebagai berkas baru, bukan diabaikan; `sharp` hanya `devDependency`, dan `postinstall` tidak menyentuhnya |
+| Berkas raster diturunkan `scripts/render-brand-icons.mjs`, bukan digambar dua kali | Favicon versi kecil dan ikon 180 px harus selalu berasal dari geometri yang sama dengan lambangnya; menggambar dua kali berarti dua gambar yang bisa menyimpang | Berkas raster dibangun ulang dari kedua SVG dan hasilnya identik tiap kali; skrip menggambar pada 600 dpi (64 px x 600/72 = 533 px) lalu memperkecil, jadi garis tepinya tetap tajam |
+| `Wordmark.tsx` memakai `next/image` dengan `unoptimized` | `next/image` menolak SVG lewat pengoptimal bawaannya; `unoptimized` melewatkannya apa adanya. Pilihan alternatifnya, menggambar ulang lambangnya sebagai SVG inline, berarti salinan kedua yang harus ikut dijaga, padahal gambar yang sama juga dipakai favicon, ikon apel, dan README | Diperiksa di peramban: `src="/brand/snapme-mark.svg"`, `naturalWidth` 64, kotak tampil 40 x 40 px, nama tautannya tetap "snapme" (gambar `alt` kosong, teksnya yang membawa nama) |
+
+Yang **tidak** diubah:
+
+- Ikon antarmuka tetap seluruhnya dari `@phosphor-icons/react` (§8). Lambang merek bukan ikon
+  antarmuka: ia satu gambar, bukan keluarga ikon, dan §8 melarang menggambar path ikon sendiri untuk
+  antarmuka.
+- Namanya tetap "snapme" pada Unbounded 900, tanpa huruf yang digambar ulang. Yang berubah hanya
+  kotak di sebelah kirinya.
+- Halaman acuan di `docs/ui-reference/` tidak disentuh. Ketiganya menggambarkan tata letak dan
+  keadaan komponen; baris atas di sana menyebut "wordmark" tanpa menggambar lambangnya, jadi tidak
+  ada yang bertentangan dengan §8.
+
+### Verifikasi
+
+| Perintah | Hasil |
+|---|---|
+| `npm run brand:icons` | `src/app/favicon.ico` (16, 32, 48 px) 4.610 bita dan `src/app/apple-icon.png` 10.203 bita, keduanya dibangun ulang dari `public/brand/snapme-mark.svg` dan `src/app/icon.svg` |
+| `npm run lint` | hijau, tanpa peringatan |
+| `npm run typecheck` | hijau (`next typegen` lalu `tsc --noEmit`) |
+| Aplikasi berjalan di `http://localhost:3000` | `<link>` yang dihasilkan Next: `icon` `/favicon.ico` 48x48, `icon` `/icon.svg` type `image/svg+xml` sizes `any`, `apple-touch-icon` `/apple-icon.png` 180x180. Gambar di header: `naturalWidth` 64, kotak 40 x 40 px. Tangkapan 4x memperlihatkan empat kartunya, sparkle, dan garis tepi ubinnya utuh |
+| `npm test` | 23 berkas, 179 lulus, 0 gagal |
+| `npx playwright test tests/e2e/a11y.spec.ts --project=chromium` | 18 lulus, 2 dilewati (yang butuh binding Cloudflare), 0 gagal. Gambar `alt` kosong tidak memicu temuan `image-alt`, dan nama tautan beranda tetap "snapme" |
+| `npm run build` | hijau; tabel rutenya memuat `/icon.svg` dan `/apple-icon.png` sebagai rute statis, jadi Next membaca konvensi berkas `app/` yang baru |
+| `npm run lint` | hijau. Keluaran `/brag` ditambahkan ke `globalIgnores` `eslint.config.mjs`: komposisi Hyperframes membawa `gsap.min.js` yang gagal aturan proyek (alias `this`), sama seperti wasm MediaPipe |
+| Header di `/booth/layout` diperiksa di peramban | Lambang 40 x 40 px utuh di sebelah "snapme", berdampingan dengan stepper LAYOUT, FOTO, HIAS, HASIL |

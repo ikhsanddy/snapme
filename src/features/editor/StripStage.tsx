@@ -67,7 +67,7 @@ const DATE_FORMAT = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
 })
 
-export type SelectionKind = "sticker" | "text"
+type SelectionKind = "sticker" | "text"
 
 export interface StripSelection {
   kind: SelectionKind

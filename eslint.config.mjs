@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     ".wrangler/**",
     // Berkas wasm MediaPipe yang disalin apa adanya ke public/ (ARCHITECTURE §4).
     "public/mediapipe/**",
+    // Keluaran /brag: komposisi Hyperframes dan pustaka vendornya (gsap.min.js),
+    // berkas jadi seperti keluaran build. Isinya tidak ikut git (.gitignore).
+    "brag-output*/**",
   ]),
 ]);
 

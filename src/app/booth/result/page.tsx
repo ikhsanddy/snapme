@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 
-import { BoothPanel } from "@/components/booth/BoothPanel"
+import { BoothPanel } from "@/features/booth/BoothPanel"
 import { Badge } from "@/components/ui/badge"
 import { countFilled, useBoothStore, useRequireShots } from "@/stores/booth"
 
@@ -10,7 +10,7 @@ import { countFilled, useBoothStore, useRequireShots } from "@/stores/booth"
    ResultView yang dimuat dengan import() dinamis supaya Konva hanya masuk
    bundel rute ini (ARCHITECTURE §9). */
 
-const ResultView = dynamic(() => import("@/features/editor/ResultView"), {
+const ResultView = dynamic(() => import("@/features/result/ResultView"), {
   ssr: false,
   loading: () => <ResultSkeleton />,
 })

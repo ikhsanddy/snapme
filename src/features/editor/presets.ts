@@ -132,7 +132,7 @@ export function getEffect(id: string): EffectPreset {
   return EFFECTS.find((effect) => effect.id === id) ?? EFFECTS[0]
 }
 
-export interface StickerAsset {
+interface StickerAsset {
   id: string
   /** Berkas di `public/stickers/`. */
   file: string

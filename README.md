@@ -1,5 +1,7 @@
 # snapme
 
+![snapme](public/brand/snapme-mark.svg)
+
 [![Live demo](https://img.shields.io/badge/demo-snapme.ikhsandyy--dev.workers.dev-3b82f6?logo=cloudflare&logoColor=white)](https://snapme.ikhsandyy-dev.workers.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-bd0000)](LICENSE)
 [![CI](https://github.com/ikhsanddy/snapme/actions/workflows/ci.yml/badge.svg)](https://github.com/ikhsanddy/snapme/actions/workflows/ci.yml)
@@ -22,7 +24,7 @@ Three things it does differently:
 **Status:** `v0.1.0`. The full v1 scope of the PRD is implemented and deployed, milestones M0 to
 M10 are complete, and what changed in each one is in [CHANGELOG.md](CHANGELOG.md). What is verified
 and what still needs a real device is listed in
-[ARCHITECTURE.md §12](ARCHITECTURE.md#12-yang-belum-diverifikasi).
+[ARCHITECTURE.md §12](docs/ARCHITECTURE.md#12-yang-belum-diverifikasi).
 
 ## Live demo
 
@@ -34,7 +36,7 @@ The hosted instance runs on Cloudflare Workers (OpenNext), with D1 for metadata,
 analytics budget, and a private R2 bucket for strips and clips. It exists to show the thing
 working, without an availability commitment. Everything except link sharing runs with no backend
 at all: with no bindings configured, the data routes answer 503 and the booth still works end to
-end. The deployment runbook is in [ARCHITECTURE.md §3](ARCHITECTURE.md#3-stack).
+end. The deployment runbook is in [ARCHITECTURE.md §3](docs/ARCHITECTURE.md#3-stack).
 
 ## Features
 
@@ -61,7 +63,7 @@ end. The deployment runbook is in [ARCHITECTURE.md §3](ARCHITECTURE.md#3-stack)
 - Analytics: first-party event counts only, no cookies, no third-party scripts
 
 The interface is in Indonesian, and the fixed labels are listed in
-[DESIGN-SYSTEM.md §12](DESIGN-SYSTEM.md#12-suara-dan-teks-antarmuka).
+[DESIGN-SYSTEM.md §12](docs/DESIGN-SYSTEM.md#12-suara-dan-teks-antarmuka).
 
 ## Privacy
 
@@ -139,25 +141,26 @@ they are set with `wrangler secret put` or in the Cloudflare dashboard. See
 | Path | Contents |
 | --- | --- |
 | `src/app` | App Router pages and the API routes |
-| `src/components` | shadcn/ui components restyled with the design tokens, plus booth components |
-| `src/features` | Booth logic by area: camera, capture, gesture, editor, live, relay, share, session |
-| `src/lib` | Pure logic and server seams: strip geometry, expiry, tokens, D1 statements, R2 presigning, the purge job |
+| `src/components` | `ui`: the shadcn/ui primitives restyled with the design tokens; `site`: the shell shared by the site pages and the booth (wordmark, header) |
+| `src/features` | Booth logic and its components, by area: booth shell, camera, capture, gesture, editor, result, gallery, live, relay, session, share, metrics |
+| `src/lib` | Isomorphic logic: strip geometry, route schemas, relay slots, the client fetch helpers, and the analytics queue |
+| `src/server` | Server-only modules: the binding seam, D1 statements, R2 presigning, rate limiting, tokens, expiry, the purge job. The client bundle never imports them (`tests/security`) |
 | `src/stores` | Booth session state (zustand) |
-| `tests` | Vitest units, component tests, and `tests/db` route tests on real bindings |
-| `e2e` | Playwright specs, including the fake-camera flow and the privacy assertion |
+| `tests` | Vitest, mirroring `src/`: `tests/app/api` runs the routes on real D1, R2, and KV bindings, `tests/support` holds the shared harness |
+| `tests/e2e` | Playwright specs, including the fake-camera flow and the privacy assertion |
+| `docs` | The working documents (PRD, design system, architecture, milestones), `docs/DECISIONS.md`, and `docs/ui-reference` |
+| `infra` | Cloudflare resources that are applied by hand, such as the R2 bucket CORS rules |
 | `migrations` | D1 migrations |
 | `public` | Sticker assets and the self-hosted gesture model; the MediaPipe wasm is copied from `node_modules` on install |
-| `docs/ui-reference` | The three reference pages that fix the layout of Welcome, Ambil Foto, and Hias Strip |
-| `docs/DECISIONS.md` | Every engineering decision, with the evidence behind it |
 
 ## Documentation
 
 | Document | Contents |
 | --- | --- |
-| [PRD.md](PRD.md) | What is built, priorities, and acceptance criteria |
-| [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) | Tokens, typography, components, layout, accessibility |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Stack, folder structure, routes, data model, testing, workflow |
-| [MILESTONES.md](MILESTONES.md) | Release plan with the acceptance criteria of each phase |
+| [docs/PRD.md](docs/PRD.md) | What is built, priorities, and acceptance criteria |
+| [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) | Tokens, typography, components, layout, accessibility |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, folder structure, routes, data model, testing, workflow |
+| [docs/MILESTONES.md](docs/MILESTONES.md) | Release plan with the acceptance criteria of each phase |
 | [CHANGELOG.md](CHANGELOG.md) | What changed per milestone |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log, including what was measured and what failed |
 

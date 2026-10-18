@@ -1,10 +1,10 @@
-import { getBindings } from "@/lib/cloudflare"
-import { selectRelay } from "@/lib/db/relays"
-import { relaySlotsOf } from "@/lib/db/rows"
-import { selectStripForRelay } from "@/lib/db/strips"
-import { isExpired } from "@/lib/expiry"
-import { presignGet } from "@/lib/r2/presign"
-import { verifyToken } from "@/lib/tokens"
+import { getBindings } from "@/server/cloudflare"
+import { selectRelay } from "@/server/db/relays"
+import { relaySlotsOf } from "@/server/db/rows"
+import { selectStripForRelay } from "@/server/db/strips"
+import { isExpired } from "@/server/expiry"
+import { presignGet } from "@/server/r2/presign"
+import { verifyToken } from "@/server/tokens"
 
 /* M8 (SE-07, SE-10): POST /api/relays/[id]/strip menyerahkan tautan strip dan
    URL baca foto slot HANYA kepada pemegang token pembuat atau tamu. Halaman

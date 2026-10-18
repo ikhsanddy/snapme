@@ -14,7 +14,7 @@ import { LAYOUTS, FOOTER_WORDMARK_ROW, type LayoutId } from "@/lib/layouts"
    Invarian bundel: berkas ini tidak boleh mengimpor Konva supaya `/` dan
    `/booth/capture` tidak ikut memuat pustaka kanvas. */
 
-export interface BoothSettings {
+interface BoothSettings {
   gestureEnabled: boolean
   cameraDeviceId: string | null
 }
@@ -69,7 +69,7 @@ export interface ShareState {
 
 /** M7 (SH-02): irisan Strip Hidup. `enabled` adalah sakelar di langkah Hias;
  *  kesiapannya mengikuti ada tidaknya klip di `shots`. */
-export interface LiveState {
+interface LiveState {
   enabled: boolean
 }
 

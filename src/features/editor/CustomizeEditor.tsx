@@ -13,7 +13,7 @@ import type { Group as KonvaGroup } from "konva/lib/Group"
 import type { Stage as KonvaStage } from "konva/lib/Stage"
 import { useReducedMotion } from "motion/react"
 
-import { BoothPanel } from "@/components/booth/BoothPanel"
+import { BoothPanel } from "@/features/booth/BoothPanel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"

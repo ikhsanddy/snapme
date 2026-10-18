@@ -7,7 +7,7 @@ export const CAPTURE_COOLDOWN_MS = 1500 // GS-04
 export const DETECT_INTERVAL_MS = 80 // sekitar 12,5 inferensi per detik (lantai PRD: 10)
 export const DETECT_FRAME_WIDTH = 320 // bingkai diperkecil (ARCHITECTURE §9)
 
-export const GESTURE_ACTIONS = {
+const GESTURE_ACTIONS = {
   snap: "Victory",
   retake: "Open_Palm", // GS-08, P1
   proceed: "Thumb_Up", // GS-09, P1

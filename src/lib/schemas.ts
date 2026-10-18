@@ -31,8 +31,6 @@ export const CREATE_STRIP_SCHEMA = z.object({
     .optional(),
 })
 
-export type CreateStripPayload = z.infer<typeof CREATE_STRIP_SCHEMA>
-
 /** PRD §8: diam 2 MB. Jenisnya PNG karena ekspor strip selalu PNG. */
 export const STILL_MIME = "image/png"
 export const STILL_BYTE_LIMIT = 2_097_152
@@ -45,8 +43,6 @@ export const STORAGE_BUCKET = "snapme"
 export const CREATE_RELAY_SCHEMA = z.object({
   layout: CREATE_STRIP_SCHEMA.shape.layout,
 })
-
-export type CreateRelayPayload = z.infer<typeof CREATE_RELAY_SCHEMA>
 
 /** PRD §8: slot estafet 1 MB, dan selalu JPEG karena klien mengekspor bingkai
  *  kamera lewat kanvas. Bucket menerima 5 MB (batas klip), jadi rute inilah

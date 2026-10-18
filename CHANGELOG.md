@@ -1,13 +1,78 @@
 # Changelog
 
-snapme is built in the milestone order of [MILESTONES.md](MILESTONES.md), one milestone per commit.
+snapme is built in the milestone order of [MILESTONES.md](docs/MILESTONES.md), one milestone per commit.
 Entries below follow the milestone, not a tag: `0.1.0` is the first released state and contains the
 whole of M0 to M10. The reasoning, measurements, and failed attempts behind each entry are in
 [docs/DECISIONS.md](docs/DECISIONS.md).
 
+## Unreleased
+
+Housekeeping after 0.1.0: the repository was audited for dead weight and reorganised, and snapme now
+carries its own mark. Nothing else in the flow changed.
+
+### Added
+
+- snapme's own mark, and the wordmark, favicon, and app icon built from it. The mark is a paper tile
+  holding a fan of four photo prints; the favicon uses a single print, because four of them collapse
+  into a colour patch at 16 px. `public/brand/snapme-mark.svg` is the source, `src/app/icon.svg` the
+  small-size variant, and `npm run brand:icons` derives `src/app/apple-icon.png` and
+  `src/app/favicon.ico` (16, 32, and 48 px) from both. The 15 KB `create-next-app` favicon, whose
+  three frames were uncompressed bitmaps, is replaced by a 4.6 KB one with PNG payloads
+- `sharp` as a dev dependency: the only renderer `scripts/render-brand-icons.mjs` needs
+
+### Changed
+
+- Server-only modules moved from `src/lib` to `src/server` (the binding seam, `db/`, `r2/`, `purge`,
+  `rateLimit`, `tokens`, `expiry`), so the client-boundary rule is a path, not a hand-kept list
+- `tests/` now mirrors `src/` (`tests/app/api`, `tests/components`, `tests/features`, `tests/lib`,
+  `tests/server`, `tests/security`, `tests/stores`), with the miniflare harness and the route
+  helpers in `tests/support`
+- Client network calls share one module, `src/lib/http.ts` (`messageFrom`, `putToSignedUrl`)
+- `src/features/gallery/muatFotoGaleri.ts` is `loadGalleryPhotos.ts`; the exported names follow it
+- Every module in `src/components/ui` imports `cn` from `@/lib/utils`, matching what `shadcn add`
+  generates
+- The repository root now holds only the entry points and the tool configs: the four working
+  documents (PRD, design system, architecture, milestones) moved to `docs/` next to the decision
+  log, `r2-cors.json` moved to `infra/`, and the Playwright specs moved from `e2e/` to `tests/e2e/`
+  so there is one test root
+- `tsconfig.tsbuildinfo` is written into `.next/cache/`, so no TypeScript artifact lands in the
+  repository root
+- Product components moved out of `src/components/booth` into the features that own them: the booth
+  shell to `src/features/booth`, the camera picker to `features/camera`, the capture stage, shot tray,
+  countdown and shutter to `features/capture`, the gesture HUD and toggle to `features/gesture`, the
+  relay invite card to `features/relay`. `src/components` now holds only `ui/` (the shadcn/ui
+  primitives) and `site/` (header and wordmark)
+- The result screen moved out of the editor: `ResultView`, the strip export, and the 4R print sheet
+  now live in `src/features/result`, so `src/features/editor` is only the decorating step
+- `GalleryPicker` moved from `src/components/site` to `src/features/gallery`, next to the loader it
+  uses; component tests followed their components into `tests/features/<area>`
+- The placement rule is written down in `ARCHITECTURE.md §4` and in the repository conventions in
+  `.github/CONTRIBUTING.md`, so the next milestone does not have to rediscover it
+- `DESIGN-SYSTEM.md §8` now documents the mark, its files, and the rule that the raster icons are
+  derived rather than drawn twice; §10.1 shows the mark in the top bar, and `ARCHITECTURE.md §4`
+  lists `public/brand/` and the three icon files under `src/app/`
+- `brag-output*/**` is ignored by `eslint.config.mjs` and by git: a `/brag` run writes a Hyperframes
+  composition (with a vendored `gsap.min.js` that fails the project's lint rules, exactly like the
+  MediaPipe wasm) plus a rendered video, and neither belongs to `npm run lint` or to the repository
+
+### Removed
+
+- `CreateStripPayload` and `CreateRelayPayload` in `src/lib/schemas.ts`: type aliases nothing
+  imported, while the routes take their types from the Zod schemas directly
+- The `export` keyword on 26 symbols that only their own module uses (`StripLayout`, `CropRect`,
+  `GESTURE_ACTIONS`, `BoothSettings`, and the like), so the module surface matches what is really
+  shared. `src/components/ui` keeps the exports the shadcn CLI writes, so `shadcn add` stays
+  comparable with upstream
+- `--color-pink-700`: defined and documented but never used in any component. The palette and the
+  contrast table in `DESIGN-SYSTEM.md §2` no longer list it
+- Duplicated helpers: two copies of the canvas checksum (three, counting `customize.spec.ts`), the
+  four-slot fill, the camera permission step in `tests/e2e/gesture.spec.ts`, and the request,
+  rate-session, route-context, and bucket-clearing helpers in the route tests. The two bucket copies
+  had already drifted: only one paginated
+
 ## 0.1.0 - 2026-10-16
 
-First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare Workers.
+First release. The full v1 scope of [PRD.md](docs/PRD.md) §5, deployed on Cloudflare Workers.
 
 ### Added
 
@@ -111,6 +176,6 @@ First release. The full v1 scope of [PRD.md](PRD.md) §5, deployed on Cloudflare
 
 ### Not in this release
 
-Out of v1 scope on purpose, per [PRD.md](PRD.md) §5: accounts and a personal gallery, payment and
+Out of v1 scope on purpose, per [PRD.md](docs/PRD.md) §5: accounts and a personal gallery, payment and
 print ordering, AI face filters or generated images, real-time shared booths, relays of more than two
 people, native apps and locked kiosk mode, and a template CMS.

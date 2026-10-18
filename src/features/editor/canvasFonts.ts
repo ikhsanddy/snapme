@@ -2,7 +2,7 @@
    (`__Unbounded_ab12cd`), jadi nama konkretnya dibaca dari elemen probe yang
    memakai utilitas token DESIGN-SYSTEM §13, bukan ditulis ulang di sini. */
 
-export type FontRole = "display" | "sans" | "mono"
+type FontRole = "display" | "sans" | "mono"
 
 const PROBE_CLASS: Record<FontRole, string> = {
   display: "font-display",
