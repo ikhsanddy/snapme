@@ -125,66 +125,6 @@ export async function masukHiasDariGaleri(page: Page): Promise<void> {
   await expect(page.locator("canvas")).toBeVisible()
 }
 
-/** Setiap uji ber-link memakai sidang pembatasan laju sendiri supaya kuota 10
- *  link per jam tidak dipakai bersama antar-uji maupun antar-jalankan.
- *  `cf-connecting-ip` adalah header yang dibaca rute di Cloudflare (dan di
- *  pratinjau `wrangler dev` diisi 127.0.0.1 untuk semua pemanggil, jadi tanpa
- *  ini seluruh uji berbagi satu kuota); `x-real-ip` ikut diisi untuk server
- *  pengembangan yang tidak mengenal header Cloudflare. Di produksi Cloudflare
- *  menimpa `cf-connecting-ip` di tepi, jadi pengiriman header ini tidak bisa
- *  dipakai menipu pembatasan laju.
- *
- *  Headernya disisipkan HANYA ke panggilan `/api/**` milik aplikasi, bukan
- *  lewat `setExtraHTTPHeaders` yang berlaku untuk semua permintaan: unggahan
- *  langsung ke R2 terjadi lintas origin, dan header tambahan di sana membuat
- *  preflight CORS menuntut header yang tidak diizinkan bucket, sehingga setiap
- *  unggahan diblokir peramban (bukti dan gejalanya di `docs/DECISIONS.md`
- *  M10). */
-export async function pasangSidangBaru(page: Page): Promise<void> {
-  const oktet = 20 + Math.floor(Math.random() * 200)
-  const alamat = `198.51.100.${oktet}`
-  await page.route("**/api/**", (route) =>
-    route.continue({
-      headers: {
-        ...route.request().headers(),
-        "cf-connecting-ip": alamat,
-        "x-real-ip": alamat,
-      },
-    })
-  )
-}
-
-/** M8 (SE-01, SE-02): pembuat mengisi dua foto lalu membuat link estafet;
- *  hasilnya URL `/r/{id}`. Dipakai relay.spec.ts dan a11y.spec.ts. */
-export async function undangEstafet(page: Page): Promise<string> {
-  await pasangSidangBaru(page)
-  await masukAmbilFoto(page)
-  await izinkanKamera(page)
-  await jepret(page)
-  await jepret(page)
-  await expect(page.getByText("2/4")).toBeVisible()
-
-  await page.getByRole("button", { name: "Estafet ke Teman" }).click()
-  const dialog = page.getByRole("dialog")
-  /* SE-02: apa yang diunggah, siapa yang bisa melihat, kapan terhapus. */
-  await expect(
-    dialog.getByText("Unggah foto estafet?", { exact: true })
-  ).toBeVisible()
-  await expect(
-    dialog.getByText(/Hanya orang yang kamu kirimi link yang bisa melengkapi/)
-  ).toBeVisible()
-  await dialog.getByRole("button", { name: "Buat Link Estafet" }).click()
-
-  await expect(page.getByText("Link estafet dibuat.")).toBeVisible({
-    timeout: 30_000,
-  })
-  const alamat = page.getByTestId("relay-url")
-  await expect(alamat).toContainText("/r/")
-  const url = (await alamat.textContent())?.trim() ?? ""
-  expect(url).toMatch(/\/r\/[A-Za-z0-9_-]{12,}$/)
-  return url
-}
-
 /** Sidik jari kanvas penyunting: jumlah sampel tiap 97 bita, cukup untuk
  *  membuktikan ada yang berubah tanpa mengangkut seluruh gambar. `-1` berarti
  *  kanvasnya belum ada. Dipakai uji hias, Strip Hidup, dan bagikan. */

@@ -70,6 +70,50 @@ carries its own mark. Nothing else in the flow changed.
   rate-session, route-context, and bucket-clearing helpers in the route tests. The two bucket copies
   had already drifted: only one paginated
 
+### Backend dibongkar: snapme jadi client-only (18 Oktober 2026)
+
+Keputusan pengguna: cabut seluruh backend Cloudflare (Workers/OpenNext, D1, KV, R2, wrangler) dari
+proyek ini. snapme kini aplikasi klien murni — booth kamera berjalan penuh secara lokal, tanpa
+unggahan ke mana pun dan tanpa env yang dibutuhkan build.
+
+**Removed**
+
+- Seluruh sisi server: `src/server/` (`cloudflare.ts`, `db/`, `r2/`, `rateLimit.ts`, `expiry.ts`,
+  `purge.ts`, `tokens.ts`), `src/app/api/cron/`, `worker.ts`, `open-next.config.ts`,
+  `wrangler.jsonc`, `playwright.cf.config.ts`, `infra/`, `migrations/`,
+  `scripts/cf-typegen.mjs`, `scripts/patch-opennext.mjs`
+- Komponen dan modul yang hanya berguna di atas backend: `RelayJoinView`, `RelayCompleteView`,
+  `RelayCancel`, `relay/bootstrap.ts`, `StripOwnerActions`, `LiveStripVideo`
+- Uji dan penopangnya: `tests/support/`, `tests/app/api/`, `tests/server/`, jalur e2e ber-binding
+  (`CLOUDFLARE_E2E`) beserta helper `pasangSidangBaru`/`undangEstafet`
+- Dependensi `@opennextjs/cloudflare`, `aws4fetch`, `wrangler`, `lighthouse`; skrip npm `cf:patch`,
+  `preview`, `preview:e2e`, `deploy`, `cf-typegen`, `test:e2e:cf`, `perf:lcp`
+- Berkas env `.env.example` dan `.dev.vars.example`, termasuk salinan lokalnya (`.env.local`,
+  `.dev.vars` yang berisi kredensial R2) dari mesin pengembangan
+
+**Changed**
+
+- Sembilan rute `/api` (`strips`, `strips/[id]`, `strips/[id]/complete`, `relays`, `relays/[id]`,
+  `relays/[id]/claim`, `relays/[id]/complete`, `relays/[id]/strip`, `events`) menjadi stub yang
+  menjawab 503 dengan pesan "belum tersedia" yang tetap, supaya klien menampilkan pesan itu, bukan
+  galat jaringan atau 404
+- `/s/[id]` dan `/r/[id]` menjadi stub `notFound()` (selalu 404) dengan metadata `noindex`; header
+  `noindex` dan `no-referrer` untuk `/s/*` dan `/r/*` tetap dipasang `next.config.ts`
+- CSP di `next.config.ts` tanpa satu pun host luar; `postinstall` kini hanya
+  `copy-mediapipe-wasm.mjs`; `src/lib/schemas.ts` dipangkas ke ekspor yang masih dipakai klien
+- Dokumen kondisi-kini (README, ARCHITECTURE, PRD, CONTRIBUTING, SECURITY) ditulis ulang untuk
+  kondisi client-only
+
+**Konsekuensi**
+
+- Alur booth tidak berubah: welcome, layout, capture, gesture MediaPipe, customize, hasil, ekspor
+  PNG/cetak, perekaman lokal Strip Hidup, dan sesi IndexedDB tetap berjalan seperti sebelumnya
+- Fitur bagikan/estafet tetap utuh di UI (dialog persetujuan, kartu bagikan, QR lokal) dan kini
+  selalu menerima pesan "belum tersedia"; tidak ada gambar yang meninggalkan perangkat
+- Antrean analitik klien tetap ada dan diam-diam membuang batchnya selama rute peristiwa menjawab
+  503
+
+
 ## 0.1.0 - 2026-10-16
 
 First release. The full v1 scope of [PRD.md](docs/PRD.md) §5, deployed on Cloudflare Workers.

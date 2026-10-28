@@ -1,14 +1,16 @@
 # snapme: Architecture
 
-Versi 0.1, 8 Oktober 2026. Dibaca bersama `PRD.md` (apa yang dibangun) dan `DESIGN-SYSTEM.md` (tampilannya). Dokumen ini menjawab: dengan apa, disusun bagaimana, dan dikerjakan dengan alur apa.
+Versi 0.2, 18 Oktober 2026. Dibaca bersama `PRD.md` (apa yang dibangun) dan `DESIGN-SYSTEM.md` (tampilannya). Dokumen ini menjawab: dengan apa, disusun bagaimana, dan dikerjakan dengan alur apa.
+
+Perubahan besar dari versi 0.1: backend dibongkar (18 Oktober 2026, keputusan pengguna; catatannya di `docs/DECISIONS.md`). snapme kini aplikasi klien murni: seluruh alur booth berjalan di browser tanpa server, seluruh rute `/api` adalah stub yang menjawab 503 "belum tersedia", dan halaman `/s/[id]` serta `/r/[id]` selalu menjawab 404.
 
 ## 1. Prinsip
 
 1. **Pakai yang sudah jadi dulu.** Kerangka, komponen, dan pustaka yang terawat dipasang lebih dulu, lalu disesuaikan dengan design system. Menulis sendiri adalah pilihan terakhir (§2).
-2. **Lokal dulu.** Kamera, deteksi gesture, penyuntingan, dan ekspor berjalan di browser. Server hanya dipakai saat pengguna membuat link.
+2. **Semua di perangkat.** Kamera, deteksi gesture, penyuntingan, perekaman Strip Hidup, dan simpanan sesi berjalan di browser. Tidak ada unggahan ke mana pun: tidak ada server yang menerimanya.
 3. **Token saja.** Warna, radius, bayangan, dan fon hanya didefinisikan di `globals.css`. Komponen memakai nama token.
 4. **Modul berat dimuat belakangan.** Welcome tidak memuat kode kamera, gesture, atau kanvas.
-5. **Logika murni dipisah dari perangkat.** Ambang gesture, geometri strip, dan aturan kedaluwarsa adalah fungsi murni yang bisa diuji tanpa kamera.
+5. **Logika murni dipisah dari perangkat.** Ambang gesture dan geometri strip adalah fungsi murni yang bisa diuji tanpa kamera.
 
 ## 2. Aturan "pakai yang sudah jadi dulu"
 
@@ -31,7 +33,7 @@ Untuk setiap kebutuhan, turun satu anak tangga hanya bila anak tangga di atasnya
 
 ### Yang tidak boleh ditulis sendiri
 
-Dialog, lembar bawah, tab, sakelar, slider, tooltip, toast, carousel, pengelolaan fokus, pembuat QR, pustaka transformasi kanvas (geser, putar, ubah ukuran), model deteksi tangan, klien penyimpanan, pembuat ID, validasi skema, ikon.
+Dialog, lembar bawah, tab, sakelar, slider, tooltip, toast, carousel, pengelolaan fokus, pembuat QR, pustaka transformasi kanvas (geser, putar, ubah ukuran), model deteksi tangan, pembuat ID, validasi skema, ikon.
 
 ### Syarat pustaka baru
 
@@ -39,11 +41,11 @@ Lisensi permisif (MIT, Apache-2.0, BSD), ada rilis atau commit dalam 12 bulan te
 
 ## 3. Stack
 
-Versi tidak dipaku di dokumen ini. Pasang versi stabil terbaru saat M0, lalu biarkan lockfile yang mengunci.
+Versi tidak dipaku di dokumen ini. Pasang versi stabil terbaru, lalu biarkan lockfile yang mengunci.
 
 | Lapisan | Pilihan | Dipakai untuk | Catatan |
 |---|---|---|---|
-| Kerangka | Next.js (App Router) + React + TypeScript | Halaman, rute server, metadata halaman strip | |
+| Kerangka | Next.js (App Router) + React + TypeScript | Halaman dan metadata | |
 | Gaya | Tailwind CSS v4 | Token dan utilitas | Token di DESIGN-SYSTEM §13 |
 | Komponen dasar | shadcn/ui (Radix) | Semua komponen umum di DESIGN-SYSTEM §9 | Kode disalin ke repo, jadi bebas disesuaikan |
 | Titik awal gaya | Registry neobrutalism berbasis shadcn | Varian bergaris tebal dan berbayang keras | Lihat "Evaluasi registry" di bawah |
@@ -53,18 +55,14 @@ Versi tidak dipaku di dokumen ini. Pasang versi stabil terbaru saat M0, lalu bia
 | Kamera | `react-webcam` | Pembungkus `getUserMedia` | |
 | Gesture | `@mediapipe/tasks-vision` (Gesture Recognizer) | Gesture Snap | Kategori bawaannya memuat `Victory`, `Open_Palm`, `Thumb_Up`. Berkas wasm dan model di-host sendiri |
 | Kanvas | `konva` + `react-konva` | Penyusunan strip, stiker, efek, ekspor PNG | Efek foto memakai filter bawaan Konva agar seragam antar browser |
-| QR | `qrcode` | QR di kaki strip | |
+| QR | `qrcode` | Kotak QR di kaki strip | Dimuat dengan `import()` dinamis; QR sungguhan hanya digambar bila link sudah ada, dan link itu kini tidak pernah jadi |
 | Video | `canvas.captureStream()` + `MediaRecorder` | Unduhan Strip Hidup | API browser, tanpa pustaka |
-| Validasi | `zod` | Isi permintaan API | |
-| ID | `nanoid` | ID link dan token | |
-| Data | Cloudflare D1 (SQLite) | Strip, estafet, dan peristiwa analitik | Hanya diakses lewat binding Worker (`DB`); RLS Postgres tidak lagi relevan |
-| Penyimpanan berkas | Cloudflare R2 | Strip PNG, klip Strip Hidup, slot estafet | Unggahan dan bacaan lewat URL presigned dari server (`aws4fetch`); rute memverifikasi hasil unggahan |
-| Anggaran laju | Cloudflare KV | Kuota peristiwa analitik 200 per jam per sidang | Kuota strip dan estafet tetap dihitung persis di D1 |
-| Analitik | Endpoint peristiwa first-party (`POST /api/events`, dikirim `navigator.sendBeacon`) | Ukuran PRD §4 | Tanpa cookie, tanpa pustaka pihak ketiga, daftar peristiwa tertutup di `src/lib/analyticsEvents.ts` |
-| Hosting | Cloudflare Workers + OpenNext (`@opennextjs/cloudflare`) | Aplikasi, rute API, dan pembersih | `npm run deploy`; Cron Trigger harian memanggil `scheduled` di `worker.ts` |
-| CLI | `wrangler` | Membuat sumber daya, migrasi D1, rahasia, pratinjau lokal | `npm run preview` menjalankan pratinjau produksi-fidelitas di port 8787 |
+| Validasi | `zod` | Batas jenis dan ukuran berkas yang divalidasi klien (`lib/schemas.ts`) | |
+| ID | `nanoid` | ID sesi lokal (store booth dan IndexedDB) | |
+| Analitik | Endpoint peristiwa first-party (`POST /api/events`, dikirim `navigator.sendBeacon`) | Ukuran PRD §4 | Tanpa cookie, tanpa pustaka pihak ketiga, daftar peristiwa tertutup di `src/lib/analyticsEvents.ts`. Selama rutenya 503, antrean membuang batchnya diam-diam (`lib/analytics.ts`) |
 | Uji | Vitest, Playwright | Unit dan end-to-end | Playwright punya kamera palsu di Chromium; proyek `firefox` dan `webkit` memuat `crossbrowser.spec.ts` |
-| Ukur kinerja | Lighthouse (devDependency) | LCP Welcome di server produksi | `npm run perf:lcp`; preset bawaan seluler |
+
+Tidak ada baris basis data, penyimpanan berkas, anggaran laju, hosting, dan CLI sumber daya: semuanya dibongkar bersama backendnya pada 18 Oktober 2026 (daftar yang dihapus dan alasannya di `docs/DECISIONS.md`). Tidak ada variabel lingkungan yang dibutuhkan build maupun runtime.
 
 ### Evaluasi registry neobrutalism (dikerjakan di M0)
 
@@ -86,33 +84,19 @@ npm i zustand zod nanoid motion @phosphor-icons/react react-webcam konva react-k
 npm i -D vitest @testing-library/react @playwright/test @axe-core/playwright @types/qrcode
 ```
 
-M10 menambahkan lapisan Cloudflare-nya (dijalankan di M10):
-
-```powershell
-npm i @opennextjs/cloudflare aws4fetch
-npm i -D wrangler
-```
-
 Bila `create-next-app` menolak folder yang sudah berisi dokumen, buat di folder sementara lalu pindahkan isinya ke root.
 
 ## 4. Struktur folder
 
 ```
 snapme/
-├─ worker.ts                     Worker kustom OpenNext: fetch + scheduled pembersih
-├─ open-next.config.ts           konfigurasi adapter Cloudflare
-├─ wrangler.jsonc                binding Worker, Cron Trigger, env `e2e`
 ├─ next.config.ts  eslint.config.mjs  tsconfig.json  vitest.config.mts
 ├─ playwright.config.ts          uji e2e terhadap dev server
-├─ playwright.cf.config.ts       uji e2e terhadap pratinjau Cloudflare
 ├─ docs/
 │  ├─ PRD.md  DESIGN-SYSTEM.md  ARCHITECTURE.md
 │  ├─ MILESTONES.md              rencana rilis: pekerjaan dan syarat selesai tiap tahap
 │  ├─ DECISIONS.md               catatan keputusan dan pustaka yang ditambah
 │  └─ ui-reference/              acuan pasti UI: welcome.html, capture.html, customize.html
-├─ infra/
-│  └─ r2-cors.json               CORS bucket untuk PUT presigned dari browser
-├─ migrations/                   migrasi D1 (dialek SQLite)
 ├─ public/
 │  ├─ brand/snapme-mark.svg      lambang merek (DESIGN-SYSTEM §8)
 │  ├─ mediapipe/wasm/            disalin dari paket saat pemasangan, tidak di git
@@ -123,14 +107,14 @@ snapme/
 │  │  ├─ page.tsx                Welcome (komponen server, statis)
 │  │  ├─ booth/layout.tsx        Booth Shell + stepper
 │  │  ├─ booth/{layout,capture,customize,result}/page.tsx
-│  │  ├─ s/[id]/page.tsx         halaman strip (noindex)
-│  │  ├─ r/[id]/page.tsx         halaman gabung estafet
+│  │  ├─ s/[id]/page.tsx         selalu 404: tidak ada strip yang tersimpan (noindex)
+│  │  ├─ r/[id]/page.tsx         selalu 404: tidak ada estafet yang tersimpan (noindex)
 │  │  ├─ privasi/page.tsx
 │  │  ├─ dev/ui/page.tsx         galeri komponen, hanya saat pengembangan
 │  │  ├─ icon.svg                favicon SVG, versi kecil lambang (DESIGN-SYSTEM §8)
 │  │  ├─ apple-icon.png          diturunkan `npm run brand:icons`
 │  │  ├─ favicon.ico             diturunkan `npm run brand:icons` (16, 32, 48 px)
-│  │  └─ api/...                 rute server (§7)
+│  │  └─ api/...                 stub kontrak lama: seluruhnya menjawab 503 "belum tersedia" (§7)
 │  ├─ components/
 │  │  ├─ ui/                    komponen shadcn yang sudah disesuaikan
 │  │  └─ site/                  wordmark dan header, dipakai halaman situs dan kerangka booth
@@ -142,40 +126,31 @@ snapme/
 │  │  ├─ editor/                CustomizeEditor, panel hias, StripCanvas, efek, stiker
 │  │  ├─ result/                layar hasil: ResultView, ekspor strip, lembar cetak 4R
 │  │  ├─ gallery/               pemilih foto galeri sebagai pengganti kamera (FR-13)
-│  │  ├─ live/                  LiveStripPlayer, perekam video
-│  │  ├─ relay/                 klien estafet dan kartu undangannya
+│  │  ├─ live/                  perekam video Strip Hidup dan dukungan medianya
+│  │  ├─ relay/                 kartu undang estafet dan panggilan jaringannya (selalu 503)
 │  │  ├─ session/               simpanan sesi IndexedDB
-│  │  ├─ share/                 unggah, QR, hapus
+│  │  ├─ share/                 kartu bagikan, dialog persetujuan, pembuat QR lokal
 │  │  └─ metrics/               ping pembuka sesi
 │  ├─ lib/
 │  │  ├─ layouts.ts              geometri ekspor (DESIGN-SYSTEM §5)
-│  │  ├─ schemas.ts              kontrak rute bersama klien dan server
+│  │  ├─ schemas.ts              batas jenis dan ukuran berkas, dipakai klien
 │  │  ├─ relaySlots.ts           pembagian slot estafet (murni)
-│  │  ├─ http.ts                 panggilan jaringan klien bersama (pesan galat, PUT presigned)
+│  │  ├─ http.ts                 panggilan jaringan klien bersama (pesan galat, PUT ke URL bertanda tangan)
 │  │  ├─ analytics.ts            antrean beacon analitik
 │  │  └─ imageElement.ts  utils.ts  analyticsEvents.ts
-│  ├─ server/                    berkas yang tidak boleh masuk bundel klien
-│  │  ├─ cloudflare.ts           seam binding (getBindings, null → 503)
-│  │  ├─ db/                     prepared statement D1 per tabel
-│  │  ├─ r2/                     presign aws4fetch + verifikasi berkas bucket
-│  │  ├─ purge.ts                badan pembersih harian
-│  │  ├─ rateLimit.ts            kuota rute (D1 dan KV)
-│  │  └─ expiry.ts  tokens.ts
 │  └─ stores/booth.ts            state sesi (zustand)
 └─ tests/                        cermin `src/`, plus
-   ├─ support/                   harness miniflare dan bantuan rute bersama
-   ├─ app/api/                   uji rute di atas binding sungguhan
    ├─ security/                  pagar bundel klien
    ├─ e2e/                       Playwright: alur kamera palsu dan pagar privasi
-   └─ components/  features/  lib/  server/  stores/
+   └─ components/  features/  lib/  stores/
 ```
 
 Aturan penempatan, supaya tidak ada layar yang punya dua rumah: `src/app/` hanya memuat rute
 (`page.tsx`, `layout.tsx`, `route.ts`, `globals.css`); `src/components/ui/` memuat primitif shadcn
 apa adanya dari CLI, dan `src/components/site/` hanya bagian kerangka yang dipakai bersama halaman
 situs dan booth (wordmark dan header); komponen produk tinggal di dalam fiturnya masing-masing di
-`src/features/<area>/`, bersama logikanya. `src/server/` tidak boleh diimpor bundel klien
-(`tests/security`), dan `src/lib/` hanya memuat modul yang dipakai klien maupun server.
+`src/features/<area>/`, bersama logikanya. Tidak ada modul khusus server di `src/`: seluruh `src/`
+aman untuk bundel klien, dan `tests/security` menjaga pagar itu beserta rahasianya.
 
 ## 5. Rute dan keadaan sesi
 
@@ -186,8 +161,8 @@ situs dan booth (wordmark dan header); komponen produk tinggal di dalam fiturnya
 | `/booth/capture` | Klien | Kamera, Gesture Snap, baki foto |
 | `/booth/customize` | Klien | Kanvas hias, Strip Hidup, QR |
 | `/booth/result` | Klien | Unduh, cetak, bagikan |
-| `/s/[id]` | Server | Halaman strip: diam, hidup, unduh, hapus |
-| `/r/[id]` | Server lalu klien | Gabung estafet, lalu masuk ke `/booth/capture` dengan slot terkunci |
+| `/s/[id]` | Server | Selalu 404 (`notFound()`): tidak ada strip yang tersimpan. `noindex` dan `no-referrer` tetap dipasang `next.config.ts` |
+| `/r/[id]` | Server | Selalu 404, aturan yang sama dengan `/s/[id]` |
 | `/privasi` | Server, statis | Kebijakan privasi |
 
 Masuk ke langkah booth tanpa prasyarat (misalnya `/booth/customize` tanpa foto) dialihkan ke langkah yang belum selesai.
@@ -207,7 +182,7 @@ idle ─► meminta-izin ─► siap ─► menahan ─► hitung-mundur ─► 
 
 ### State sesi (`stores/booth.ts`)
 
-`layoutId`, `shots[]` (tiap entri: gambar diam + bingkai klip + pemilik slot), `settings` (gesture nyala, kamera terpilih), `editor` (frame, efek, stiker[], teks[]), `live`, `share` (id, token hapus, kedaluwarsa), `relay` (id, peran, slot terkunci). Foto disimpan di memori. Penyimpanan lintas muat ulang (FR-14) memakai IndexedDB.
+`layoutId`, `shots[]` (tiap entri: gambar diam + bingkai klip + pemilik slot), `settings` (gesture nyala, kamera terpilih), `editor` (frame, efek, stiker[], teks[]), `live`, `share` (id, token hapus, kedaluwarsa), `relay` (id, peran, slot terkunci). Foto disimpan di memori. Penyimpanan lintas muat ulang (FR-14) memakai IndexedDB. Bagian `share` dan `relay` tetap ada sebagai state UI: keduanya tidak pernah terisi karena pembuatan link selalu gagal 503.
 
 ## 6. Modul inti
 
@@ -220,60 +195,42 @@ idle ─► meminta-izin ─► siap ─► menahan ─► hitung-mundur ─► 
 
 **Editor.** `react-konva` menyusun strip dari geometri di `lib/layouts.ts`. Efek foto adalah preset filter Konva. Stiker memakai `Transformer` bawaan. Ekspor memanggil `stage.toDataURL` dengan `pixelRatio` yang menghasilkan ukuran di DESIGN-SYSTEM §5. Padanan daftar untuk keyboard dan pembaca layar membaca state yang sama.
 
-**Strip Hidup.** Bingkai klip disimpan sebagai `ImageBitmap`. `LiveStripPlayer` menggambar ulang kanvas strip dengan bingkai berjalan. Unduhan merekam kanvas itu lewat `captureStream` dan `MediaRecorder`, dengan jenis berkas dipilih lewat `MediaRecorder.isTypeSupported`.
+**Strip Hidup.** Bingkai klip disimpan sebagai `ImageBitmap`. `LiveStripPlayer` menggambar ulang kanvas strip dengan bingkai berjalan. Unduhan merekam kanvas itu lewat `captureStream` dan `MediaRecorder`, dengan jenis berkas dipilih lewat `MediaRecorder.isTypeSupported`. Perekaman dan unduhannya murni lokal.
 
-**Bagikan dan QR.** Setelah persetujuan: minta ID dan URL unggah presigned dari server (`presignPut` di `lib/r2/presign.ts`, aws4fetch menandatangani PUT beserta Content-Type-nya), unggah langsung dari browser ke bucket R2, konfirmasi lewat rute complete (yang memeriksa hasilnya dengan `bucket.head`), lalu render ulang strip dengan QR ke `/s/{id}`. Halaman `/s` membaca berkasnya lewat `presignGet` berumur pendek.
+**Bagikan dan QR.** UI-nya utuh: dialog persetujuan menyebut apa yang akan diunggah, siapa yang bisa melihat, dan kapan terhapus (PRD SE-02, SH-04); kartu bagikan punya tombol buat link, alamat, dan salin. Alurnya: `requestStrip()` memanggil `POST /api/strips`, yang sekarang selalu menjawab 503, sehingga kartu selalu berakhir di pesan "belum tersedia" dan tidak ada permintaan yang membawa gambar. Sakelar QR menyalakan kotak penanda di kanvas; QR sungguhan (`qrcode`, dimuat dinamis) hanya digambar setelah link ada, dan karena link tidak pernah jadi, QR itu tidak pernah muncul.
 
-**Estafet.** Sama seperti bagikan, tetapi yang diunggah adalah foto per slot ke `relays/{id}/slot-{n}.jpg`. Teman mengambil giliran dengan menukar ID estafet menjadi token tamu; klaimnya dijaga UPDATE bersyarat `status = 'waiting'` di D1.
+**Estafet.** Kartu undangan dan dialog persetujuannya tetap ada di langkah Ambil Foto; `POST /api/relays` menjawab 503, jadi pembuatan link estafet selalu berakhir di pesan yang sama, dan halaman `/r/[id]` untuk teman selalu 404. Pembagian slot (`lib/relaySlots.ts`) dan token lokalnya tetap diuji sebagai fungsi murni.
 
 ## 7. Data dan API
 
-### Tabel (D1, dialek SQLite)
+### Rute (stub kontrak lama)
 
-Skemanya ada di `migrations/0001_init.sql` (M10 memindahkan lima migrasi Postgres yang lama). Dialek SQLite tidak punya tipe `uuid`/`timestamptz`/`jsonb`, jadi ID tetap teks dan timestamp menjadi TEXT ISO-8601 UTC yang selalu diisi aplikasi (`new Date().toISOString()`), sehingga perbandingan leksikografisnya sama dengan perbandingan kronologis. Tidak ada RLS: D1 hanya bisa diakses lewat binding Worker, jadi tidak ada jalur anon yang perlu ditolak.
+Tidak ada basis data dan tidak ada penyimpanan berkas: semuanya dibongkar bersama backend pada 18 Oktober 2026 (`docs/DECISIONS.md`). Rute di bawah dipertahankan sebagai stub yang menjawab 503 dengan pesan tetap, supaya klien yang masih memanggilnya menampilkan "belum tersedia", bukan galat jaringan atau 404.
 
-| Tabel | Kolom |
+| Rute | Jawaban |
 |---|---|
-| `strips` | `id` (teks, nanoid), `layout`, `still_path`, `live_path` (boleh kosong), `status` (`draft`, `complete`, `deleted`), `delete_token_hash`, `relay_id` (boleh kosong), `rate_key`, `created_at`, `expires_at` |
-| `relays` | `id`, `layout`, `slots` (teks JSON: indeks, pemilik `host` atau `guest`, path), `host_token_hash`, `guest_token_hash` (boleh kosong), `status` (`waiting`, `claimed`, `complete`, `cancelled`), `strip_id` (boleh kosong; gerbang pemenang tunggal jalur pemulihan `complete`), `rate_key`, `created_at`, `expires_at` |
-| `events` | `id` (INTEGER PRIMARY KEY AUTOINCREMENT), `name` (daftar tertutup), `rate_key`, `created_at`. Retensi 90 hari |
+| `POST /api/strips` | 503 "Pembuatan link belum tersedia." |
+| `POST /api/strips/[id]/complete` | 503, pesan yang sama |
+| `DELETE /api/strips/[id]` | 503 "Penghapusan link belum tersedia." |
+| `POST /api/relays` | 503 "Pembuatan link belum tersedia." |
+| `POST /api/relays/[id]/claim` | 503, pesan yang sama |
+| `POST /api/relays/[id]/complete` | 503, pesan yang sama |
+| `POST /api/relays/[id]/strip` | 503, pesan yang sama |
+| `DELETE /api/relays/[id]` | 503 "Penghapusan link belum tersedia." |
+| `POST /api/events` | 503 "Pencatatan peristiwa belum tersedia." |
 
-Catatan M9 yang tetap berlaku di D1: `layout` dibatasi daftar tertutup dan `slots` dipastikan array lewat check `json_valid(slots) AND json_type(slots) = 'array'`, sedangkan bentuk tiap elemen slot diperiksa saat dibaca (`relaySlotsOf`, yang juga mem-parse teks JSON-nya). Indeks unik parsial `relays_strip_id_key` menjaga satu estafet hanya menunjuk satu strip; satu estafet bisa menyisakan lebih dari satu baris `strips` kalau baris lamanya adalah batu nisan penghapusan, dan yang dijaga gerbangnya adalah satu strip aktif per estafet.
-
-### Storage
-
-Satu bucket R2 pribadi `snapme` (tanpa akses publik; akses hanya lewat URL presigned). Path: `strips/{id}/still.png`, `strips/{id}/live.webm|mp4`, `relays/{id}/slot-{n}.jpg`. URL unggah (PUT, Content-Type ikut ditandatangani) dan URL baca dibuat server lewat `presignPut`/`presignGet` (`src/server/r2/presign.ts`); CORS bucket-nya diatur di `infra/r2-cors.json`, jadi browser boleh PUT langsung ke R2 dari origin aplikasi.
-
-### Rute server
-
-| Rute | Fungsi |
-|---|---|
-| `POST /api/strips` | Buat strip `draft`, kembalikan `id`, token hapus, dan URL unggah presigned (`upload.url`) |
-| `POST /api/strips/[id]/complete` | Verifikasi berkas ada (`bucket.head`), tandai `complete`, pasang `expires_at` 7 hari |
-| `DELETE /api/strips/[id]` | Hapus berkas dan tandai baris `deleted`. Butuh token hapus |
-| `POST /api/relays` | Buat estafet, kembalikan `id`, token pembuat, URL unggah presigned slot pembuat |
-| `POST /api/relays/[id]/claim` | Ambil giliran: kembalikan token tamu dan slot. Hanya berhasil sekali (UPDATE bersyarat) |
-| `POST /api/relays/[id]/complete` | Tandai lengkap, buat strip, kembalikan URL unggah PNG. Dijaga gerbang pemenang tunggal `strip_id` |
-| `POST /api/relays/[id]/strip` | Serahkan tautan strip dan URL baca foto slot hanya ke pemegang token estafet (M8, temuan tinjauan keamanan) |
-| `DELETE /api/relays/[id]` | Batalkan dan hapus. Butuh token pembuat |
-| `POST /api/events` | Catat 1 sampai 20 peristiwa analitik (nama dari daftar tertutup). Anggaran 200 peristiwa per jam per sidang, dihitung di KV |
-| `GET /api/cron/purge` | Picu manual pembersih (`Authorization: Bearer CRON_SECRET`). Pemicu hariannya Cron Trigger Workers lewat `scheduled` di `worker.ts`, yang menjalankan badan yang sama (`src/server/purge.ts`) |
-
-Unggahan tidak melewati rute server: klien mengunggah langsung ke R2 lewat URL presigned, dan rute complete yang memeriksa hasilnya. Kedaluwarsa juga diperiksa saat baca: halaman dan API menjawab 410 walau cron belum berjalan.
+Karena tidak ada yang tersimpan, tidak ada pula kedaluwarsa, token hapus di sisi server, kuota, atau pembersih terjadwal. Halaman `/s/[id]` dan `/r/[id]` menjawab 404 lewat `notFound()` untuk `id` apa pun, dan antrean analitik klien membuang batchnya diam-diam saat `POST /api/events` menjawab 503 (`lib/analytics.ts`, tanpa pengulangan).
 
 ## 8. Privasi dan keamanan
 
-- **Akses data**: D1 dan R2 hanya bisa dijangkau lewat binding Worker (`DB`, `BUCKET`), tidak ada endpoint publik dan tidak ada kunci yang dipegang klien. Seam-nya satu: `getBindings()` di `src/server/cloudflare.ts`, yang mengembalikan null (rute menjawab 503) bila satu binding pun kosong.
-- **Token**: token hapus, pembuat, dan tamu dibuat acak, disimpan di perangkat pengguna, dan hanya hash-nya yang disimpan di basis data.
-- **Link**: ID nanoid 12 karakter atau lebih. Halaman `/s` dan `/r` diberi `noindex` dan `Referrer-Policy: no-referrer`.
-- **Batas**: jenis berkas PNG, JPEG, WebM, MP4. Ukuran diam 2 MB, klip 5 MB, slot estafet 1 MB. Divalidasi dengan `zod`; jenisnya dipaksa dua kali, yaitu Content-Type yang ikut ditandatangani di URL unggah (R2 menolak PUT dengan jenis lain) dan `bucket.head` di rute complete/claim.
-- **Pembatasan laju**: kuota strip dan estafet dihitung persis dari baris D1 dengan pola hitung-setelah-sisip; anggaran peristiwa analitik dihitung di KV dengan jendela tetap per jam (200 peristiwa per sidang). Pilihan dan alasannya di `docs/DECISIONS.md` M6 dan M10.
-- **Persetujuan**: dialog sebelum setiap unggahan pertama (PRD SE-02, SH-04).
-- **Tanpa pihak ketiga**: fon di-host sendiri, wasm dan model MediaPipe di-host sendiri, tanpa pelacak. Hitungan peristiwa PRD §4 lewat rute sendiri (`POST /api/events`), tanpa cookie dan tanpa kolom identitas.
-- **Header**: `Permissions-Policy: camera=(self)`, `X-Content-Type-Options: nosniff`, dan CSP penuh untuk semua rute sejak M9 (`next.config.ts`, disusun dari env: host S3 R2 hanya ditambahkan bila `R2_ACCOUNT_ID` ada, dan nilai yang sama ada di `vars` wrangler supaya CSP produksi identik dengan saat build). `script-src` memuat `'unsafe-inline'` (skrip bootstrap App Router tanpa nonce; nonce memaksa render dinamis) dan `wasm-unsafe-eval` (MediaPipe); `'unsafe-eval'` hanya di pengembangan. Rincian tiap direktif dan temuan verifikasinya di `docs/DECISIONS.md` M9. M10 melepas `cacheComponents`/PPR beserta `htmlLimitedBots: /.*/ ` karena runtime Worker menolak mesin Cache Components di bawah permintaan bersamaan; `/s/[id]` dan `/r/[id]` dirender dinamis (`await connection()`) dan tetap menjawab 404 sungguhan (alasannya di `docs/DECISIONS.md` M10)
-- **Analitik**: `rate_key` pada tabel `events` memakai hash bergaram dengan scope `events` (terpisah dari sidang `strips`/`relays`), dan anggaran 200 peristiwa per jam per sidang dijaga di KV sebelum INSERT; selisih balapan paling banyak satu batch per permintaan serentak (telemetri, alasannya di `docs/DECISIONS.md` M10)
+- **Tidak ada unggahan.** Tidak ada foto, klip, atau peristiwa yang meninggalkan perangkat: tidak ada layanan yang menerimanya. Uji Playwright menegaskan tidak ada permintaan yang membawa gambar selama `/booth/capture` (PRD GS-01).
+- **Persetujuan**: dialog sebelum unggahan tetap dipertahankan di UI (PRD SE-02, SH-04), walaupun unggahannya tidak pernah terjadi; alurnya selalu berakhir di pesan "belum tersedia".
+- **Batas berkas**: jenis dan ukuran (diam 2 MB, klip 5 MB, slot estafet 1 MB) divalidasi di klien lewat `lib/schemas.ts` sebelum klien menawarkan unggahan.
+- **Link**: halaman `/s/*` dan `/r/*` diberi `noindex` dan `Referrer-Policy: no-referrer`, dan keduanya selalu 404.
+- **Header**: CSP penuh tanpa satu pun host luar (fon, wasm, dan model MediaPipe di-host sendiri; `wasm-unsafe-eval` untuk MediaPipe; `blob:` dan `data:` untuk kanvas, perekam, dan konversi Blob), `Permissions-Policy: camera=(self)`, `X-Content-Type-Options: nosniff`, dan `frame-ancestors 'none'`. `script-src` memuat `'unsafe-inline'` (skrip bootstrap App Router tanpa nonce; nonce memaksa render dinamis) dan `'unsafe-eval'` hanya di pengembangan. Rincian tiap direktif di `docs/DECISIONS.md` M9 (sejarah).
+- **Tanpa pihak ketiga**: fon di-host sendiri, wasm dan model MediaPipe di-host sendiri, tanpa pelacak. Hitungan peristiwa PRD §4 lewat rute sendiri (`POST /api/events`), tanpa cookie dan tanpa kolom identitas; selama rutenya 503, antrean klien membuang batchnya tanpa mengulang.
 - **Metadata**: ekspor lewat kanvas tidak membawa EXIF.
-- **Rahasia**: `CRON_SECRET`, `RATE_LIMIT_SALT`, `R2_ACCESS_KEY_ID`, dan `R2_SECRET_ACCESS_KEY` tidak pernah masuk repo: lokalnya `.dev.vars` (contoh di `.dev.vars.example`), produksinya `wrangler secret put`. `R2_ACCOUNT_ID` bukan rahasia (ada di `wrangler.jsonc` dan `.env.local`).
+- **Rahasia**: tidak ada. Tidak ada variabel lingkungan yang dibutuhkan build maupun runtime, dan tidak ada berkas `.env*` atau `.dev.vars` di repo.
 
 ## 9. Kinerja
 
@@ -287,30 +244,28 @@ Unggahan tidak melewati rute server: klien mengunggah langsung ke R2 lewat URL p
 
 | Lapisan | Alat | Yang diuji |
 |---|---|---|
-| Unit | Vitest | `holdDetector`, mesin keadaan pemotretan, geometri `layouts.ts` (jumlah piksel pas 1800), aturan kedaluwarsa |
-| Komponen | Vitest + Testing Library | Keadaan tombol, stepper, baki foto |
-| Basis data dan rute | Vitest + `wrangler getPlatformProxy` (miniflare lokal) | Rute API di atas D1/R2/KV sungguhan: klaim estafet sekali, gerbang pemenang tunggal, rollback kuota, purge, anggaran events. Berkas di `tests/app/api/`, harness bersama di `tests/support/` |
-| End-to-end | Playwright (Chromium dengan `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream`) | Alur dasar sampai unduh, izin ditolak, estafet dengan dua konteks browser, halaman kedaluwarsa |
-| End-to-end ber-binding | Playwright (`playwright.cf.config.ts`, `npm run test:e2e:cf`) terhadap `npm run preview:e2e` | Alur ber-jaringan yang menyentuh D1/R2: bagikan, Strip Hidup, estafet, a11y halaman ber-link |
+| Unit | Vitest | `holdDetector`, mesin keadaan pemotretan, geometri `layouts.ts` (jumlah piksel pas 1800), antrean analitik, pembagian slot estafet, perekam bingkai |
+| Komponen | Vitest + Testing Library | Keadaan tombol, stepper, baki foto, HUD gesture, daftar hiasan |
+| Keamanan | Vitest (`tests/security`) | Tidak ada berkas klien yang mengimpor modul khusus server, dan tidak ada rahasia yang muncul di bundel statis hasil build |
+| End-to-end | Playwright (Chromium dengan `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream`) | Alur dasar sampai unduh, izin ditolak, jalur "belum tersedia" (kartu bagikan, QR, estafet), dan halaman `/s` serta `/r` yang selalu 404 dan tidak diindeks |
 | Privasi | Playwright | Tidak ada permintaan jaringan yang membawa gambar selama `/booth/capture` (PRD GS-01) |
 | Aksesibilitas | `@axe-core/playwright` + uji keyboard manual | Semua halaman |
-| Manual | HP Android kelas menengah, iPhone, laptop | Gesture pada berbagai cahaya, cetak 4R dan pindai QR |
+| Lintas peramban | Proyek `firefox` dan `webkit` (hanya `crossbrowser.spec.ts`) | Perilaku inti di mesin Gecko dan WebKit |
+| Manual | HP Android kelas menengah, iPhone, laptop | Gesture pada berbagai cahaya, cetak 4R; pindai QR menunggu link yang bisa dibuat lagi |
 
-Perintah pemeriksaan sebelum sebuah milestone dianggap selesai: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npx playwright test` untuk alur yang disentuh, dan `npm run test:e2e:cf` untuk alur yang menyentuh D1/R2.
+Perintah pemeriksaan sebelum sebuah perubahan dianggap selesai: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, dan `npx playwright test` untuk alur yang disentuh.
+
+Yang sudah selesai dan tidak perlu diperiksa lagi: perintah di §3 sudah dijalankan sejak M0, pemilihan registry neobrutalism diputuskan di M0 (`docs/DECISIONS.md`), dan dukungan `MediaRecorder` antar-browser sudah dipetakan di M7 (`pickLiveKind`) dengan proyek WebKit dan Firefox ikut hijau di M9. M10 memindahkan backend ke Cloudflare, dan pembongkaran baliknya pada 18 Oktober 2026 dicatat di `docs/DECISIONS.md`.
 
 ## 11. Milestone
 
-Urutan kerja, pekerjaan, dan syarat selesai tiap milestone ada di `MILESTONES.md` (M0 Fondasi sampai M10 Migrasi Cloudflare). Berkas itu satu-satunya sumber untuk milestone dan memuat pula syarat selesai yang berlaku umum tiap tahap.
+Urutan kerja, pekerjaan, dan syarat selesai tiap milestone ada di `MILESTONES.md` (M0 Fondasi sampai M10 Migrasi Cloudflare, lalu catatan pembongkaran backend 18 Oktober 2026). Berkas itu satu-satunya sumber untuk milestone dan memuat pula syarat selesai yang berlaku umum tiap tahap.
 
 ## 12. Yang belum diverifikasi
 
 - Kinerja Gesture Recognizer di HP kelas menengah: ambang dan laju di PRD §7.2 masih nilai awal dan butuh uji pakai di perangkat sungguhan. Langkahnya ada di tabel manual pengguna `docs/DECISIONS.md` (M9).
-- Keterbacaan QR 168 px dari cetakan asli: butuh cetak 4R dan kamera HP. Langkah dan tabelnya di `docs/DECISIONS.md` (M9); ini salah satu butir "Selesai bila" M9.
+- Keterbacaan QR 168 px dari cetakan asli: butuh cetak 4R dan kamera HP, dan QR-nya sendiri butuh link yang bisa dibuat, jadi butir ini tertunda sampai fitur bagikan hidup lagi. Langkah dan tabelnya di `docs/DECISIONS.md` (M9).
 - Sentuhan, kamera sungguhan, dan unduhan di Chrome Android, Safari iOS, Edge, serta Firefox sungguhan. Mesin WebKit dan Gecko sudah tercakup otomatis (`npx playwright test --project=firefox --project=webkit`, hijau di M9); sisanya tabel manual pengguna.
 - Pembaca layar (NVDA, VoiceOver, TalkBack): audit axe dan uji keyboard otomatis sudah hijau, verifikasi dengan pembaca layar butuh pengguna.
-- LCP Welcome: **tercapai di produksi.** Median 2,416 detik pada preset seluler Lighthouse terhadap batas 2,5 detik (PRD §8); lima jalankan 16 Oktober 2026 terhadap Worker produksi, sebaran 2.317 sampai 2.517 ms, FCP 1,066 detik, TBT 62 ms, CLS 0, skor 97. Angka 3,17 detik (M9, `next start`) dan 3,745 detik (M10, `wrangler dev`) diukur di server lokal, bukan CDN, jadi keduanya melebih-lebihkan selisihnya. Langkah 1 rencana lama (mengeluarkan `sonner` dari jalur kritis Welcome lewat `DeferredToaster`) sudah dikerjakan: JS sebelum `load` di pratinjau turun 12,0 KB dan chunk sonner tidak lagi ikut pra-`load`, sementara median produksi bergerak 28 ms yang masih di dalam derau. Langkah 2 dan 3 rencana lama tidak lagi diperlukan untuk memenuhi target, tetapi tetap tersedia bila pengukuran di perangkat nyata kelak menunjukkan sebaliknya. Ekspor strip (median 922 ms) sudah di dalam target. Rincian, tabel, dan bukti bundelnya di `docs/DECISIONS.md` (M9, "Langkah 1 rencana"; M10, "Bukti verifikasi").
-- Streaming metadata/PPR: dilepas di M10 karena runtime Worker menolaknya di bawah permintaan bersamaan (rincian dan buktinya di `docs/DECISIONS.md` M10). `/s/[id]` dan `/r/[id]` kini dirender dinamis penuh dan tetap menjawab 404 sungguhan; kalau upstream (Next atau OpenNext) memperbaiki `CacheSignal` di workerd, PPR bisa dipertimbangkan lagi sebagai pekerjaan tersendiri.
-- Deploy ke Cloudflare: `npm run deploy` dan bukti produksi dicatat di `docs/DECISIONS.md` (M10). Pembongkaran proyek Supabase dan kaitan Vercel adalah tindakan dasbor pengguna.
-- Data produksi D1/R2: sumber daya dibuat segar di akun pengguna; tidak ada data lama untuk dimigrasikan karena repo ini belum pernah dideploy.
-
-Yang sudah selesai dan tidak perlu diperiksa lagi: perintah di §3 sudah dijalankan sejak M0, pemilihan registry neobrutalism diputuskan di M0 (`docs/DECISIONS.md`), dan dukungan `MediaRecorder` antar-browser sudah dipetakan di M7 (`pickLiveKind`) dengan proyek WebKit dan Firefox ikut hijau di M9. M10 memindahkan backend ke D1/KV/R2 lewat OpenNext dan menggantikan `@cloudflare/vitest-pool-workers` dengan `wrangler getPlatformProxy` untuk uji basis data (alasan dan buktinya di `docs/DECISIONS.md` M10).
+- LCP Welcome: pengukuran produksi terakhir (median 2,416 detik, 16 Oktober 2026) diambil terhadap deployment yang sudah dibongkar, jadi angka itu historis. Ukur ulang terhadap `next start` lokal bila angka yang berlaku dibutuhkan; angka lokal lama (3,17 detik di M9) melebih-lebihkan selisihnya karena bukan CDN.
+- Belum ada deployment publik: snapme dijalankan lewat `npm run dev` atau `next start` milik sendiri, tanpa layanan eksternal.

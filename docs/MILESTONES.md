@@ -328,3 +328,38 @@ Setelah M5, snapme sudah bisa dipakai sebagai photobooth lokal (tahap Alpha di P
 - `npx playwright test` dan `npm run test:e2e:cf` hijau. (terpenuhi: suite utama terhadap dev server **66 lolos, 8 dilewati, 0 gagal**; suite ber-binding terhadap pratinjau Cloudflare **30 lolos, 3 dilewati, 0 gagal**. Tiga yang dilewati adalah jalur "server tanpa binding" yang memang tidak berlaku saat binding ada. Tiga temuan yang diperbaiki di sepanjang jalur ini dicatat di `docs/DECISIONS.md` M10: PPR/Cache Components dilepas, helper uji dipersempit ke `/api/**`, dan `fetchSlotShots` memakai `cache: "no-store"`)
 - `npm run deploy` berhasil dan URL produksi menjawab; `npx wrangler d1 execute snapme-db --remote --command "select count(*) from strips"` menunjukkan baris uji; cron harian terlihat di dasbor. (terpenuhi: Worker `snapme` ter-deploy di `https://snapme.ikhsandyy-dev.workers.dev` (Version ID `26c7f70b-1280-4066-aaca-826f9e8f7c0c`), triggernya terdaftar saat deploy dengan `schedule: 0 3 * * *`; baris D1 remote `strips` 3, `relays` 1, `events` 1; 14 dari 15 pemeriksaan produksi lulus dan satu-satunya kegagalan adalah kesalahan skrip verifikasi, lalu bukti bit-identik diambil ulang dan lulus. Tabelnya di `docs/DECISIONS.md` M10. Cron harian di dasbor dikonfirmasi pengguna 16 Oktober 2026, dan deploy ulang pada tanggal yang sama menghasilkan Version ID `2dc38bdb-25ce-4016-a0ad-34423c94cbf9` dengan `GET /` 200)
 - Median `npm run perf:lcp` terhadap pratinjau dicatat di `docs/DECISIONS.md` M10. (terpenuhi: median LCP 3,745 detik dari lima jalankan terhadap `wrangler dev`, pembanding M9 3,17 detik di `next start`; FCP 1,11 detik, TBT 44 ms, CLS 0, skor 0,87)
+
+---
+
+## Pembongkaran backend Cloudflare (18 Oktober 2026, di luar daftar milestone)
+
+Keputusan pengguna: seluruh backend Cloudflare dicabut dari repo (Workers/OpenNext, D1, KV, R2,
+wrangler). snapme kini aplikasi klien murni: alur booth berjalan penuh secara lokal tanpa server,
+tidak ada unggahan ke mana pun, dan tidak ada env yang dibutuhkan build. Pekerjaan ini bukan
+milestone dan tidak punya kotak centang; catatan keputusan, daftar yang dihapus, dan konsekuensinya
+ada di `docs/DECISIONS.md` dan CHANGELOG (keduanya bertanggal sama).
+
+**Yang berubah pada repo**
+
+- Seluruh sisi server dan penopangnya dihapus: `src/server/`, `src/app/api/cron/`, `worker.ts`,
+  `open-next.config.ts`, `wrangler.jsonc`, `playwright.cf.config.ts`, `infra/`, `migrations/`,
+  `scripts/cf-typegen.mjs`, `scripts/patch-opennext.mjs`, `tests/support/`, `tests/app/api/`,
+  `tests/server/`, komponen `RelayJoinView`, `RelayCompleteView`, `RelayCancel`,
+  `relay/bootstrap.ts`, `StripOwnerActions`, `LiveStripVideo`
+- Dependensi `@opennextjs/cloudflare`, `aws4fetch`, `wrangler`, `lighthouse` dan skrip `cf:patch`,
+  `preview`, `preview:e2e`, `deploy`, `cf-typegen`, `test:e2e:cf`, `perf:lcp` dilepas; berkas env
+  `.env.example` dan `.dev.vars.example` (dan salinan lokalnya yang berisi kredensial R2) dihapus
+- Sembilan rute `/api` menjadi stub 503 "belum tersedia"; `/s/[id]` dan `/r/[id]` selalu 404 dengan
+  `noindex`; CSP tanpa host luar; `postinstall` tinggal `copy-mediapipe-wasm.mjs`
+
+**Konsekuensi pada dokumen ini**
+
+- Entri M6 sampai M10 di atas menggambarkan pekerjaan yang sudah selesai pada waktunya, tetapi
+  infrastrukturnya (link strip, unggahan, estafet ber-server, analitik tersimpan, deploy Workers)
+  sudah tidak ada lagi di repo. Entri itu dipertahankan apa adanya sebagai sejarah; kondisi kini
+  dideskripsikan README, ARCHITECTURE, dan PRD.
+- Butir "Selesai bila" yang menyebut `npm run test:e2e:cf`, `npm run perf:lcp`, atau deploy
+  produksi merujuk perintah yang sudah dilepas; jalannya tercatat di `docs/DECISIONS.md`.
+- Kriteria "QR pada cetakan asli terbaca" (M9) kini tertunda: QR sungguhan butuh link yang bisa
+  dibuat, dan pembuatan link selalu menjawab "belum tersedia".
+

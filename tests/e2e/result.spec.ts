@@ -25,10 +25,13 @@ const AWALAN_STATIS = [
   "/_next/",
   /* Rute fon server pengembangan Next.js: tetap berkas statis milik aplikasi. */
   "/__nextjs_font/",
+  "/brand/",
   "/mediapipe/",
   "/models/",
   "/stickers/",
   "/favicon.ico",
+  "/icon.svg",
+  "/apple-icon.png",
 ]
 /* M9 (PRD §4): satu-satunya rute server yang boleh disentuh alur dasar adalah
    analitik first-party. Isinya hanya nama peristiwa, tanpa gambar dan tanpa

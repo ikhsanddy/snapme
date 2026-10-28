@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs"
-
 import { expect, test } from "@playwright/test"
 
 import {
@@ -7,22 +5,12 @@ import {
   masukHias,
   masukHiasDenganQr,
   matikanGesture,
-  pasangSidangBaru,
 } from "./helpers"
 
-/* M6 (SH-04 sampai SH-06): link strip dan QR.
-
-   Bagian yang bisa dijalankan tanpa binding Cloudflare memeriksa sakelar QR,
-   kartu bagikan, jalur "belum tersedia" saat server tanpa binding, dan halaman
-   404. Alur sungguhan (buat link, buka di konteks lain, hapus) butuh binding
-   D1/R2/KV; jalankan dengan
-   `$env:CLOUDFLARE_E2E="1"; npx playwright test share.spec.ts`. */
-
-const PERLU_PROYEK =
-  "Butuh binding Cloudflare: jalankan dengan CLOUDFLARE_E2E=1 setelah .dev.vars diisi."
-/* Uji jalur 503 hanya bermakna saat server belum punya binding, dan `.dev.vars`
-   adalah penanda tunggalnya di mesin ini. */
-const ADA_DEV_VARS = existsSync(".dev.vars")
+/* M6 (SH-04 sampai SH-06): link strip dan QR. Server tidak lagi menyimpan
+   apa pun (backend Cloudflare dibongkar), jadi spek ini memeriksa sakelar QR,
+   kartu bagikan, jalur "belum tersedia" dari rute yang selalu 503, dan
+   halaman strip yang selalu 404. */
 
 /* Konvensi yang sama dengan spek lain (lihat helpers.ts): Gesture Snap
    dimatikan lewat localStorage. Di Chromium headless tanpa GPU, inferensi
@@ -33,7 +21,7 @@ test.beforeEach(async ({ page }) => {
   await matikanGesture(page)
 })
 
-test.describe("QR di strip tanpa binding Cloudflare", () => {
+test.describe("QR di strip", () => {
   test("sakelar QR menyalakan kotak QR di kanvas dan pemberitahuan izin", async ({
     page,
   }) => {
@@ -67,7 +55,6 @@ test.describe("QR di strip tanpa binding Cloudflare", () => {
   test("persetujuan unggah muncul dan server tanpa env menjawab belum tersedia", async ({
     page,
   }) => {
-    test.skip(ADA_DEV_VARS, "Sudah ada .dev.vars: jalur 503 hanya untuk server tanpa binding.")
     await masukHiasDenganQr(page)
     await page.getByRole("link", { name: "Selesai & Unduh" }).click()
     await page.waitForURL("**/booth/result")
@@ -105,63 +92,5 @@ test.describe("QR di strip tanpa binding Cloudflare", () => {
     await expect(
       page.getByRole("link", { name: "Mulai Foto" })
     ).toBeVisible()
-  })
-})
-
-test.describe("alur bagikan dengan binding Cloudflare", () => {
-  test.skip(process.env.CLOUDFLARE_E2E !== "1", PERLU_PROYEK)
-
-  test("buat link, buka dari perangkat lain, lalu hapus pemiliknya", async ({
-    page,
-    browser,
-  }) => {
-    /* Alur ini menembus jaringan sungguhan (unggah ke Storage, rute complete,
-       dua konteks browser), jadi batas bawaan 30 detik terlalu ketat. */
-    test.setTimeout(180_000)
-    /* Sidang pembatasan laju sendiri: kuota 10 link per jam dihitung per
-       sidang, jadi uji ber-link lain tidak boleh memakai kuncinya bersama. */
-    await pasangSidangBaru(page)
-    await masukHiasDenganQr(page)
-    await page.getByRole("link", { name: "Selesai & Unduh" }).click()
-    await page.waitForURL("**/booth/result")
-    await expect(page.getByAltText("Pratinjau strip")).toBeVisible()
-
-    await page.getByRole("button", { name: "Buat Link dan Unggah" }).click()
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Buat Link dan Unggah" })
-      .click()
-
-    await expect(page.getByText("Link strip dibuat.")).toBeVisible({
-      timeout: 30_000,
-    })
-    const alamat = page.getByTestId("strip-url")
-    await expect(alamat).toContainText("/s/")
-    const stripUrl = (await alamat.textContent())?.trim() ?? ""
-    expect(stripUrl).toMatch(/\/s\/[A-Za-z0-9_-]{12,}$/)
-    await expect(page.getByText(/Terhapus otomatis/)).toBeVisible()
-    await expect(
-      page.getByText("Strip kamu ada di link pribadi")
-    ).toBeVisible()
-
-    /* Konteks kedua mewakili teman: tanpa token hapus di perangkatnya. */
-    const teman = await browser.newContext()
-    const halamanTeman = await teman.newPage()
-    await halamanTeman.goto(stripUrl)
-    await expect(halamanTeman.getByAltText("Strip")).toBeVisible()
-    /* M7: strip tanpa klip tidak menampilkan pemutar versi hidup. */
-    await expect(halamanTeman.locator("video")).toHaveCount(0)
-    await expect(
-      halamanTeman.getByRole("button", { name: "Hapus strip" })
-    ).toHaveCount(0)
-    await teman.close()
-
-    /* Pembuat membuka linknya sendiri: tombol hapus muncul. */
-    await page.goto(stripUrl)
-    await expect(page.getByAltText("Strip")).toBeVisible()
-    await page.getByRole("button", { name: "Hapus strip" }).click()
-    await page.getByRole("button", { name: "Hapus" }).click()
-    await expect(page.getByText("Strip dihapus.")).toBeVisible()
-    await expect(page.getByText("Halaman tidak ditemukan.")).toBeVisible()
   })
 })

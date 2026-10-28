@@ -23,9 +23,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           # Node 24 is the toolchain this project is developed on. package.json
-          # requires 20 or newer; the route tests in tests/app/api run against a local
-          # workerd through `wrangler getPlatformProxy`, which is part of the
-          # installed devDependencies.
+          # requires 20 or newer.
           node-version: 24
           cache: npm
       - name: Install
@@ -36,8 +34,8 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
-      # No environment variables are set here, so this is the build with no R2
-      # origin in the CSP: the same build a clone without .env.local produces.
+      # No environment variables are needed: the app has no external origins
+      # to allow, so the same build runs everywhere.
       - name: Production build
         run: npm run build
 

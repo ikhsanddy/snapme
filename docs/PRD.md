@@ -9,13 +9,15 @@
 
 ## 1. Ringkasan
 
-snapme adalah photobooth di browser. Pengguna membuka kamera, berpose, menghias strip foto, lalu mengunduh atau mencetaknya, tanpa akun dan tanpa memasang aplikasi. Foto diproses di perangkat pengguna dan hanya diunggah bila pengguna sendiri membuat link.
+snapme adalah photobooth di browser. Pengguna membuka kamera, berpose, menghias strip foto, lalu mengunduh atau mencetaknya, tanpa akun dan tanpa memasang aplikasi. Foto diproses sepenuhnya di perangkat pengguna.
 
 Tiga hal yang membedakan snapme:
 
 1. **Gesture Snap** (fitur interaktif): angkat dua jari, tahan sebentar, hitung mundur berjalan sendiri.
 2. **Strip Estafet** (pembeda 1): satu orang mengisi setengah strip, mengirim link, dan temannya melengkapi dari perangkat lain kapan saja dalam 48 jam.
 3. **Strip Hidup + QR** (pembeda 2): tiap pose ikut terekam sebagai klip pendek. QR pada strip cetak membuka versi bergeraknya.
+
+**Status (18 Oktober 2026):** snapme berjalan tanpa server. Seluruh alur booth — kamera, Gesture Snap, hias, Strip Hidup, ekspor, cetak, simpanan sesi — berjalan di perangkat. Fitur yang memerlukan penyimpanan (buat link strip, QR yang membukanya, Strip Estafet, dan perekaman analitik) menampilkan pesan "belum tersedia" karena rutenya menjawab 503; halaman `/s/{id}` dan `/r/{id}` selalu menjawab 404. Tidak ada unggahan ke mana pun dan tidak ada env yang dibutuhkan build.
 
 ## 2. Masalah dan peluang
 
@@ -63,7 +65,7 @@ Angka di bawah adalah target awal untuk divalidasi setelah ada data, bukan hasil
 | Strip Hidup menambah nilai | Sesi yang mengaktifkan Strip Hidup dibagi sesi yang mencapai halaman Hias | 30% atau lebih |
 | Cepat dipakai | Waktu dari Welcome sampai foto pertama | di bawah 30 detik (median) |
 
-Pengukuran memakai analitik tanpa cookie dan tanpa data pribadi (hanya hitungan peristiwa). Pilihan alatnya ditetapkan di M9.
+Pengukuran memakai analitik tanpa cookie dan tanpa data pribadi (hanya hitungan peristiwa). Pilihan alatnya ditetapkan di M9. Selama backend dibongkar (18 Oktober 2026), rute peristiwanya menjawab 503 dan antrean klien membuang batchnya diam-diam, jadi belum ada angka yang terkumpul.
 
 ## 5. Lingkup
 
@@ -93,6 +95,8 @@ Welcome ─► Pilih layout ─► Ambil foto ─► Hias strip ─► Hasil
                               │              └─ Strip Hidup nyala/mati
                               └─ Estafet ke Teman ─► link /r/{id} ─► teman mengisi sisa ─► Hias ─► Hasil
 ```
+
+Kedua cabang bagikan di atas adalah rancangan v1. Sejak backend dibongkar 18 Oktober 2026, pembuatan link selalu berakhir di pesan "belum tersedia" (rute 503) dan halaman `/r/{id}` selalu 404; dialog persetujuan, kartu bagikan, dan sakelar QR tetap ada di UI. Cabang Unduh, Cetak, dan Strip Hidup berjalan penuh di perangkat.
 
 Jalur alternatif "Pakai Foto Galeri": dari Welcome langsung ke Hias dengan foto yang dipilih dari perangkat (P1).
 
@@ -175,8 +179,8 @@ Selama hitung mundur, kamera juga merekam rangkaian bingkai pendek. Strip bisa d
 |---|---|
 | Kinerja | Welcome: LCP di bawah 2,5 detik pada jaringan 4G dan HP kelas menengah. Modul gesture dan kanvas dimuat hanya di langkah yang memakainya. Ekspor strip selesai di bawah 2 detik (target) |
 | Aksesibilitas | WCAG 2.2 AA. Seluruh alur bisa diselesaikan dengan keyboard dan tanpa gesture. Detail di DESIGN-SYSTEM §11 |
-| Privasi | Lokal dulu: tidak ada foto yang meninggalkan perangkat tanpa tindakan pengguna. Unggahan disimpan pribadi, link tidak bisa ditebak, terhapus otomatis. Tidak ada pelacak pihak ketiga |
-| Keamanan | Semua akses data lewat server. Batas ukuran dan jenis berkas. Pembatasan laju pembuatan link. Detail di ARCHITECTURE §8 |
+| Privasi | Lokal dulu: tidak ada foto yang meninggalkan perangkat. Saat ini tidak ada unggahan sama sekali karena snapme tidak punya backend. Tidak ada pelacak pihak ketiga. Rincian di ARCHITECTURE §8 |
+| Keamanan | Tidak ada data pengguna di server mana pun. Batas ukuran dan jenis berkas divalidasi di klien. Header keamanan tanpa host luar. Detail di ARCHITECTURE §8 |
 | Browser | Dua versi mayor terakhir Chrome, Edge, Firefox, dan Safari (desktop dan mobile). Kamera membutuhkan HTTPS |
 | Responsif | 360 px sampai 1440 px ke atas. Tata letak mengikuti DESIGN-SYSTEM §5 |
 | Hukum | Foto wajah adalah data pribadi. Persetujuan eksplisit sebelum unggah dan hak hapus mengikuti semangat UU No. 27 Tahun 2022 (PDP). Ini bukan nasihat hukum: periksa ulang bila snapme dipakai komersial |
@@ -204,7 +208,7 @@ Selama hitung mundur, kamera juga merekam rangkaian bingkai pendek. Strip bisa d
 | Deteksi gesture lambat atau meleset di HP lama | Fitur utama terasa rusak | Tombol selalu ada (GS-05), ambang disetel dari uji pakai, deteksi diturunkan resolusinya |
 | Pengguna menolak izin kamera | Alur berhenti | Layar penjelas sebelum dialog (FR-04) dan jalur Foto Galeri (FR-13) |
 | Foto orang lain diunggah tanpa izin lewat estafet | Privasi | Persetujuan di kedua sisi, link pribadi, masa simpan pendek, tombol hapus |
-| Biaya penyimpanan membengkak | Operasional | Batas ukuran berkas, kedaluwarsa otomatis, pembatasan laju |
+| Biaya penyimpanan membengkak | Operasional | Tidak relevan sementara snapme tanpa backend (tidak ada penyimpanan). Bila penyimpanan kembali: batas ukuran berkas, kedaluwarsa otomatis, pembatasan laju |
 | QR kecil gagal dipindai dari cetakan | Strip Hidup tidak sampai ke pengguna | Ukuran minimum di SH-04 dan uji cetak sebagai syarat rilis |
 | Perbedaan perekaman video antar browser | Unduh versi hidup tidak konsisten | Deteksi kemampuan, sembunyikan tombol bila tidak didukung (SH-03) |
 
@@ -216,7 +220,7 @@ Saya mengambil keputusan berikut agar dokumen bisa dipakai. Ubah bila tidak sesu
 2. snapme gratis, tanpa akun, tanpa pembayaran.
 3. Masa simpan: strip 7 hari, link estafet 48 jam.
 4. Estafet dibatasi 2 orang pada v1.
-5. Hosting Cloudflare Workers dan D1, KV, R2 paket gratis (ARCHITECTURE §3).
+5. Tanpa backend: snapme berjalan sepenuhnya di klien dan tidak butuh hosting khusus (ARCHITECTURE §3). Bila fitur bagikan dihidupkan lagi, pilihan hosting dan penyimpanannya diputuskan ulang.
 6. Tema terang saja pada v1 (DESIGN-SYSTEM §0).
 
 ## Sumber pemindaian pembanding

@@ -2,41 +2,31 @@
 
 ![snapme](public/brand/snapme-mark.svg)
 
-[![Live demo](https://img.shields.io/badge/demo-snapme.ikhsandyy--dev.workers.dev-3b82f6?logo=cloudflare&logoColor=white)](https://snapme.ikhsandyy-dev.workers.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-bd0000)](LICENSE)
 [![CI](https://github.com/ikhsanddy/snapme/actions/workflows/ci.yml/badge.svg)](https://github.com/ikhsanddy/snapme/actions/workflows/ci.yml)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white)](https://nextjs.org)
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-snapme is a photobooth that runs in the browser: open the camera, pose, decorate the strip, then
-download or print it. No account, no install, and a photo leaves the device only when the user
-makes a link from it.
+snapme is a photobooth that runs entirely in your browser: open the camera, pose, decorate the
+strip, then download or print it. No account, no install, no server. Nothing you photograph ever
+leaves the device, because there is nothing to upload it to.
 
 Three things it does differently:
 
 1. **Gesture Snap**: raise two fingers, hold for a moment, and the countdown runs itself. Nobody
    has to run back to the shutter.
-2. **Strip Estafet**: one person fills half the strip, sends a link, and a friend completes the
-   other half from another device, any time within 48 hours.
-3. **Strip Hidup + QR**: every pose is also recorded as a short clip, and the QR on the printed
-   strip opens the moving version of that strip.
+2. **Strip Estafet**: the idea is that one person fills half the strip and a friend completes the
+   other half from another device. The invite UI is in the app, but making the link is the one step
+   that needs a backend, and it currently answers *"belum tersedia"* (not yet available).
+3. **Strip Hidup + QR**: every pose is also recorded as a short clip you can download. The QR that
+   would open a moving strip page depends on the same unavailable link step.
 
-**Status:** `v0.1.0`. The full v1 scope of the PRD is implemented and deployed, milestones M0 to
-M10 are complete, and what changed in each one is in [CHANGELOG.md](CHANGELOG.md). What is verified
-and what still needs a real device is listed in
-[ARCHITECTURE.md §12](docs/ARCHITECTURE.md#12-yang-belum-diverifikasi).
-
-## Live demo
-
-| Resource | URL |
-| --- | --- |
-| App | <https://snapme.ikhsandyy-dev.workers.dev> |
-
-The hosted instance runs on Cloudflare Workers (OpenNext), with D1 for metadata, KV for the
-analytics budget, and a private R2 bucket for strips and clips. It exists to show the thing
-working, without an availability commitment. Everything except link sharing runs with no backend
-at all: with no bindings configured, the data routes answer 503 and the booth still works end to
-end. The deployment runbook is in [ARCHITECTURE.md §3](docs/ARCHITECTURE.md#3-stack).
+**Status:** `v0.1.0`. The full v1 scope of the PRD was implemented through milestones M0 to M10
+(see [CHANGELOG.md](CHANGELOG.md)). On 2026-10-18 the entire backend was dismantled at the owner's
+decision, so snapme is now a client-only app: the booth runs locally end to end, and the features
+that stored or shared data report *"belum tersedia"* instead. What each milestone changed is in
+[CHANGELOG.md](CHANGELOG.md); the teardown itself has its own dated entry there and in
+[docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Features
 
@@ -52,36 +42,38 @@ end. The deployment runbook is in [ARCHITECTURE.md §3](docs/ARCHITECTURE.md#3-s
 - Export: 600 x 1800 PNG (2 x 6 inches at 300 dpi, no EXIF) and a 1200 x 1800 4R sheet with a cut
   line
 - Strip Hidup: 10 frames per pose as a short WebM or MP4 clip, following what the browser supports
-- QR on the strip that opens `/s/{id}`
-- Strip Estafet between two devices, single claim, relay link expires in 48 hours and the strip in
-  7 days
+- QR switch on the strip canvas and a share card with a consent dialog; the link creation behind
+  them is the part that answers *"belum tersedia"*
+- Strip Estafet invite card with the same consent dialog; relay links answer *"belum tersedia"* the
+  same way
 - Gallery picker: use an existing photo instead of the camera (JPEG, PNG, WebP, HEIC where the
   browser supports it)
 - Sessions survive a reload through IndexedDB, with a "Mulai dari awal" button that clears them
 - Accessibility: WCAG 2.2 AA target, the whole flow works with a keyboard, and every gesture has a
   button equivalent
-- Analytics: first-party event counts only, no cookies, no third-party scripts
+- Analytics: first-party event counts only, no cookies, no third-party scripts; the queue stays in
+  the browser and silently drops its batches while the endpoint answers 503
 
 The interface is in Indonesian, and the fixed labels are listed in
 [DESIGN-SYSTEM.md §12](docs/DESIGN-SYSTEM.md#12-suara-dan-teks-antarmuka).
 
 ## Privacy
 
-- The camera, gesture detection, editing, and export all run in the browser. No image is uploaded
-  during capture, and an automated test asserts that no request carrying image data leaves
-  `/booth/capture`.
-- Uploads happen only after an explicit consent dialog that names what is uploaded, who can see
-  it, and when it is deleted, and they go straight from the browser to a private R2 bucket through
-  presigned URLs.
-- Strip links are 12-character IDs or longer, are `noindex`, and send no referrer. The delete token
-  stays on the device that created the strip.
-- Fonts, the gesture model, and its wasm are self-hosted. There is no third-party tracker.
-- What is processed where, what is stored, and how to delete it is in `/privasi` in the app.
+- Everything runs in the browser: camera, gesture detection, editing, export, and the Strip Hidup
+  recorder. No image or clip is sent anywhere, and an automated test asserts that no request
+  carrying image data leaves `/booth/capture`.
+- There is no upload path at all. The share and relay dialogs still ask for consent before they
+  would have uploaded anything, and both currently end in the *"belum tersedia"* message.
+- The pages that once displayed shared strips and relays (`/s/{id}`, `/r/{id}`) always answer 404
+  and stay `noindex` with `no-referrer`.
+- Fonts, the gesture model, and its wasm are self-hosted. There is no third-party tracker and the
+  CSP allows no external hosts.
+- What is processed where is described in `/privasi` in the app.
 
 ## Getting started
 
 Node 20 or newer is required (the project is developed and verified on Node 24); `npm ci` installs
-from the lockfile.
+from the lockfile. No environment variables or accounts are needed for the build.
 
 ```sh
 git clone https://github.com/ikhsanddy/snapme.git
@@ -91,15 +83,7 @@ npm run dev
 ```
 
 `npm run dev` serves the app on <http://localhost:3000>. The camera needs a secure context: HTTPS
-or `localhost`. Without Cloudflare bindings the app runs with no backend, so the share, QR, and
-relay steps answer 503 while capture, editing, and export work normally.
-
-To run the production-fidelity build on the Workers runtime (port 8787 in `wrangler dev`):
-
-```sh
-cp .dev.vars.example .dev.vars   # then fill in the secrets
-npm run preview
-```
+or `localhost`.
 
 End-to-end tests need a browser once: `npx playwright install chromium`.
 
@@ -107,50 +91,35 @@ End-to-end tests need a browser once: `npx playwright install chromium`.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Next.js dev server (no bindings; data routes answer 503) |
+| `npm run dev` | Next.js dev server |
 | `npm run build` | Production build |
-| `npm run preview` | Production-fidelity preview: OpenNext build, then `wrangler dev` on 8787 |
-| `npm run preview:e2e` | Same, with the `e2e` wrangler env (remote R2) for network tests |
-| `npm run deploy` | OpenNext build, then deploy the Worker (requires Cloudflare credentials) |
-| `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` (generated on install too) |
+| `npm run brand:icons` | Derive `apple-icon.png` and `favicon.ico` from the brand SVGs |
 | `npm run lint` | ESLint |
 | `npm run typegen` | Generate the Next.js route types (`LayoutProps`, `PageProps`) without a full build |
 | `npm run typecheck` | Route types, then `tsc --noEmit` |
-| `npm test` | Vitest: units, components, and route tests against real D1, R2, and KV |
+| `npm test` | Vitest: units, components, and security guards |
 | `npx playwright test` | Playwright end-to-end tests against the dev server |
-| `npm run test:e2e:cf` | End-to-end tests against the Cloudflare preview |
-| `npm run perf:lcp` | Lighthouse mobile preset against the preview |
 
 ## Configuration
 
-| File | Committed | Contents |
-| --- | --- | --- |
-| `wrangler.jsonc` | Yes | Worker name, bindings, Cron Trigger, and the `e2e` env. The account ID, D1 database ID, and KV namespace ID in it are identifiers, not credentials: they grant nothing without an API token |
-| `.env.example` | Yes | The single build-time variable (`R2_ACCOUNT_ID`, used to build the CSP) |
-| `.dev.vars.example` | Yes | Template for the runtime secrets: `CRON_SECRET`, `RATE_LIMIT_SALT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` |
-| `.env.local` | No | Your copy of `.env.example`; also used by `next build` |
-| `.dev.vars` | No | Your copy of `.dev.vars.example`, read by `wrangler dev` |
-| `cloudflare-env.d.ts` | No | Binding types derived from `wrangler.jsonc`; `npm ci` and `npm run cf-typegen` generate it |
+None. snapme has no build-time or runtime environment variables, no external services, and no
+secrets to fill in.
 
-Secrets never belong in the repository. Locally they live in the ignored `.dev.vars`; in production
-they are set with `wrangler secret put` or in the Cloudflare dashboard. See
-[SECURITY.md](.github/SECURITY.md).
+Secrets never belong in the repository. If you believe a credential was committed, do not open a
+public issue: follow [SECURITY.md](.github/SECURITY.md).
 
 ## Repository layout
 
 | Path | Contents |
 | --- | --- |
-| `src/app` | App Router pages and the API routes |
+| `src/app` | App Router pages and the `/api` stub routes that answer 503 |
 | `src/components` | `ui`: the shadcn/ui primitives restyled with the design tokens; `site`: the shell shared by the site pages and the booth (wordmark, header) |
 | `src/features` | Booth logic and its components, by area: booth shell, camera, capture, gesture, editor, result, gallery, live, relay, session, share, metrics |
 | `src/lib` | Isomorphic logic: strip geometry, route schemas, relay slots, the client fetch helpers, and the analytics queue |
-| `src/server` | Server-only modules: the binding seam, D1 statements, R2 presigning, rate limiting, tokens, expiry, the purge job. The client bundle never imports them (`tests/security`) |
 | `src/stores` | Booth session state (zustand) |
-| `tests` | Vitest, mirroring `src/`: `tests/app/api` runs the routes on real D1, R2, and KV bindings, `tests/support` holds the shared harness |
+| `tests` | Vitest, mirroring `src/`: units, components, stores, plus the client-bundle security guard in `tests/security` |
 | `tests/e2e` | Playwright specs, including the fake-camera flow and the privacy assertion |
 | `docs` | The working documents (PRD, design system, architecture, milestones), `docs/DECISIONS.md`, and `docs/ui-reference` |
-| `infra` | Cloudflare resources that are applied by hand, such as the R2 bucket CORS rules |
-| `migrations` | D1 migrations |
 | `public` | Sticker assets and the self-hosted gesture model; the MediaPipe wasm is copied from `node_modules` on install |
 
 ## Documentation
@@ -159,9 +128,9 @@ they are set with `wrangler secret put` or in the Cloudflare dashboard. See
 | --- | --- |
 | [docs/PRD.md](docs/PRD.md) | What is built, priorities, and acceptance criteria |
 | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) | Tokens, typography, components, layout, accessibility |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, folder structure, routes, data model, testing, workflow |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, folder structure, routes, testing, workflow |
 | [docs/MILESTONES.md](docs/MILESTONES.md) | Release plan with the acceptance criteria of each phase |
-| [CHANGELOG.md](CHANGELOG.md) | What changed per milestone |
+| [CHANGELOG.md](CHANGELOG.md) | What changed per milestone, plus the backend teardown |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log, including what was measured and what failed |
 
 These documents are written in Indonesian; code, identifiers, filenames, and commit messages are in

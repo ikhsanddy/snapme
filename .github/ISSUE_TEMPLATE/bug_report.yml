@@ -48,9 +48,7 @@ body:
       label: How was snapme run?
       description: Select how you reached the app.
       options:
-        - Hosted instance (https://snapme.ikhsandyy-dev.workers.dev)
         - Local dev (npm run dev)
-        - Local preview (npm run preview, Cloudflare bindings)
         - Other self-hosted build
     validations:
       required: true

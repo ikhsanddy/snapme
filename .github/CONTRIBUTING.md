@@ -14,9 +14,9 @@ repository, and how to propose a change.
   ```
 
 - A camera or a fake one. `npm run dev` needs a secure context: `localhost` counts.
-- Optional, for the steps that touch stored data: a Cloudflare account with a D1 database, a KV
-  namespace, and an R2 bucket, wired through `wrangler.jsonc` and `.dev.vars`. Without them the app
-  runs with no backend and only the share and relay steps are unavailable.
+- Nothing else. snapme is a client-only app: there is no backend to run, no database, and no
+  environment variables to configure. The share and relay steps answer 503 ("not yet available")
+  by design.
 
 ## Getting started
 
@@ -42,18 +42,13 @@ Useful entry points:
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Next.js dev server on <http://localhost:3000> |
-| `npm run build` | Production build |
-| `npm run preview` | OpenNext build, then `wrangler dev` on port 8787 |
-| `npm run preview:e2e` | Same, with the `e2e` wrangler env for network tests |
-| `npm run deploy` | Build and deploy the Worker (maintainer action; needs Cloudflare credentials) |
-| `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` (generated on install too) |
+| `npm run build` | Production build (no environment variables needed) |
+| `npm run brand:icons` | Derive `apple-icon.png` and `favicon.ico` from the brand SVGs |
 | `npm run lint` | ESLint |
 | `npm run typegen` | Generate the Next.js route types (`LayoutProps`, `PageProps`) without a full build |
 | `npm run typecheck` | Route types, then `tsc --noEmit` |
-| `npm test` | Vitest: units, components, and route tests against real D1, R2, and KV |
+| `npm test` | Vitest: units, components, stores, and the client-bundle security guard |
 | `npx playwright test` | End-to-end tests against the dev server |
-| `npm run test:e2e:cf` | End-to-end tests against the Cloudflare preview |
-| `npm run perf:lcp` | Lighthouse mobile preset against the preview (Welcome LCP budget) |
 
 Before opening a pull request, the checks that must pass are `npm run lint`, `npm run typecheck`,
 `npm test`, `npm run build`, and the Playwright suite for the flow you touched:
@@ -71,18 +66,18 @@ These rules are not negotiable in a pull request:
   [Conventional Commits](https://www.conventionalcommits.org/). Interface text and the working
   documents (`docs/PRD.md`, `docs/DESIGN-SYSTEM.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`)
   are in Indonesian.
-- The repository root holds only entry points and tool configs (`worker.ts`, `next.config.ts`,
-  `wrangler.jsonc`, the test and lint configs, `package.json`). Documents go to `docs/`, tests to
-  `tests/` (units) and `tests/e2e/` (Playwright), hand-applied Cloudflare resources to `infra/`.
-  Before opening a pull request, `npx tsc --noEmit` must leave no build artifact in the root.
+- The repository root holds only entry points and tool configs (`next.config.ts`, the test and
+  lint configs, `package.json`). Documents go to `docs/`, tests to `tests/` (units) and
+  `tests/e2e/` (Playwright). Before opening a pull request, `npx tsc --noEmit` must leave no
+  build artifact in the root.
 - One milestone per commit. `MILESTONES.md` is the only source of milestones; do not start the next
   one unsolicited.
 - Screens are owned by features, so a screen never has two homes. `src/app` holds routes only
   (`page.tsx`, `layout.tsx`, `route.ts`, `globals.css`). `src/components/ui` holds the shadcn/ui
   primitives as the CLI writes them, `src/components/site` holds only the shell shared by the site
   pages and the booth (wordmark, header), and every product component lives inside its feature at
-  `src/features/<area>` next to the logic it renders. `src/server` must never be imported by a
-  client bundle (`tests/security`), and `src/lib` holds only modules both sides may use.
+  `src/features/<area>` next to the logic it renders. The client bundle stays free of server-only
+  modules and secrets (`tests/security`).
 - Use what already exists before writing something: a platform feature, the stack table in
   `ARCHITECTURE.md §3`, then a component from shadcn/ui or an npm package. Writing it yourself is
   reserved for the product-specific components in `DESIGN-SYSTEM.md §9`, and the reason belongs in
@@ -108,8 +103,9 @@ These rules are not negotiable in a pull request:
 
 ## Secrets
 
-Never commit a credential. `.dev.vars` and `.env.local` are ignored and only their `.example`
-templates belong in the repository; production secrets are set with `wrangler secret put`. If you
+Never commit a credential. snapme currently needs none: there are no environment variables for the
+build or at runtime, and the repository carries no `.env*` or `.dev.vars` files. If a change needs
+a credential, it must keep reading it from the environment, never from a committed file. If you
 believe a secret was committed, do not open a public issue: follow
 [SECURITY.md](SECURITY.md) and rotate the credential first.
 

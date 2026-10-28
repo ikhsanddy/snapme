@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  isExpired,
-  RELAY_TTL_HOURS,
-  relayExpiry,
-} from "@/server/expiry"
 import { LAYOUTS, type LayoutId } from "@/lib/layouts"
 import {
   ghostSlotFor,
@@ -13,10 +8,7 @@ import {
 } from "@/lib/relaySlots"
 
 /* PRD §7.3 (SE-01, SE-04, SE-05, SE-08) dan MILESTONES M8: pembagian slot
-   estafet dan umur linknya. Fungsi murni, jadi diuji tanpa kamera maupun
-   basis data. */
-
-const NOW = new Date("2026-10-14T09:00:00.000Z")
+   estafet. Fungsi murni, jadi diuji tanpa kamera maupun basis data. */
 
 describe("pembagian slot estafet", () => {
   it("pembuat mengisi indeks genap, teman indeks ganjil, di semua layout", () => {
@@ -57,22 +49,5 @@ describe("pembagian slot estafet", () => {
     expect(ghostSlotFor(1)).toBe(0)
     expect(ghostSlotFor(2)).toBe(1)
     expect(ghostSlotFor(3)).toBe(2)
-  })
-})
-
-describe("kedaluwarsa estafet", () => {
-  it("tepat 48 jam sejak dibuat", () => {
-    const expiry = relayExpiry(NOW)
-    expect(expiry.toISOString()).toBe("2026-10-16T09:00:00.000Z")
-    expect(expiry.getTime() - NOW.getTime()).toBe(RELAY_TTL_HOURS * 3_600_000)
-  })
-
-  it("batas inklusif dan tanggal rusak tidak dianggap kedaluwarsa", () => {
-    expect(isExpired(relayExpiry(NOW).toISOString(), NOW)).toBe(false)
-    expect(
-      isExpired(new Date(relayExpiry(NOW).getTime() - 1).toISOString(), NOW)
-    ).toBe(false)
-    expect(isExpired(relayExpiry(NOW).toISOString(), relayExpiry(NOW))).toBe(true)
-    expect(isExpired("bukan-tanggal", NOW)).toBe(false)
   })
 })

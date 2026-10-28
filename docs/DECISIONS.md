@@ -1381,3 +1381,41 @@ Yang **tidak** diubah:
 | `npm run build` | hijau; tabel rutenya memuat `/icon.svg` dan `/apple-icon.png` sebagai rute statis, jadi Next membaca konvensi berkas `app/` yang baru |
 | `npm run lint` | hijau. Keluaran `/brag` ditambahkan ke `globalIgnores` `eslint.config.mjs`: komposisi Hyperframes membawa `gsap.min.js` yang gagal aturan proyek (alias `this`), sama seperti wasm MediaPipe |
 | Header di `/booth/layout` diperiksa di peramban | Lambang 40 x 40 px utuh di sebelah "snapme", berdampingan dengan stepper LAYOUT, FOTO, HIAS, HASIL |
+
+## Pembongkaran backend Cloudflare (18 Oktober 2026)
+
+Keputusan pengguna: cabut seluruh backend Cloudflare dari snapme (Workers dengan adapter OpenNext,
+D1, KV, R2, dan `wrangler`). snapme kini aplikasi klien murni: booth berjalan penuh di browser,
+tidak ada unggahan ke mana pun, dan tidak ada env yang dibutuhkan build. Alasan pengguna tidak
+dirinci di sini; yang dicatat adalah keputusannya, daftar yang dihapus, dan konsekuensinya.
+
+### Yang dihapus
+
+| Kelompok | Isi |
+|---|---|
+| Sisi server | `src/server/` seluruhnya (`cloudflare.ts`, `db/`, `r2/`, `rateLimit.ts`, `expiry.ts`, `purge.ts`, `tokens.ts`), `src/app/api/cron/`, `worker.ts`, `open-next.config.ts`, `wrangler.jsonc`, `playwright.cf.config.ts`, `infra/`, `migrations/`, `scripts/cf-typegen.mjs`, `scripts/patch-opennext.mjs` |
+| Komponen dan modul di atas backend | `RelayJoinView`, `RelayCompleteView`, `RelayCancel`, `relay/bootstrap.ts`, `StripOwnerActions`, `LiveStripVideo` |
+| Uji | `tests/support/` (harness miniflare), `tests/app/api/`, `tests/server/`, jalur e2e ber-binding (`CLOUDFLARE_E2E`) dan helper `pasangSidangBaru`/`undangEstafet` |
+| Dependensi | `@opennextjs/cloudflare`, `aws4fetch`, `wrangler`, `lighthouse` |
+| Skrip npm | `cf:patch`, `preview`, `preview:e2e`, `deploy`, `cf-typegen`, `test:e2e:cf`, `perf:lcp` |
+| Berkas env | `.env.example`, `.dev.vars.example`, dan salinan lokalnya (`.env.local`, `.dev.vars` yang berisi kredensial R2) dihapus dari mesin pengembangan |
+
+### Konsekuensi
+
+| Keputusan | Alasan | Bukti |
+|---|---|---|
+| Sembilan rute `/api` dipertahankan sebagai stub yang menjawab 503 dengan pesan tetap ("Pembuatan link belum tersedia." dan seterusnya), bukan dihapus | Klien (`features/share/api.ts`, `features/relay/api.ts`, antrean analitik) masih memanggil rute-rute itu; 503 membuat UI menampilkan pesan "belum tersedia" yang sudah ada jalurnya, bukan galat jaringan mentah atau 404 | `src/app/api/**` sembilan berkas, masing-masing satu konstanta `UNAVAILABLE` dan satu handler |
+| `/s/[id]` dan `/r/[id]` menjadi stub `notFound()` dengan metadata `robots: noindex` | Tidak ada strip atau estafet yang tersimpan, jadi tidak ada `id` yang sah; halaman yang mengambil data (`RelayJoinView`, `StripOwnerActions`, `LiveStripVideo`) sudah dihapus duluan | Kedua `page.tsx` hanya memanggil `notFound()`; header `noindex`/`no-referrer` untuk `/s/*` dan `/r/*` tetap di `next.config.ts` |
+| UI bagikan/estafet dipertahankan: dialog persetujuan, kartu bagikan, kartu undang estafet, kotak QR di kanvas, sakelarnya | Alur foto dan dialog persetujuannya (PRD SE-02, SH-04) adalah perilaku produk, bukan milik backend; ia kini selalu berakhir di pesan "belum tersedia" | `features/share/` dan `features/relay/` utuh kecuali modul yang dihapus di atas |
+| Antrean analitik tidak dihapus | `lib/analytics.ts` best-effort tanpa pengulangan: selama `POST /api/events` menjawab 503, batchnya dibuang diam-diam tanpa mengganggu alur foto | Antrean dan `analyticsEvents.ts` tetap ada; diuji `tests/lib/analytics-queue.test.ts` |
+| CSP disusun ulang tanpa host luar; `postinstall` tinggal `copy-mediapipe-wasm.mjs`; `lib/schemas.ts` dipangkas ke ekspor yang dipakai klien | Tidak ada unggahan ke layanan luar, jadi CSP tidak punya host yang perlu diizinkan; penambal OpenNext dan tipe binding tidak ada gunanya tanpa Workernya | `next.config.ts`, `package.json`, `src/lib/schemas.ts` |
+| Dokumen kondisi-kini ditulis ulang (README, ARCHITECTURE, PRD, CONTRIBUTING, SECURITY); entri lama CHANGELOG, DECISIONS, MILESTONES tidak disentuh | Dokumen kondisi-kini tidak boleh lagi mengklaim stack aktif yang sudah tidak ada; sejarah tetap sejarah | Pencarian `cloudflare|wrangler|d1|workers\.dev|opennext` di `README.md docs .github` hanya menyisakan konteks sejarah |
+
+### Verifikasi
+
+| Perintah | Hasil |
+|---|---|
+| Pemeriksaan berkas | `worker.ts`, `wrangler.jsonc`, `open-next.config.ts`, `playwright.cf.config.ts`, `infra/`, `migrations/`, `.env.example`, `.dev.vars.example` tidak ada lagi di repo; `scripts/` tinggal `copy-mediapipe-wasm.mjs` dan `render-brand-icons.mjs` |
+| `package.json` | Skrip tinggal `dev`, `build`, `postinstall`, `brand:icons`, `lint`, `typegen`, `typecheck`, `test`; tidak ada lagi `@opennextjs/cloudflare`, `aws4fetch`, `wrangler`, `lighthouse` |
+| Pencarian dokumen kondisi-kini | `grep -rniE "cloudflare|wrangler|d1|workers\.dev|opennext" README.md docs .github` tidak menyisakan klaim stack aktif; kemunculan tersisa hanya di entri sejarah (CHANGELOG, DECISIONS, MILESTONES) dan catatan yang menandai masa lalu |
+
