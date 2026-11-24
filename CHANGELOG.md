@@ -12,6 +12,8 @@ carries its own mark. Nothing else in the flow changed.
 
 ### Added
 
+- Project-scoped `shadcn/improve` Agent Skill for OpenCode, pinned by `skills-lock.json`; it
+  provides read-only, evidence-based performance audits and implementation plans
 - snapme's own mark, and the wordmark, favicon, and app icon built from it. The mark is a paper tile
   holding a fan of four photo prints; the favicon uses a single print, because four of them collapse
   into a colour patch at 16 px. `public/brand/snapme-mark.svg` is the source, `src/app/icon.svg` the
