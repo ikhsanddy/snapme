@@ -12,7 +12,6 @@ import {
 } from "@phosphor-icons/react"
 import { useReducedMotion } from "motion/react"
 import Webcam from "react-webcam"
-import { toast } from "sonner"
 
 import { BoothPanel } from "@/features/booth/BoothPanel"
 import { CameraPicker } from "@/features/camera/CameraPicker"
@@ -288,8 +287,11 @@ export default function CaptureStepPage() {
       }
       setRelay({ id: created.id, role: "host", lockedSlots: [], ghostEnabled: false })
       track("relay_created")
+      /* Static import would put Sonner back in capture's first-load bundle. */
+      const { toast } = await import("sonner")
       toast.success("Link estafet dibuat.")
     } catch (error) {
+      const { toast } = await import("sonner")
       toast.error(
         error instanceof Error
           ? error.message
@@ -302,6 +304,7 @@ export default function CaptureStepPage() {
 
   async function handleShare(url: string) {
     const outcome = await shareLink(url, "Strip Estafet snapme")
+    const { toast } = await import("sonner")
     if (outcome === "copied") {
       toast.success("Tautan disalin.")
     } else if (outcome === "shared") {

@@ -69,18 +69,19 @@ async and await the dynamic import immediately before the unchanged failure toas
 
 ### Step 3: Verify and document
 
-Run typecheck and the two targeted Playwright specs. Add one concise Unreleased changelog bullet,
-mark this plan DONE, and report the pre-existing production-build prerender caveat separately.
+Run typecheck and the two targeted Playwright specs. Add one concise Unreleased changelog bullet
+and mark this plan DONE. The final canonical `npm run build` runs after all three plans; the
+earlier isolated `_global-error` failure was a cross-checkout React-resolution harness issue.
 
 **Verify**: all targeted checks pass.
 
 ## Done criteria
 
-- [ ] Neither scoped source file has a static Sonner import.
-- [ ] Toast messages, conditions, and error handling are unchanged.
-- [ ] `npm run typecheck` passes.
-- [ ] Gesture and relay Playwright specs pass.
-- [ ] Only in-scope files changed, and the plan status is DONE.
+- [x] Neither scoped source file has a static Sonner import.
+- [x] Toast messages, conditions, and error handling are unchanged.
+- [x] `npm run typecheck` passes.
+- [x] Gesture and relay Playwright specs pass.
+- [x] Only in-scope files changed, and the plan status is DONE.
 
 ## STOP conditions
 

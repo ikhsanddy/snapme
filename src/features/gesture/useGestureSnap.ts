@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react"
 import type Webcam from "react-webcam"
-import { toast } from "sonner"
 
 import type { CaptureEvent, CapturePhase } from "@/features/capture/machine"
 
@@ -151,12 +150,14 @@ export function useGestureSnap({
         /* Sumber baru menandai loop boleh dijalankan lagi setelah sakelar mati. */
         setLoadRevision((value) => value + 1)
       })
-      .catch(() => {
+      .catch(async () => {
         loadingRef.current = false
         if (cancelled) {
           return
         }
         setStatus("failed")
+        /* Static import would put Sonner back in capture's first-load bundle. */
+        const { toast } = await import("sonner")
         toast("Gesture Snap gagal dimuat. Tombol kamera tetap bisa dipakai.")
       })
 

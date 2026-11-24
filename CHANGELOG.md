@@ -24,6 +24,8 @@ carries its own mark. Nothing else in the flow changed.
 
 ### Changed
 
+- Sonner is imported only when capture and gesture-failure toasts are needed, keeping its chunk
+  out of the capture route's first-load JavaScript without changing messages or error handling
 - Server-only modules moved from `src/lib` to `src/server` (the binding seam, `db/`, `r2/`, `purge`,
   `rateLimit`, `tokens`, `expiry`), so the client-boundary rule is a path, not a hand-kept list
 - `tests/` now mirrors `src/` (`tests/app/api`, `tests/components`, `tests/features`, `tests/lib`,
