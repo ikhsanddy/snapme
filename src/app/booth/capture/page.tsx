@@ -40,6 +40,7 @@ import { shareLink } from "@/features/relay/shareLink"
 import { firstPhotoBucketEvent, track } from "@/lib/analytics"
 import { LAYOUTS } from "@/lib/layouts"
 import { ghostSlotFor, hostSlotIndices } from "@/lib/relaySlots"
+import { loadToast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import {
   allFilled,
@@ -287,12 +288,11 @@ export default function CaptureStepPage() {
       }
       setRelay({ id: created.id, role: "host", lockedSlots: [], ghostEnabled: false })
       track("relay_created")
-      /* Static import would put Sonner back in capture's first-load bundle. */
-      const { toast } = await import("sonner")
-      toast.success("Link estafet dibuat.")
+      const toast = await loadToast()
+      toast?.success("Link estafet dibuat.")
     } catch (error) {
-      const { toast } = await import("sonner")
-      toast.error(
+      const toast = await loadToast()
+      toast?.error(
         error instanceof Error
           ? error.message
           : "Link estafet belum bisa dibuat. Coba lagi sebentar lagi."
@@ -304,13 +304,13 @@ export default function CaptureStepPage() {
 
   async function handleShare(url: string) {
     const outcome = await shareLink(url, "Strip Estafet snapme")
-    const { toast } = await import("sonner")
+    const toast = await loadToast()
     if (outcome === "copied") {
-      toast.success("Tautan disalin.")
+      toast?.success("Tautan disalin.")
     } else if (outcome === "shared") {
-      toast.success("Tautan dibagikan.")
+      toast?.success("Tautan dibagikan.")
     } else {
-      toast.error(
+      toast?.error(
         "Tautan belum bisa dibagikan. Salin manual dari alamat di atas."
       )
     }

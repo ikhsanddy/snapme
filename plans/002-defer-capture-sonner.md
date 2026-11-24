@@ -36,6 +36,7 @@ actually needed.
 | --- | --- | --- |
 | Typecheck | `npm run typecheck` | exit 0 |
 | Gesture and relay flows | `npx playwright test tests/e2e/gesture.spec.ts tests/e2e/relay.spec.ts` | all pass |
+| Loader failure unit | `npm test -- tests/lib/toast.test.ts` | 1 test passes |
 
 ## Scope
 
@@ -43,6 +44,8 @@ actually needed.
 
 - `src/app/booth/capture/page.tsx`
 - `src/features/gesture/useGestureSnap.ts`
+- `src/lib/toast.ts`
+- `tests/lib/toast.test.ts`
 - `CHANGELOG.md`
 - `plans/README.md` and this plan's status row
 
@@ -53,8 +56,9 @@ machine, and product defaults.
 
 ### Step 1: Defer capture-page Sonner
 
-Remove the module-level `toast` import. Import `{ toast }` with `await import("sonner")` inside
-`handleInvite` and `handleShare` before their first toast call, matching `GalleryPicker`.
+Remove the module-level `toast` import. Use the shared non-throwing `loadToast()` helper before
+the invite success, operational error, and share toasts; optional-call the returned function so
+a failed chunk load cannot reject the handler or misreport a successful relay operation.
 
 **Verify**: `git grep -n 'from "sonner"' -- src/app/booth/capture/page.tsx` returns no match and
 `npm run typecheck` passes.
@@ -62,16 +66,18 @@ Remove the module-level `toast` import. Import `{ toast }` with `await import("s
 ### Step 2: Defer gesture failure Sonner
 
 Remove the module-level import from `useGestureSnap.ts`. Make its existing `.catch` callback
-async and await the dynamic import immediately before the unchanged failure toast.
+async, await `loadToast()`, recheck `cancelled` after the await, then optional-call the unchanged
+failure toast. A rejected chunk resolves to `null` instead of becoming an unhandled rejection.
 
 **Verify**: the failure path still sets `status` to `failed` and displays the same message;
 `git grep -n 'from "sonner"' -- src/features/gesture/useGestureSnap.ts` returns no match.
 
 ### Step 3: Verify and document
 
-Run typecheck and the two targeted Playwright specs. Add one concise Unreleased changelog bullet
-and mark this plan DONE. The final canonical `npm run build` runs after all three plans; the
-earlier isolated `_global-error` failure was a cross-checkout React-resolution harness issue.
+Run typecheck, the loader-failure unit test, and the two targeted Playwright specs. Add one
+concise Unreleased changelog bullet and mark this plan DONE. The final canonical `npm run build`
+runs after all three plans; the earlier isolated `_global-error` failure was a cross-checkout
+React-resolution harness issue.
 
 **Verify**: all targeted checks pass.
 
@@ -81,6 +87,7 @@ earlier isolated `_global-error` failure was a cross-checkout React-resolution h
 - [x] Toast messages, conditions, and error handling are unchanged.
 - [x] `npm run typecheck` passes.
 - [x] Gesture and relay Playwright specs pass.
+- [x] The mocked Sonner chunk-rejection unit test passes; `loadToast()` returns `null`.
 - [x] Only in-scope files changed, and the plan status is DONE.
 
 ## STOP conditions
@@ -91,5 +98,5 @@ earlier isolated `_global-error` failure was a cross-checkout React-resolution h
 
 ## Maintenance notes
 
-Keep Sonner imports next to async toast call sites. A future module-level toast should justify why
-it belongs in the route's critical bundle.
+Keep toast loading behind `loadToast()`: it must stay lazy and non-throwing. A future module-level
+toast import should justify why it belongs in the route's critical bundle.
