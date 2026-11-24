@@ -64,19 +64,20 @@ branch; result/share tests exercise static results and absent refs.
 
 ### Step 3: Document
 
-Add one concise Unreleased changelog bullet and mark this plan DONE. Report the known
-`_global-error` production-build prerender caveat separately.
+Add one concise Unreleased changelog bullet and mark this plan DONE. The final canonical
+`npm run build` runs after all three plans; the earlier isolated `_global-error` failure was a
+cross-checkout React-resolution harness issue, not an application failure.
 
 **Verify**: only in-scope files changed.
 
 ## Done criteria
 
-- [ ] `LiveStage` is absent when `hasLiveClips(shots)` is false.
-- [ ] Live results still mount the same stage and ref.
-- [ ] Absent refs remain safe through the existing optional calls.
-- [ ] `npm run typecheck` passes.
-- [ ] Live, result, and share Playwright specs pass.
-- [ ] Only in-scope files changed, and the plan status is DONE.
+- [x] `LiveStage` is absent when `hasLiveClips(shots)` is false.
+- [x] Live results still mount the same stage and ref.
+- [x] Absent refs remain safe through the existing optional calls.
+- [x] `npm run typecheck` passes.
+- [x] Live, result, and share Playwright specs pass.
+- [x] Only in-scope files changed, and the plan status is DONE.
 
 ## STOP conditions
 

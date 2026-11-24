@@ -26,6 +26,8 @@ carries its own mark. Nothing else in the flow changed.
 
 - Sonner stays out of the capture route's first-load JavaScript through a shared lazy,
   non-throwing toast loader; chunk failures no longer reject handlers or show stale gesture toasts
+- The result screen mounts the live-recording Konva stage only when the session has clips, so
+  static results no longer decode and render a duplicate offscreen stage
 - Server-only modules moved from `src/lib` to `src/server` (the binding seam, `db/`, `r2/`, `purge`,
   `rateLimit`, `tokens`, `expiry`), so the client-boundary rule is a path, not a hand-kept list
 - `tests/` now mirrors `src/` (`tests/app/api`, `tests/components`, `tests/features`, `tests/lib`,

@@ -578,19 +578,21 @@ export default function ResultView({ layoutId }: { layoutId: LayoutId }) {
       </div>
 
       {/* SH-03: panggung rekam versi hidup, di luar layar seperti panggung
-          ekspor. Hanya dipakai saat pengguna membuat link berklip atau meminta
-          unduhan video. */}
-      <LiveStage
-        ref={liveRef}
-        layoutId={layoutId}
-        shots={shots}
-        frame={getFrame(frameId)}
-        effect={getEffect(effectId).params}
-        stickers={stickers}
-        texts={texts}
-        showDate={showDate}
-        qr={qr}
-      />
+          ekspor. Dipasang hanya bila sesi punya klip; dipakai saat pengguna
+          membuat link berklip atau meminta unduhan video. */}
+      {hasLiveClips(shots) && (
+        <LiveStage
+          ref={liveRef}
+          layoutId={layoutId}
+          shots={shots}
+          frame={getFrame(frameId)}
+          effect={getEffect(effectId).params}
+          stickers={stickers}
+          texts={texts}
+          showDate={showDate}
+          qr={qr}
+        />
+      )}
 
       {/* FR-12: satu halaman 4 x 6 inci. Portal ke `body` supaya CSS cetak
           bisa menghilangkan seluruh isi halaman dan menyisakan lembar ini;

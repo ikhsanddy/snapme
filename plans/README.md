@@ -16,7 +16,7 @@ the temp checkout's own Next binary.
 | --- | --- | --- | --- | --- | --- |
 | 001 | Remove the unused Zod schemas and dependency | P1 | S | none | DONE |
 | 002 | Load Sonner only at capture toast call sites | P1 | S | none | DONE |
-| 003 | Mount the live Konva stage only when clips exist | P1 | S | none | TODO |
+| 003 | Mount the live Konva stage only when clips exist | P1 | S | none | DONE |
 
 ## Dependency notes
 
