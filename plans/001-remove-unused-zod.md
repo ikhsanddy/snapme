@@ -36,7 +36,7 @@ Zod without changing any live validation or media limits.
 | Remove dependency | `npm uninstall zod` | exit 0; manifest and lock updated |
 | Typecheck | `npm run typecheck` | exit 0 |
 | Relevant units | `npm test -- tests/features/capture/clip-recorder.test.ts tests/features/result/export-filename.test.ts` | all pass |
-| Confirm removal | `git grep -n -E 'CREATE_(STRIP|RELAY)_SCHEMA|from "zod"' -- . ':!package-lock.json'` | no matches |
+| Confirm removal | `git grep -n -E 'CREATE_(STRIP|RELAY)_SCHEMA|from "zod"|require\("zod"\)' -- src tests package.json` | no matches |
 
 ## Scope
 
@@ -63,25 +63,27 @@ validates request schemas.
 
 ### Step 2: Remove the package
 
-Run `npm uninstall zod`. Do not manually edit the lockfile.
+Run `npm uninstall zod`. Do not manually delete lockfile package entries: Zod remains a required
+transitive dependency of `shadcn` and `eslint-config-next`.
 
-**Verify**: `npm ls zod` reports no installed dependency and `git diff -- package.json package-lock.json`
-contains only Zod removal and its now-unused transitive dependencies.
+**Verify**: `package.json` has no direct Zod dependency and `git diff -- package-lock.json` removes
+only snapme's root dependency reference, leaving transitive package records intact.
 
 ### Step 3: Verify and document
 
-Run the typecheck and relevant unit tests. Add one concise Unreleased changelog bullet, mark this
-plan DONE, and leave the known `_global-error` build caveat separate rather than suppressing it.
+Run the typecheck and relevant unit tests. Add one concise Unreleased changelog bullet and mark
+this plan DONE. After all three plans land, `npm run build` in this checkout is the final bundle
+gate; an isolated build must invoke the temp checkout's own Next binary to avoid duplicate React.
 
-**Verify**: both check commands exit 0.
+**Verify**: both targeted check commands exit 0.
 
 ## Done criteria
 
-- [ ] No schema symbols or Zod imports remain in `src`.
-- [ ] Zod is absent from `package.json`, `package-lock.json`, and `npm ls zod`.
-- [ ] `npm run typecheck` passes.
-- [ ] The two targeted Vitest files pass.
-- [ ] Only in-scope files changed, and the plan status is DONE.
+- [x] No schema symbols or Zod imports remain in `src` or `tests`.
+- [x] The direct Zod dependency is absent from `package.json`; required transitive lock entries remain.
+- [x] `npm run typecheck` passes.
+- [x] The two targeted Vitest files pass.
+- [x] Only in-scope files changed, and the plan status is DONE.
 
 ## STOP conditions
 

@@ -59,8 +59,10 @@ carries its own mark. Nothing else in the flow changed.
 
 ### Removed
 
+- Unused `CREATE_STRIP_SCHEMA` and `CREATE_RELAY_SCHEMA`, plus the direct `zod` dependency; the
+  live media constants and `LiveKind` remain, so client routes no longer evaluate Zod schemas
 - `CreateStripPayload` and `CreateRelayPayload` in `src/lib/schemas.ts`: type aliases nothing
-  imported, while the routes take their types from the Zod schemas directly
+  imported
 - The `export` keyword on 26 symbols that only their own module uses (`StripLayout`, `CropRect`,
   `GESTURE_ACTIONS`, `BoothSettings`, and the like), so the module surface matches what is really
   shared. `src/components/ui` keeps the exports the shadcn CLI writes, so `shadcn add` stays
