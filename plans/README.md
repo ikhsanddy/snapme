@@ -10,6 +10,22 @@ Run canonical `npm run build` in this checkout after all three fixes and compare
 resolving Next/React across two checkouts, not from the repository; isolated builds must invoke
 the temp checkout's own Next binary.
 
+### Results
+
+Canonical `npm run build` passed on Next.js 16.4.3. Its first invocation compiled and prerendered
+all routes, then exited on the Next security-upgrade reminder; the identical retry continued with
+the warning visible and exited 0. Figures come from the build-generated
+`.next/diagnostics/route-bundle-stats.json`: the baseline is the pre-change build artifact and
+the final column is the canonical post-change build.
+
+| Route | Before (bytes) | After (bytes) | Change |
+| --- | ---: | ---: | ---: |
+| `/` | 548,827 | 548,827 | 0 (0.0%) |
+| `/booth/capture` | 942,767 | 806,872 | -135,895 (-14.4%) |
+
+A scan of every final first-load chunk for `/` and `/booth/capture` found no `zod` marker and no
+`data-sonner-toaster` marker.
+
 ## Execution order and status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
